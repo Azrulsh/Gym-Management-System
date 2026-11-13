@@ -28,6 +28,14 @@
   <link type="text/css" rel="stylesheet" href="assets/css/jquery-te-1.4.0.css">
   
   <script src="assets/vendor/jquery/jquery.min.js"></script>
+  <script>
+    // Expired sessions must return to the full login page, including from modals.
+    $(document).ajaxError(function(event, xhr) {
+      if (xhr.status === 401) {
+        window.location.replace('login.php');
+      }
+    });
+  </script>
   <script src="assets/DataTables/datatables.min.js"></script>
   <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
   <script src="assets/vendor/jquery.easing/jquery.easing.min.js"></script>

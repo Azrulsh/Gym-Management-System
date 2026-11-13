@@ -1,6 +1,11 @@
 <?php
+require_once __DIR__ . '/auth.php';
+$action = $_GET['action'] ?? '';
+// The login form is the only public action in this application.
+if ($action !== 'login') {
+    require_login(true);
+}
 ob_start();
-$action = $_GET['action'];
 include 'admin_class.php';
 $crud = new Action();
 if($action == 'login'){

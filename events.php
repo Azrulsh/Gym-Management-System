@@ -1,4 +1,8 @@
-<?php include('db_connect.php');?>
+<?php
+require_once __DIR__ . '/auth.php';
+require_login();
+include 'db_connect.php';
+?>
 
 <div class="container-fluid">
 	

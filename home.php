@@ -1,4 +1,8 @@
-<?php include 'db_connect.php' ?>
+<?php
+require_once __DIR__ . '/auth.php';
+require_login();
+include 'db_connect.php';
+?>
 <style>
    span.float-right.summary_icon {
     font-size: 3rem;

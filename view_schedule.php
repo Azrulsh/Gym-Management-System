@@ -1,4 +1,8 @@
-<?php include 'db_connect.php' ?>
+<?php
+require_once __DIR__ . '/auth.php';
+require_login();
+include 'db_connect.php';
+?>
 <?php
 if(isset($_GET['id'])){
 	$qry = $conn->query("SELECT s.*,concat(m.lastname,',',m.firstname,' ', m.middlename) as name FROM schedules s inner join members m on m.id = s.member_id where s.id=".$_GET['id'])->fetch_array();

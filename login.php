@@ -1,7 +1,10 @@
-<!DOCTYPE html>
-<html lang="en">
-<?php 
-session_start();
+<?php
+require_once __DIR__ . '/auth.php';
+header('Cache-Control: no-store');
+if (isset($_SESSION['login_id'])) {
+    header('Location: index.php?page=home');
+    exit;
+}
 include('./db_connect.php');
 ob_start();
 if(!isset($_SESSION['system'])){
@@ -12,6 +15,8 @@ if(!isset($_SESSION['system'])){
 }
 ob_end_flush();
 ?>
+<!DOCTYPE html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
@@ -20,11 +25,6 @@ ob_end_flush();
  	
 
 <?php include('./header.php'); ?>
-<?php 
-if(isset($_SESSION['login_id']))
-header("location:index.php?page=home");
-
-?>
 
 </head>
 <style>

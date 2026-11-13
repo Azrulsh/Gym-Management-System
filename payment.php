@@ -1,4 +1,8 @@
-<?php include 'db_connect.php' ?>
+<?php
+require_once __DIR__ . '/auth.php';
+require_login();
+include 'db_connect.php';
+?>
 <?php
 if(isset($_GET['rid'])){
 	$qry = $conn->query("SELECT r.*,p.plan,p.amount as pamount,pp.package,pp.amount as ppamount,concat(m.lastname,', ',m.firstname,' ',m.middlename) as name,m.member_id as mid_no from registration_info r inner join members m on m.id = r.member_id inner join plans p on p.id = r.plan_id inner join packages pp on pp.id = r.package_id where r.id=".$_GET['rid'])->fetch_array();

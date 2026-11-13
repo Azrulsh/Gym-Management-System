@@ -1,7 +1,10 @@
+<?php
+require_once __DIR__ . '/auth.php';
+require_login();
+?>
 <!DOCTYPE html>
 <html lang="en">
 	
-<?php session_start(); ?>
 <head>
   <meta charset="utf-8">
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
@@ -10,10 +13,7 @@
  	
 
 <?php
-  if(!isset($_SESSION['login_id']))
-    header('location:login.php');
  include('./header.php'); 
- // include('./auth.php'); 
  ?>
 
 </head>
@@ -152,6 +152,8 @@
     $.ajax({
         url:$url,
         error:err=>{
+            end_load()
+            if (err.status === 401) return;
             console.log()
             alert("An error occured")
         },

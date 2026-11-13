@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once __DIR__ . '/auth.php';
 ini_set('display_errors', 1);
 Class Action {
 	private $db;
@@ -21,7 +21,7 @@ Class Action {
 			$qry = $this->db->query("SELECT * FROM users where username = '".$username."' and password = '".md5($password)."' ");
 			if($qry->num_rows > 0){
 				foreach ($qry->fetch_array() as $key => $value) {
-					if($key != 'passwors' && !is_numeric($key))
+					if($key != 'password' && !is_numeric($key))
 						$_SESSION['login_'.$key] = $value;
 				}
 				if($_SESSION['login_type'] != 1){
@@ -31,6 +31,7 @@ Class Action {
 					return 2 ;
 					exit;
 				}
+					session_regenerate_id(true);
 					return 1;
 			}else{
 				return 3;
