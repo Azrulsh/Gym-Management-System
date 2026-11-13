@@ -20,7 +20,7 @@ if(isset($_GET['id'])){
 	<p>Name: <b><?php echo htmlspecialchars(ucwords($name), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?></b></p>
 	<p>Plan: </i> <b><?php echo $plan.' month/s' ?></b></p>
 	<p>Package: </i> <b><?php echo htmlspecialchars($package, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?></b></p>
-	<p>Trainer: </i> <b><?php echo !empty($trainer_arr) ?  $trainer_arr['name'] : '' ?></b></p>
+	<p>Trainer: </i> <b><?php echo !empty($trainer_arr) ? htmlspecialchars($trainer_arr['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') : ''; ?></b></p>
 	<hr class="divider">
 	<p>Plan Membership Fee: </i> <b><?php echo number_format($pamount,2).' (One-time amount only)' ?></b></p>
 	<p>Package Amount: </i> <b><?php echo number_format($ppamount,2) ?></b></p>

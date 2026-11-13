@@ -59,7 +59,7 @@ if(isset($_GET['id'])){
 						$qry = $conn->query("SELECT * FROM trainers order by name asc");
 						while($row= $qry->fetch_assoc()):
 					?>
-					<option value="<?php echo $row['id'] ?>" <?php echo isset($trainer_id) && $trainer_id == $row['id'] ? 'selected' : '' ?>><?php echo ucwords($row['name']) ?></option>
+					<option value="<?php echo $row['id'] ?>" <?php echo isset($trainer_id) && $trainer_id == $row['id'] ? 'selected' : '' ?>><?php echo htmlspecialchars(ucwords($row['name']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?></option>
 					<?php endwhile; ?>
 				</select>
 			</div>

@@ -518,18 +518,64 @@ Class Action {
 		}
 	}
 	function save_trainer(){
-		extract($_POST);
-		$data = " name = '$name' ";
-		$data .= ", email = '$email' ";
-		$data .= ", contact = '$contact' ";
-		$data .= ", rate = '$rate' ";
-			if(empty($id)){
-				$save = $this->db->query("INSERT INTO trainers set $data");
-			}else{
-				$save = $this->db->query("UPDATE trainers set $data where id = $id");
+		require_action_access('save_trainer');
+		$id = $_POST['id'] ?? '';
+		if (!is_scalar($id) || is_bool($id)) return $this->action_error(400, 'Invalid trainer record ID.');
+		$id = $id === '' ? 0 : filter_var($id, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 2147483647]]);
+		if ($id === false) return $this->action_error(400, 'Invalid trainer record ID.');
+		$fields = [];
+		foreach (['name', 'email', 'contact'] as $field) {
+			$value = $_POST[$field] ?? '';
+			if (!is_string($value) || !preg_match('//u', $value)) return $this->action_error(400, 'Invalid trainer details.');
+			$value = trim($value);
+			$length = function_exists('mb_strlen') ? mb_strlen($value, 'UTF-8') : strlen($value);
+			if ($value === '' || $length > ($field === 'name' ? 200 : 100)) {
+				return $this->action_error(400, 'Name, email and contact are required. Name must not exceed 200 characters; email and contact must not exceed 100.');
 			}
-		if($save)
+			$fields[$field] = $value;
+		}
+		$name = $fields['name'];
+		$email = $fields['email'];
+		$contact = $fields['contact'];
+		if (!filter_var($email, FILTER_VALIDATE_EMAIL)) return $this->action_error(400, 'Enter a valid email address.');
+		if (!preg_match('/\A[+0-9(). -]+\z/', $contact) || !preg_match('/[0-9]/', $contact)) return $this->action_error(400, 'Enter a valid contact number.');
+		$rate = $_POST['rate'] ?? '';
+		if (!is_string($rate) || strlen($rate) > 32 || !preg_match('/\A[0-9]+(?:\.[0-9]{1,2})?\z/', $rate)) {
+			return $this->action_error(400, 'Rate must be zero or greater, with up to two decimal places.');
+		}
+		try {
+			if ($id && !$this->trainer_record($id)) return $this->action_error(404, 'Trainer no longer exists. Refresh the page.');
+			if ($id) {
+				$save = $this->db->prepare('UPDATE trainers SET name = ?, email = ?, contact = ?, rate = ? WHERE id = ?');
+				if (!$save) return $this->action_error(500, 'Unable to save trainer. Please try again.');
+				$save->bind_param('ssssi', $name, $email, $contact, $rate, $id);
+			} else {
+				$save = $this->db->prepare('INSERT INTO trainers (name, email, contact, rate) VALUES (?, ?, ?, ?)');
+				if (!$save) return $this->action_error(500, 'Unable to save trainer. Please try again.');
+				$save->bind_param('ssss', $name, $email, $contact, $rate);
+			}
+			$executed = $save->execute();
+			$changed = $save->affected_rows;
+			$save->close();
+			if (!$executed) return $this->action_error(500, 'Unable to save trainer. Please try again.');
+			if ($id && $changed === 0 && !$this->trainer_record($id)) return $this->action_error(404, 'Trainer no longer exists. Refresh the page.');
 			return 1;
+		} catch (mysqli_sql_exception | RuntimeException $exception) {
+			error_log('Unable to save trainer (error code ' . (int) $exception->getCode() . ').');
+			return $this->action_error(500, 'Unable to save trainer. Please try again.');
+		}
+	}
+	private function trainer_record($id){
+		$statement = $this->db->prepare('SELECT id FROM trainers WHERE id = ?');
+		if (!$statement) throw new RuntimeException('Unable to read trainer.');
+		$statement->bind_param('i', $id);
+		if (!$statement->execute()) {
+			$statement->close();
+			throw new RuntimeException('Unable to read trainer.');
+		}
+		$record = $statement->get_result()->fetch_assoc();
+		$statement->close();
+		return $record;
 	}
 	function delete_trainer(){
 		extract($_POST);

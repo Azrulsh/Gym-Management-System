@@ -10,36 +10,39 @@ include 'db_connect.php';
 		<div class="row">
 			<!-- FORM Panel -->
 			<div class="col-md-4">
-			<form action="" id="manage-trainer">
+			<form action="ajax.php?action=save_trainer" method="post" id="manage-trainer">
 				<div class="card">
 					<div class="card-header">
-						    Trainer Form
+						    <span class="trainer-form-title" aria-live="polite">Add Trainer</span>
 				  	</div>
 					<div class="card-body">
+                            <p class="trainer-mode-help text-muted">Fill in the form to create a new trainer.</p>
+                            <div class="trainer-message" role="alert" aria-live="polite"></div>
+                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
 							<input type="hidden" name="id">
 							<div class="form-group">
-								<label class="control-label">Name</label>
-								<input type="text" class="form-control" name="name">
+								<label class="control-label" for="trainer-name">Name</label>
+								<input type="text" id="trainer-name" class="form-control" name="name" maxlength="200" required>
 							</div>
 							<div class="form-group">
-								<label class="control-label">Email</label>
-								<input type="email" class="form-control" name="email">
+								<label class="control-label" for="trainer-email">Email</label>
+								<input type="email" id="trainer-email" class="form-control" name="email" maxlength="100" required>
 							</div>
 							<div class="form-group">
-								<label class="control-label">Contact</label>
-								<input type="text" class="form-control" name="contact">
+								<label class="control-label" for="trainer-contact">Contact</label>
+								<input type="text" id="trainer-contact" class="form-control" name="contact" maxlength="100" required>
 							</div>
 							<div class="form-group">
-								<label class="control-label">Rate</label>
-								<input type="number" class="form-control" name="rate">
+								<label class="control-label" for="trainer-rate">Rate</label>
+								<input type="number" id="trainer-rate" class="form-control" min="0" step="1" name="rate" required>
 							</div>
 					</div>
 							
 					<div class="card-footer">
 						<div class="row">
 							<div class="col-md-12">
-								<button class="btn btn-md btn-success col-sm-3 offset-md-3"> Save</button>
-								<button class="btn btn-md btn-secondary col-sm-3" type="button" onclick="_reset()"> Cancel</button>
+								<button type="submit" class="btn btn-md btn-success col-sm-4 offset-md-2">Create</button>
+								<button class="btn btn-md btn-secondary col-sm-4 reset-trainer" type="button">Clear</button>
 							</div>
 						</div>
 					</div>
@@ -72,15 +75,15 @@ include 'db_connect.php';
 								<tr>
 									<td class="text-center"><?php echo $i++ ?></td>
 									<td class="">
-										<p><i class="fa fa-user"></i> <b><?php echo $row['name'] ?></b></p>
-										<p><small><i class="fa fa-at"></i> <b><?php echo $row['email'] ?></b></small></p>
-										<p><small><i class="fa fa-phone-square-alt"></i> <b><?php echo $row['contact'] ?></b></small></p>
+										<p><i class="fa fa-user"></i> <b><?php echo htmlspecialchars((string) $row['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?></b></p>
+										<p><small><i class="fa fa-at"></i> <b><?php echo htmlspecialchars((string) $row['email'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?></b></small></p>
+										<p><small><i class="fa fa-phone-square-alt"></i> <b><?php echo htmlspecialchars((string) $row['contact'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?></b></small></p>
 										<p><small><i class="fa fa-money-bill"></i> <b><?php echo number_format($row['rate'],2) ?></b></small></p>
 										
 									</td>
 									<td class="text-center">
-										<button class="btn btn-md btn-outline-success edit_trainer" type="button" data-id="<?php echo $row['id'] ?>" data-name="<?php echo $row['name'] ?>" data-email="<?php echo $row['email'] ?>" data-contact="<?php echo $row['contact'] ?>" data-rate="<?php echo $row['rate'] ?>" >Edit</button>
-										<button class="btn btn-md btn-outline-danger delete_trainer" type="button" data-id="<?php echo $row['id'] ?>">Delete</button>
+										<button class="btn btn-md btn-outline-success edit_trainer" type="button" data-id="<?php echo (int) $row['id'] ?>" data-name="<?php echo htmlspecialchars((string) $row['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>" data-email="<?php echo htmlspecialchars((string) $row['email'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>" data-contact="<?php echo htmlspecialchars((string) $row['contact'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>" data-rate="<?php echo htmlspecialchars((string) $row['rate'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>" >Edit</button>
+										<button class="btn btn-md btn-outline-danger delete_trainer" type="button" data-id="<?php echo (int) $row['id'] ?>">Delete</button>
 									</td>
 								</tr>
 								<?php endwhile; ?>
@@ -103,51 +106,8 @@ include 'db_connect.php';
 		margin:unset;
 	}
 </style>
+<script src="assets/js/trainers.js?v=<?php echo filemtime(__DIR__ . '/assets/js/trainers.js'); ?>"></script>
 <script>
-	function _reset(){
-		$('#manage-trainer').get(0).reset()
-		$('#manage-trainer input,#manage-trainer textarea').val('')
-	}
-	$('#manage-trainer').submit(function(e){
-		e.preventDefault()
-		start_load()
-		$.ajax({
-			url:'ajax.php?action=save_trainer',
-			data: new FormData($(this)[0]),
-		    cache: false,
-		    contentType: false,
-		    processData: false,
-		    method: 'POST',
-		    type: 'POST',
-			success:function(resp){
-				if(resp==1){
-					alert_toast("Data successfully added",'success')
-					setTimeout(function(){
-						location.reload()
-					},1500)
-
-				}
-				else if(resp==2){
-					alert_toast("Data successfully updated",'success')
-					setTimeout(function(){
-						location.reload()
-					},1500)
-
-				}
-			}
-		})
-	})
-	$('.edit_trainer').click(function(){
-		start_load()
-		var cat = $('#manage-trainer')
-		cat.get(0).reset()
-		cat.find("[name='id']").val($(this).attr('data-id'))
-		cat.find("[name='name']").val($(this).attr('data-name'))
-		cat.find("[name='email']").val($(this).attr('data-email'))
-		cat.find("[name='contact']").val($(this).attr('data-contact'))
-		cat.find("[name='rate']").val($(this).attr('data-rate'))
-		end_load()
-	})
 	$('.delete_trainer').click(function(){
 		_conf("Are you sure to delete this trainer?","delete_trainer",[$(this).attr('data-id')])
 	})
