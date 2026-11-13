@@ -62,14 +62,14 @@ include 'db_connect.php';
 							<tbody>
 								<?php 
 								$i = 1;
-								$member =  $conn->query("SELECT r.*,p.plan,pp.package,concat(m.lastname,', ',m.firstname,' ',m.middlename) as name,m.member_id from registration_info r inner join members m on m.id = r.member_id inner join plans p on p.id = r.plan_id inner join packages pp on pp.id = r.package_id where r.status = 1 order by r.id asc");
+								$member = $conn->query("SELECT r.id AS registration_id,r.end_date,p.plan,pp.package,concat(m.lastname,', ',m.firstname,' ',m.middlename) as name,m.member_id AS member_number from registration_info r inner join members m on m.id = r.member_id inner join plans p on p.id = r.plan_id inner join packages pp on pp.id = r.package_id where r.status = 1 order by r.id asc");
 								while($row=$member->fetch_assoc()):
 								?>
 								<tr>
 									
 									<td class="text-center"><?php echo $i++ ?></td>
 									<td class="">
-										 <p><b><?php echo $row['member_id'] ?></b></p>
+										 <p><b><?php echo $row['member_number'] ?></b></p>
 										 
 									</td>
 									<td class="">
@@ -91,8 +91,8 @@ include 'db_connect.php';
 										<?php endif; ?>
 									</td>
 									<td class="text-center">
-										<button class="btn btn-sm btn-outline-success view_member" type="button" data-id="<?php echo $row['id'] ?>" >View</button>
-										<button class="btn btn-sm btn-outline-danger delete_member" type="button" data-id="<?php echo $row['id'] ?>">Delete</button>
+										<button class="btn btn-sm btn-outline-success view_member" type="button" data-id="<?php echo (int) $row['registration_id']; ?>" >View</button>
+										<button class="btn btn-sm btn-outline-danger end-membership" type="button" data-registration-id="<?php echo (int) $row['registration_id']; ?>" data-csrf-token="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">End Membership</button>
 									</td>
 								</tr>
 								<?php endwhile; ?>
@@ -130,29 +130,4 @@ include 'db_connect.php';
 		uni_modal("<i class='fa fa-address-card'></i> Member Plan Details","view_pdetails.php?id="+$(this).attr('data-id'),'')
 		
 	})
-	$('.edit_member').click(function(){
-		uni_modal("<i class='fa fa-edit'></i> Manage Member Details","manage_member.php?id="+$(this).attr('data-id'),'mid-large')
-		
-	})
-	$('.delete_member').click(function(){
-		_conf("Are you sure to delete this topic?","delete_member",[$(this).attr('data-id')],'mid-large')
-	})
-
-	function delete_member($id){
-		start_load()
-		$.ajax({
-			url:'ajax.php?action=delete_member',
-			method:'POST',
-			data:{id:$id},
-			success:function(resp){
-				if(resp==1){
-					alert_toast("Data successfully deleted",'success')
-					setTimeout(function(){
-						location.reload()
-					},1500)
-
-				}
-			}
-		})
-	}
 </script>

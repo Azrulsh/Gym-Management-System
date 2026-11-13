@@ -2,37 +2,11 @@
 // PHP sessions and database objects are simulated in isolated CLI processes.
 // No application records or PHP session files are created or changed.
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import test from 'node:test';
+import { literal, run } from './helpers/php.mjs';
 
-const root = fileURLToPath(new URL('../', import.meta.url));
-const php = process.env.GYM_TEST_PHP || (process.platform === 'win32' ? 'C:/xampp/php/php.exe' : 'php');
-const literal = value => `'${value.replaceAll('\\', '\\\\').replaceAll("'", "\\'")}'`;
 const staff = { login_id: 9999, login_type: 2, login_name: 'Test Staff', csrf_token: 'test-csrf-token' };
 const admin = { login_id: 2, login_type: 1, login_name: 'Test Admin' };
-
-function run(session, code) {
-  const source = `
-    session_set_save_handler(
-      function($path, $name) { return true; }, function() { return true; },
-      function($id) { return ''; }, function($id, $data) { return true; },
-      function($id) { return true; }, function($lifetime) { return 0; }
-    );
-    session_start();
-    $_SESSION = json_decode(${literal(JSON.stringify(session))}, true);
-    require 'auth.php';
-    register_shutdown_function(function() { echo "\\n__STATUS__" . (http_response_code() ?: 200); });
-    ${code}
-  `;
-  const result = spawnSync(php, ['-r', source], { cwd: root, encoding: 'utf8' });
-  assert.ifError(result.error);
-  assert.equal(result.status, 0, result.stderr + result.stdout);
-  assert.equal(result.stderr, '');
-  const match = result.stdout.match(/\n__STATUS__(\d+)$/);
-  assert.ok(match, result.stdout);
-  return { status: Number(match[1]), body: result.stdout.slice(0, match.index) };
-}
 
 const sharedActions = [
   'logout', 'save_member', 'delete_member', 'save_membership', 'renew_membership',

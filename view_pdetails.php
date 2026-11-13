@@ -35,7 +35,9 @@ if(isset($_GET['id'])){
 			<?php if(strtotime(date('Y-m-d')) > strtotime($end_date)): ?>
 			<button class="btn float-right btn-primary mr-2" type="button" id="renew">Renew</button>
 			<?php endif; ?>
-			<button class="btn float-right btn-primary mr-2" type="button" id="end">End Plan</button>
+			<?php if ((int) $status === 1): ?>
+			<button class="btn float-right btn-outline-danger mr-2 end-membership" type="button" data-registration-id="<?php echo (int) $id; ?>" data-csrf-token="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">End Membership</button>
+			<?php endif; ?>
 		</div>
 	</div>
 </div>
@@ -65,22 +67,6 @@ if(isset($_GET['id'])){
 					alert_toast('Membership Successfully renewed','success')
 					end_load()
 					uni_modal("<i class='fa fa-address-card'></i> Member Plan Details","view_pdetails.php?id="+resp,'')
-				}
-			}
-		})
-	})
-	$('#end').click(function(){
-		start_load()
-		$.ajax({
-			url:'ajax.php?action=end_membership',
-			method:'POST',
-			data:{rid:'<?php echo $id ?>'},
-			success:function(resp){
-				if(resp == 1){
-					alert_toast('Membership Successfully Closed','success')
-					setTimeout(function(){
-						location.reload()
-					},750)
 				}
 			}
 		})

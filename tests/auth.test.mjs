@@ -104,6 +104,19 @@ test('valid login rotates session, preserves pages and modals, and logout revoke
     assert.match(html, /assets\/vendor\/bootstrap\/css\/bootstrap.min.css/, page);
     assert.match(html, /id="sidebar"/, page);
     assert.doesNotMatch(html, /Fatal error|headers already sent|session_start\(\).*already active/i, page);
+    if (page === 'registered_members') {
+      assert.match(html, /assets\/js\/membership.js/);
+      assert.doesNotMatch(html, /action=delete_member|class="[^"]*delete_member/);
+      const button = html.match(/class="[^"]*end-membership"[^>]*data-registration-id="(\d+)"[^>]*data-csrf-token="([a-f0-9]+)"/);
+      if (button) {
+        const details = await request(`view_pdetails.php?id=${button[1]}`, {}, cookies);
+        assert.equal(details.status, 200);
+        const detailsHtml = await details.text();
+        assert.match(detailsHtml, new RegExp(`data-registration-id="${button[1]}"`));
+        assert.match(detailsHtml, new RegExp(`data-csrf-token="${button[2]}"`));
+        assert.doesNotMatch(detailsHtml, /Fatal error|action=delete_member/);
+      }
+    }
   }
 
   for (const path of ['manage_member.php', 'manage_membership.php', 'manage_schedule.php', 'manage_user.php']) {
@@ -119,6 +132,20 @@ test('valid login rotates session, preserves pages and modals, and logout revoke
   assert.doesNotMatch(ownForm, /name="type"/);
   const csrfToken = ownForm.match(/name="csrf_token" value="([a-f0-9]+)"/)?.[1];
   assert.ok(csrfToken);
+  const invalidMembership = await request('ajax.php?action=end_membership', {
+    method: 'POST', body: new URLSearchParams({ rid: '0', csrf_token: csrfToken }),
+  }, cookies);
+  assert.equal(invalidMembership.status, 400);
+  assert.deepEqual(await invalidMembership.json(), { error: 'Invalid membership ID.' });
+  const missingMembershipToken = await request('ajax.php?action=end_membership', {
+    method: 'POST', body: new URLSearchParams({ rid: '0' }),
+  }, cookies);
+  assert.equal(missingMembershipToken.status, 403);
+  await missingMembershipToken.text();
+  const membershipGet = await request('ajax.php?action=end_membership', {}, cookies);
+  assert.equal(membershipGet.status, 405);
+  assert.equal(membershipGet.headers.get('allow'), 'POST');
+  await membershipGet.text();
   const ownId = new URL(ownAccountPath, `${baseUrl}/`).searchParams.get('id');
   const invalidProfile = await request('ajax.php?action=save_account', {
     method: 'POST',

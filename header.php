@@ -53,6 +53,7 @@
     <script type="text/javascript" src="assets/font-awesome/js/all.min.js"></script>
     <script type="text/javascript" src="assets/fullcalendar/main.js"></script>
   <script type="text/javascript" src="assets/js/jquery-te-1.4.0.min.js" charset="utf-8"></script>
+  <script src="assets/js/membership.js"></script>
 
 
 

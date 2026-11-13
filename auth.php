@@ -117,10 +117,24 @@ function require_action_access($action)
         if (isset($_POST['type']) && (!is_scalar($_POST['type']) || (string) $_POST['type'] !== (string) current_role())) {
             deny_access(true);
         }
-        $token = $_POST['csrf_token'] ?? null;
-        if (!is_string($token) || !isset($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $token)) {
-            deny_access(true);
-        }
+    }
+    if ($action === 'end_membership' && ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+        http_response_code(405);
+        header('Allow: POST');
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['error' => 'Use POST to end a membership.']);
+        exit;
+    }
+    if (in_array($action, ['save_account', 'end_membership'], true)) {
+        require_csrf_token();
+    }
+}
+
+function require_csrf_token()
+{
+    $token = $_POST['csrf_token'] ?? null;
+    if (!is_string($token) || !isset($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $token)) {
+        deny_access(true);
     }
 }
 

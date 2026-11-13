@@ -464,11 +464,37 @@ Class Action {
 
 	}
 	function end_membership(){
-		extract($_POST);
-		$update = $this->db->query("UPDATE registration_info set status = 0 where id = ".$rid);
-		if($update){
-			return 1;
+		require_action_access('end_membership');
+		$registrationId = filter_var($_POST['rid'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+		if ($registrationId === false) {
+			return $this->membership_error(400, 'Invalid membership ID.');
 		}
+		try {
+			// A single conditional update also prevents duplicate requests reporting success.
+			$statement = $this->db->prepare('UPDATE registration_info SET status = 0 WHERE id = ? AND status = 1');
+			if (!$statement) {
+				return $this->membership_error(500, 'Unable to end membership. Please try again.');
+			}
+			$statement->bind_param('i', $registrationId);
+			$executed = $statement->execute();
+			$changed = $statement->affected_rows;
+			$statement->close();
+			if (!$executed) {
+				return $this->membership_error(500, 'Unable to end membership. Please try again.');
+			}
+			if ($changed !== 1) {
+				return $this->membership_error(409, 'Membership is already ended or no longer exists. Refresh the page.');
+			}
+			return 1;
+		} catch (mysqli_sql_exception $exception) {
+			error_log('Unable to end membership: ' . $exception->getMessage());
+			return $this->membership_error(500, 'Unable to end membership. Please try again.');
+		}
+	}
+	private function membership_error($status, $message){
+		http_response_code($status);
+		header('Content-Type: application/json; charset=utf-8');
+		return json_encode(['error' => $message]);
 	}
 	
 	function save_membership(){
