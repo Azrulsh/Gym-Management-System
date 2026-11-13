@@ -2,6 +2,7 @@
 // Set GYM_TEST_USERNAME and GYM_TEST_PASSWORD to also test authenticated access.
 // Successful login can upgrade the supplied account's password hash.
 // Use credentials for a disposable test account when enabling authenticated checks.
+// Invalid login checks also consume the application's persistent attempt counters.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -73,8 +74,12 @@ test('incorrect credentials do not grant access', async () => {
     method: 'POST',
     body: new URLSearchParams({ username: '__auth_smoke_missing_user__', password: 'incorrect' }),
   }, cookies);
-  assert.equal(response.status, 200);
-  assert.equal((await response.text()).trim(), '3');
+  assert.ok([200, 429].includes(response.status));
+  if (response.status === 429) {
+    assert.ok(Number(response.headers.get('retry-after')) > 0);
+    const blocked = await response.json();
+    assert.equal(blocked.error, `Too many login attempts. Retry in ${Math.ceil(blocked.retry_after / 60)} min.`);
+  } else assert.equal((await response.text()).trim(), '3');
   const protectedResponse = await request('members.php', {}, cookies);
   assert.equal(protectedResponse.status, 302);
 });
@@ -88,8 +93,12 @@ test('login rejects GET, handles apostrophes safely and validates array input wi
   const quote = await request('ajax.php?action=login', {
     method: 'POST', body: new URLSearchParams({ username: "'", password: 'test' }),
   }, cookies);
-  assert.equal(quote.status, 200);
-  assert.equal((await quote.text()).trim(), '3');
+  assert.ok([200, 429].includes(quote.status));
+  if (quote.status === 429) {
+    assert.ok(Number(quote.headers.get('retry-after')) > 0);
+    const blocked = await quote.json();
+    assert.equal(blocked.error, `Too many login attempts. Retry in ${Math.ceil(blocked.retry_after / 60)} min.`);
+  } else assert.equal((await quote.text()).trim(), '3');
   const array = await request('ajax.php?action=login', {
     method: 'POST', body: new URLSearchParams([['username[]', 'admin'], ['password', 'test']]),
   }, cookies);

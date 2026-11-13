@@ -296,6 +296,15 @@ ALTER TABLE `trainers`
 --
 ALTER TABLE `users`
   MODIFY `id` int(30) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+-- Persistent login limits for fresh installations (existing installations use migration 001).
+CREATE TABLE IF NOT EXISTS login_throttle (
+  bucket CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  attempts INT UNSIGNED NOT NULL DEFAULT 0,
+  expires_at BIGINT UNSIGNED NOT NULL,
+  PRIMARY KEY (bucket),
+  KEY expires_at (expires_at)
+) ENGINE=InnoDB;
+
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;

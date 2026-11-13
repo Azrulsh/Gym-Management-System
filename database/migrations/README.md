@@ -1,0 +1,25 @@
+Existing installations: select the application database in phpMyAdmin and import
+`001_login_throttle.sql` once. It only adds the `login_throttle` table. New installations
+can import `database/gym_db.sql`, which already includes the table.
+
+The login handler requires this table and returns a generic 503 if storage fails;
+it never falls back to unlimited login attempts. No schema changes run during login.
+
+Policy is defined in `login_throttle.php`: five failed attempts per account and
+30 total admitted attempts per IP in a fixed 15-minute window. Successful login
+resets the account counter, but keeps the IP counter. Blocked requests do not
+extend the window. Correct passwords are also blocked until the window expires.
+Account-wide limits can temporarily prevent the owner from logging in if someone
+deliberately exhausts their attempts; blocks expire automatically.
+
+The server uses `REMOTE_ADDR`, never client-supplied forwarded headers. A deployment
+behind a reverse proxy must configure trusted client address handling at the server.
+Counter keys are SHA-256 digests; passwords and raw usernames/IP addresses are not
+stored in this table. Expired counters are removed in bounded batches during login.
+
+Run `node --test tests/*.test.mjs` with local MariaDB available. The throttle tests
+create randomly named `gym_throttle_test_*` databases, exercise real InnoDB locks,
+and drop only those test databases afterwards. They do not use application accounts.
+Test connection defaults to localhost/root with an empty password; override via
+`GYM_TEST_DB_HOST`, `GYM_TEST_DB_USER`, and `GYM_TEST_DB_PASSWORD` if needed.
+HTTP smoke checks against the application do consume its login attempt counters.

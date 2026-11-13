@@ -1,9 +1,11 @@
 <?php
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/passwords.php';
+require_once __DIR__ . '/login_throttle.php';
 ini_set('display_errors', 1);
 Class Action {
 	private $db;
+	private $loginThrottle;
 
 	public function __construct() {
 		ob_start();
@@ -32,6 +34,7 @@ Class Action {
 		if ($username === '' || $password === '' || $length > 200 || strlen($password) > 4096) {
 			return $this->action_error(400, 'Enter a valid username and password.');
 		}
+		$throttle = $this->loginThrottle ?? new LoginThrottle($this->db);
 		try {
 			$statement = $this->db->prepare('SELECT id, name, username, type, password FROM users WHERE username = ? LIMIT 1');
 			if (!$statement) {
@@ -44,9 +47,24 @@ Class Action {
 			}
 			$user = $statement->get_result()->fetch_assoc();
 			$statement->close();
-			if (!$user || !gym_password_verify($password, (string) $user['password'])) return 3;
+			// Existing account IDs respect the same username collation as MySQL.
+			$account = $user ? 'id:' . $user['id'] : 'name:' . mb_strtolower($username, 'UTF-8');
+			$retryAfter = $throttle->begin($account, $_SERVER['REMOTE_ADDR'] ?? 'unknown');
+			if ($retryAfter > 0) {
+				header('Retry-After: ' . $retryAfter);
+				http_response_code(429);
+				header('Content-Type: application/json; charset=utf-8');
+				return json_encode(['error' => 'Too many login attempts. Retry in ' . (int) ceil($retryAfter / 60) . ' min.', 'retry_after' => $retryAfter]);
+			}
+			if (!$user || !gym_password_verify($password, (string) $user['password'])) {
+				$throttle->finish(false);
+				return 3;
+			}
 			$role = (int) $user['type'];
-			if (!in_array($role, [1, 2], true)) return 2;
+			if (!in_array($role, [1, 2], true)) {
+				$throttle->finish(false);
+				return 2;
+			}
 			if (gym_password_needs_rehash($user['password'])) {
 				$hash = gym_password_hash($password);
 				$id = (int) $user['id'];
@@ -62,8 +80,12 @@ Class Action {
 				$changed = $upgrade->affected_rows;
 				$upgrade->close();
 				// A concurrent password change requires a fresh login attempt.
-				if ($changed !== 1) return 3;
+				if ($changed !== 1) {
+					$throttle->finish(false);
+					return 3;
+				}
 			}
+			$throttle->finish(true);
 			if (!session_regenerate_id(true)) {
 				return $this->action_error(503, 'Unable to log in right now. Please try again.');
 			}
@@ -76,8 +98,10 @@ Class Action {
 			error_log('Login database error (code ' . (int) $exception->getCode() . ').');
 			return $this->action_error(503, 'Unable to log in right now. Please try again.');
 		} catch (ValueError | RuntimeException $exception) {
-			error_log('Login password hashing failed.');
+			error_log('Login security check failed.');
 			return $this->action_error(503, 'Unable to log in right now. Please try again.');
+		} finally {
+			$throttle->cancel();
 		}
 	}
 	function login2(){

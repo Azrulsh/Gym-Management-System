@@ -93,6 +93,24 @@ test('unexpected HTML is never displayed or treated as successful login', () => 
   assert.deepEqual(state.destinations, []);
 });
 
+for (const [retryAfter, expected] of [
+  [900, 'Too many login attempts. Retry in 15 min.'],
+  [61, 'Too many login attempts. Retry in 2 min.'],
+  [undefined, 'Too many login attempts. Please try again later.'],
+  ['<script>private</script>', 'Too many login attempts. Please try again later.'],
+  [999999, 'Too many login attempts. Please try again later.'],
+]) {
+  test(`HTTP 429 displays a safe wait message for ${String(retryAfter)}`, () => {
+    const state = ui();
+    state.submit();
+    state.requests[0].error({ status: 429, responseJSON: { retry_after: retryAfter } });
+    state.requests[0].complete();
+    assert.equal(state.text, expected);
+    assert.equal(state.disabled, false);
+    assert.deepEqual(state.destinations, []);
+  });
+}
+
 test('browser validation stops empty submissions', () => {
   const state = ui(false);
   state.submit();

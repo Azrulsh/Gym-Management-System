@@ -32,6 +32,13 @@
                 }
             },
             error: function (xhr) {
+                if (xhr.status === 429) {
+                    const seconds = Number(xhr.responseJSON && xhr.responseJSON.retry_after);
+                    showError(Number.isInteger(seconds) && seconds > 0 && seconds <= 900
+                        ? 'Too many login attempts. Retry in ' + Math.ceil(seconds / 60) + ' min.'
+                        : 'Too many login attempts. Please try again later.');
+                    return;
+                }
                 showError(xhr.status === 400
                     ? 'Enter a valid username and password.'
                     : 'Unable to log in right now. Please try again.');

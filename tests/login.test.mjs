@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { literal, run } from './helpers/php.mjs';
+import { allowLoginThrottle } from './helpers/throttle.mjs';
 
 const database = `
   class LoginResult {
@@ -67,6 +68,7 @@ const database = `
   $property = new ReflectionProperty('Action', 'db');
   $property->setAccessible(true);
   $property->setValue($action, $db);
+  ${allowLoginThrottle}
   $_SERVER['REQUEST_METHOD'] = 'POST';
 `;
 
