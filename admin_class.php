@@ -457,17 +457,58 @@ Class Action {
 		}
 	}
 	function save_package(){
-		extract($_POST);
-		$data = " package = '$package' ";
-		$data .= ", description = '$description' ";
-		$data .= ", amount = '$amount' ";
-			if(empty($id)){
-				$save = $this->db->query("INSERT INTO packages set $data");
-			}else{
-				$save = $this->db->query("UPDATE packages set $data where id = $id");
+		require_action_access('save_package');
+		$id = $_POST['id'] ?? '';
+		if (!is_scalar($id) || is_bool($id)) return $this->action_error(400, 'Invalid package record ID.');
+		$id = $id === '' ? 0 : filter_var($id, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 2147483647]]);
+		if ($id === false) return $this->action_error(400, 'Invalid package record ID.');
+		$package = $_POST['package'] ?? '';
+		$description = $_POST['description'] ?? '';
+		if (!is_string($package) || !is_string($description) || !preg_match('//u', $package) || !preg_match('//u', $description)) {
+			return $this->action_error(400, 'Invalid package details.');
+		}
+		$package = trim($package);
+		$description = trim($description);
+		$length = function_exists('mb_strlen') ? mb_strlen($package, 'UTF-8') : strlen($package);
+		if ($package === '' || $length > 200) return $this->action_error(400, 'Package name is required and must not exceed 200 characters.');
+		if (strlen($description) > 65535) return $this->action_error(400, 'Description is too long.');
+		$amount = $_POST['amount'] ?? '';
+		if (!is_string($amount) || strlen($amount) > 32 || !preg_match('/\A[0-9]+(?:\.[0-9]{1,2})?\z/', $amount)) {
+			return $this->action_error(400, 'Amount must be zero or greater, with up to two decimal places.');
+		}
+		try {
+			if ($id && !$this->package_record($id)) return $this->action_error(404, 'Package no longer exists. Refresh the page.');
+			if ($id) {
+				$save = $this->db->prepare('UPDATE packages SET package = ?, description = ?, amount = ? WHERE id = ?');
+				if (!$save) return $this->action_error(500, 'Unable to save package. Please try again.');
+				$save->bind_param('sssi', $package, $description, $amount, $id);
+			} else {
+				$save = $this->db->prepare('INSERT INTO packages (package, description, amount) VALUES (?, ?, ?)');
+				if (!$save) return $this->action_error(500, 'Unable to save package. Please try again.');
+				$save->bind_param('sss', $package, $description, $amount);
 			}
-		if($save)
+			$executed = $save->execute();
+			$changed = $save->affected_rows;
+			$save->close();
+			if (!$executed) return $this->action_error(500, 'Unable to save package. Please try again.');
+			if ($id && $changed === 0 && !$this->package_record($id)) return $this->action_error(404, 'Package no longer exists. Refresh the page.');
 			return 1;
+		} catch (mysqli_sql_exception | RuntimeException $exception) {
+			error_log('Unable to save package (error code ' . (int) $exception->getCode() . ').');
+			return $this->action_error(500, 'Unable to save package. Please try again.');
+		}
+	}
+	private function package_record($id){
+		$statement = $this->db->prepare('SELECT id FROM packages WHERE id = ?');
+		if (!$statement) throw new RuntimeException('Unable to read package.');
+		$statement->bind_param('i', $id);
+		if (!$statement->execute()) {
+			$statement->close();
+			throw new RuntimeException('Unable to read package.');
+		}
+		$record = $statement->get_result()->fetch_assoc();
+		$statement->close();
+		return $record;
 	}
 	function delete_package(){
 		extract($_POST);

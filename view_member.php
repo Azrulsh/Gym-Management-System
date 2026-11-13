@@ -42,7 +42,7 @@ if(isset($_GET['id'])){
 					?>
 					<tr>
 						<td><?php echo $row['plan'].' mo/s.'?></td>
-						<td><?php echo $row['package']?></td>
+						<td><?php echo htmlspecialchars($row['package'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?></td>
 						<td><?php echo date("M d,Y",strtotime($row['start_date'])) ?></td>
 						<td><?php echo date("M d,Y",strtotime($row['end_date'])) ?></td>
 						<td>

@@ -10,24 +10,27 @@ include 'db_connect.php';
 		<div class="row">
 			<!-- FORM Panel -->
 			<div class="col-md-4">
-			<form action="" id="manage-package">
+			<form action="ajax.php?action=save_package" method="post" id="manage-package">
 				<div class="card">
 					<div class="card-header">
-						    Package Form
+						    <span class="package-form-title" aria-live="polite">Add Package</span>
 				  	</div>
 					<div class="card-body">
+							<p class="package-mode-help text-muted">Fill in the form to create a new package.</p>
+							<div class="package-message" role="alert" aria-live="polite"></div>
+							<input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
 							<input type="hidden" name="id">
 							<div class="form-group">
-								<label class="control-label">Package Name</label>
-								<input type="text" class="form-control" name="package">
+								<label class="control-label" for="package-name">Package Name</label>
+								<input type="text" id="package-name" class="form-control" name="package" maxlength="200" required>
 							</div>
 							<div class="form-group">
-								<label class="control-label">Description</label>
-								<textarea class="form-control" cols="30" rows='3' name="description"></textarea>
+								<label class="control-label" for="package-description">Description</label>
+								<textarea id="package-description" class="form-control" cols="30" rows="3" name="description" maxlength="65535"></textarea>
 							</div>
 							<div class="form-group">
-								<label class="control-label">Amount</label>
-								<input type="number" class="form-control" step="any" name="amount">
+								<label class="control-label" for="package-amount">Amount</label>
+								<input type="number" id="package-amount" class="form-control" min="0" step="1" name="amount" required>
 							</div>
 							
 					</div>
@@ -35,8 +38,8 @@ include 'db_connect.php';
 					<div class="card-footer">
 						<div class="row">
 							<div class="col-md-12">
-								<button class="btn btn-md btn-success col-sm-3 offset-md-3"> Save</button>
-								<button class="btn btn-md btn-secondary col-sm-3" type="button" onclick="_reset()"> Cancel</button>
+								<button type="submit" class="btn btn-md btn-success col-sm-4 offset-md-2">Create</button>
+								<button class="btn btn-md btn-secondary col-sm-4 reset-package" type="button">Clear</button>
 							</div>
 						</div>
 					</div>
@@ -76,15 +79,15 @@ include 'db_connect.php';
 								<tr>
 									<td class="text-center"><?php echo $i++ ?></td>
 									<td class="">
-										<p>package: <b><?php echo $row['package'] ?></b></p>
-										<p>Description: <small><b><?php echo $row['description'] ?></b></small></p>
+										<p>Package: <b><?php echo htmlspecialchars($row['package'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?></b></p>
+										<p>Description: <small><b><?php echo htmlspecialchars($row['description'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?></b></small></p>
 										
 									</td>
 									<td class="text-right">
 										<b><?php echo number_format($row['amount'],2) ?></b>
 									</td>
 									<td class="text-center">
-										<button class="btn btn-md btn-outline-success edit_package" type="button" data-id="<?php echo $row['id'] ?>" data-package="<?php echo $row['package'] ?>" data-description="<?php echo $row['description'] ?>" data-amount="<?php echo $row['amount'] ?>" >Edit</button>
+										<button class="btn btn-md btn-outline-success edit_package" type="button" data-id="<?php echo (int) $row['id'] ?>" data-package="<?php echo htmlspecialchars($row['package'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>" data-description="<?php echo htmlspecialchars($row['description'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>" data-amount="<?php echo htmlspecialchars((string) $row['amount'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>">Edit</button>
 										<button class="btn btn-md btn-outline-danger delete_package" type="button" data-id="<?php echo $row['id'] ?>">Delete</button>
 									</td>
 								</tr>
@@ -105,50 +108,8 @@ include 'db_connect.php';
 		vertical-align: middle !important;
 	}
 </style>
+<script src="assets/js/packages.js?v=<?php echo filemtime(__DIR__ . '/assets/js/packages.js'); ?>"></script>
 <script>
-	function _reset(){
-		$('#manage-package').get(0).reset()
-		$('#manage-package input,#manage-package textarea').val('')
-	}
-	$('#manage-package').submit(function(e){
-		e.preventDefault()
-		start_load()
-		$.ajax({
-			url:'ajax.php?action=save_package',
-			data: new FormData($(this)[0]),
-		    cache: false,
-		    contentType: false,
-		    processData: false,
-		    method: 'POST',
-		    type: 'POST',
-			success:function(resp){
-				if(resp==1){
-					alert_toast("Data successfully added",'success')
-					setTimeout(function(){
-						location.reload()
-					},1500)
-
-				}
-				else if(resp==2){
-					alert_toast("Data successfully updated",'success')
-					setTimeout(function(){
-						location.reload()
-					},1500)
-
-				}
-			}
-		})
-	})
-	$('.edit_package').click(function(){
-		start_load()
-		var cat = $('#manage-package')
-		cat.get(0).reset()
-		cat.find("[name='id']").val($(this).attr('data-id'))
-		cat.find("[name='package']").val($(this).attr('data-package'))
-		cat.find("[name='description']").val($(this).attr('data-description'))
-		cat.find("[name='amount']").val($(this).attr('data-amount'))
-		end_load()
-	})
 	$('.delete_package').click(function(){
 		_conf("Are you sure to delete this package?","delete_package",[$(this).attr('data-id')])
 	})

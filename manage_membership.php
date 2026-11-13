@@ -47,7 +47,7 @@ if(isset($_GET['id'])){
 						$qry = $conn->query("SELECT * FROM packages order by package asc");
 						while($row= $qry->fetch_assoc()):
 					?>
-					<option value="<?php echo $row['id'] ?>" <?php echo isset($package_id) && $package_id == $row['id'] ? 'selected' : '' ?>><?php echo ucwords($row['package']) ?></option>
+					<option value="<?php echo $row['id'] ?>" <?php echo isset($package_id) && $package_id == $row['id'] ? 'selected' : '' ?>><?php echo htmlspecialchars(ucwords($row['package']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?></option>
 					<?php endwhile; ?>
 				</select>
 			</div>

@@ -80,7 +80,7 @@ include 'db_connect.php';
 										 <p><b><?php echo $row['plan']. 'Months' ?></b></p>
 									</td>
 									<td class="">
-										 <p><b><?php echo $row['package'] ?></b></p>
+										 <p><b><?php echo htmlspecialchars($row['package'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?></b></p>
 										 
 									</td>
 									<td class="text-center">
