@@ -1,12 +1,27 @@
 <?php 
 require_once __DIR__ . '/auth.php';
 require_login();
+$ownAccount = ($_GET['mtype'] ?? '') === 'own';
+if ($ownAccount) {
+    require_own_account($_GET['id'] ?? null);
+} else {
+    require_admin();
+}
 include('db_connect.php');
 if(isset($_GET['id'])){
-$user = $conn->query("SELECT * FROM users where id =".$_GET['id']);
-foreach($user->fetch_array() as $k =>$v){
-	$meta[$k] = $v;
-}
+    $userId = filter_var($_GET['id'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+    if ($userId === false) {
+        http_response_code(400);
+        exit('Invalid user ID.');
+    }
+    $user = $conn->prepare('SELECT id, name, username, type FROM users WHERE id = ?');
+    $user->bind_param('i', $userId);
+    $user->execute();
+    $meta = $user->get_result()->fetch_assoc();
+    if (!$meta) {
+        http_response_code(404);
+        exit('User not found.');
+    }
 }
 ?>
 <div class="container-fluid">
@@ -14,13 +29,16 @@ foreach($user->fetch_array() as $k =>$v){
 	
 	<form action="" id="manage-user">	
 		<input type="hidden" name="id" value="<?php echo isset($meta['id']) ? $meta['id']: '' ?>">
+		<?php if ($ownAccount): ?>
+		<input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
+		<?php endif; ?>
 		<div class="form-group">
 			<label for="name">Name</label>
-			<input type="text" name="name" id="name" class="form-control" value="<?php echo isset($meta['name']) ? $meta['name']: '' ?>" required>
+			<input type="text" name="name" id="name" class="form-control" value="<?php echo htmlspecialchars($meta['name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" required>
 		</div>
 		<div class="form-group">
 			<label for="username">Username</label>
-			<input type="text" name="username" id="username" class="form-control" value="<?php echo isset($meta['username']) ? $meta['username']: '' ?>" required  autocomplete="off">
+			<input type="text" name="username" id="username" class="form-control" value="<?php echo htmlspecialchars($meta['username'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" required  autocomplete="off">
 		</div>
 		<div class="form-group">
 			<label for="password">Password</label>
@@ -29,10 +47,10 @@ foreach($user->fetch_array() as $k =>$v){
 			<small><i>Leave this blank if you dont want to change the password.</i></small>
 		<?php endif; ?>
 		</div>
+		<?php if (!$ownAccount): ?>
 		<?php if(isset($meta['type']) && $meta['type'] == 3): ?>
 			<input type="hidden" name="type" value="3">
 		<?php else: ?>
-		<?php if(!isset($_GET['mtype'])): ?>
 		<div class="form-group">
 			<label for="type">User Type</label>
 			<select name="type" id="type" class="custom-select">
@@ -52,7 +70,7 @@ foreach($user->fetch_array() as $k =>$v){
 		e.preventDefault();
 		start_load()
 		$.ajax({
-			url:'ajax.php?action=save_user',
+			url:'ajax.php?action=<?php echo $ownAccount ? 'save_account' : 'save_user'; ?>',
 			method:'POST',
 			data:$(this).serialize(),
 			success:function(resp){
@@ -61,10 +79,16 @@ foreach($user->fetch_array() as $k =>$v){
 					setTimeout(function(){
 						location.reload()
 					},1500)
-				}else{
+				}else if(resp == 2){
 					$('#msg').html('<div class="alert alert-danger">Username already exist</div>')
 					end_load()
+				}else{
+					$('#msg').html('<div class="alert alert-danger">Unable to save. Check the required fields and try again.</div>')
+					end_load()
 				}
+			},
+			error:function(){
+				end_load()
 			}
 		})
 	})

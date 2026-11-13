@@ -95,10 +95,12 @@ test('valid login rotates session, preserves pages and modals, and logout revoke
   assert.equal((await response.text()).trim(), '1');
   assert.notEqual(cookies.get('PHPSESSID'), oldSession);
 
+  let ownAccountPath;
   for (const page of ['home', 'members', 'registered_members', 'plans', 'packages', 'trainer', 'schedule', 'users']) {
     const dashboard = await request(`index.php?page=${page}`, {}, cookies);
     assert.equal(dashboard.status, 200, page);
     const html = await dashboard.text();
+    ownAccountPath ??= html.match(/manage_user\.php\?id=\d+&mtype=own/)?.[0];
     assert.match(html, /assets\/vendor\/bootstrap\/css\/bootstrap.min.css/, page);
     assert.match(html, /id="sidebar"/, page);
     assert.doesNotMatch(html, /Fatal error|headers already sent|session_start\(\).*already active/i, page);
@@ -109,6 +111,29 @@ test('valid login rotates session, preserves pages and modals, and logout revoke
     assert.equal(modal.status, 200, path);
     assert.match(await modal.text(), /<form\b/, path);
   }
+  assert.ok(ownAccountPath);
+  const ownAccount = await request(ownAccountPath, { headers: { 'X-Requested-With': 'XMLHttpRequest' } }, cookies);
+  assert.equal(ownAccount.status, 200);
+  const ownForm = await ownAccount.text();
+  assert.match(ownForm, /ajax.php\?action=save_account/);
+  assert.doesNotMatch(ownForm, /name="type"/);
+  const csrfToken = ownForm.match(/name="csrf_token" value="([a-f0-9]+)"/)?.[1];
+  assert.ok(csrfToken);
+  const ownId = new URL(ownAccountPath, `${baseUrl}/`).searchParams.get('id');
+  const invalidProfile = await request('ajax.php?action=save_account', {
+    method: 'POST',
+    body: new URLSearchParams({ id: ownId, csrf_token: csrfToken, name: '', username: '' }),
+  }, cookies);
+  assert.equal(invalidProfile.status, 200);
+  assert.equal((await invalidProfile.text()).trim(), '3'); // Validation failure; no record is updated.
+  const missingToken = await request('ajax.php?action=save_account', {
+    method: 'POST', body: new URLSearchParams({ id: ownId }),
+  }, cookies);
+  assert.equal(missingToken.status, 403);
+  await missingToken.text();
+  const otherAccount = await request(`manage_user.php?id=${Number(ownId) + 1}&mtype=own`, {}, cookies);
+  assert.equal(otherAccount.status, 403);
+  await otherAccount.text();
   const schedules = await request('ajax.php?action=get_schecdule', {}, cookies);
   assert.equal(schedules.status, 200);
   assert.ok(Array.isArray(await schedules.json()));

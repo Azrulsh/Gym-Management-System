@@ -33,6 +33,9 @@
     $(document).ajaxError(function(event, xhr) {
       if (xhr.status === 401) {
         window.location.replace('login.php');
+      } else if (xhr.status === 403) {
+        if (typeof window.end_load === 'function') window.end_load();
+        window.alert('You do not have permission to perform this action.');
       }
     });
   </script>

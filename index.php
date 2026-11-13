@@ -1,6 +1,15 @@
 <?php
 require_once __DIR__ . '/auth.php';
 require_login();
+$page = $_GET['page'] ?? 'home';
+$pages = ['home', 'members', 'registered_members', 'schedule', 'plans', 'packages', 'trainer', 'users', 'events'];
+if (!is_string($page) || !in_array($page, $pages, true)) {
+    http_response_code(404);
+    exit('Page not found.');
+}
+if (in_array($page, ['plans', 'packages', 'trainer', 'users', 'events'], true)) {
+    require_admin();
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -68,8 +77,7 @@ require_login();
     </div>
   </div>
   <main id="view-panel" >
-      <?php $page = isset($_GET['page']) ? $_GET['page'] :'home'; ?>
-  	<?php include $page.'.php' ?>
+      <?php include __DIR__ . '/' . $page . '.php'; ?>
   	
 
   </main>
@@ -153,7 +161,7 @@ require_login();
         url:$url,
         error:err=>{
             end_load()
-            if (err.status === 401) return;
+            if (err.status === 401 || err.status === 403) return;
             console.log()
             alert("An error occured")
         },

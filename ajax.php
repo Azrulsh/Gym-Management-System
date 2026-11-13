@@ -3,7 +3,7 @@ require_once __DIR__ . '/auth.php';
 $action = $_GET['action'] ?? '';
 // The login form is the only public action in this application.
 if ($action !== 'login') {
-    require_login(true);
+    require_action_access($action);
 }
 ob_start();
 include 'admin_class.php';
@@ -37,6 +37,9 @@ if($action == 'delete_user'){
 	$save = $crud->delete_user();
 	if($save)
 		echo $save;
+}
+if ($action === 'save_account') {
+    echo $crud->save_account();
 }
 if($action == 'signup'){
 	$save = $crud->signup();

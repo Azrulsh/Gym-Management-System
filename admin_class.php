@@ -24,7 +24,7 @@ Class Action {
 					if($key != 'password' && !is_numeric($key))
 						$_SESSION['login_'.$key] = $value;
 				}
-				if($_SESSION['login_type'] != 1){
+				if(!in_array((int) $_SESSION['login_type'], [1, 2], true)){
 					foreach ($_SESSION as $key => $value) {
 						unset($_SESSION[$key]);
 					}
@@ -107,6 +107,43 @@ Class Action {
 		if($save){
 			return 1;
 		}
+	}
+	function save_account(){
+		require_action_access('save_account');
+		$name = $_POST['name'] ?? '';
+		$username = $_POST['username'] ?? '';
+		$password = $_POST['password'] ?? '';
+		if (!is_string($name) || !is_string($username) || !is_string($password)) {
+			return 3;
+		}
+		$name = trim($name);
+		$username = trim($username);
+		if ($name === '' || $username === '' || strlen($username) > 200) {
+			return 3;
+		}
+		// The target comes from the session; role is never included in this update.
+		$id = (int) $_SESSION['login_id'];
+		$check = $this->db->prepare('SELECT id FROM users WHERE username = ? AND id != ?');
+		$check->bind_param('si', $username, $id);
+		$check->execute();
+		if ($check->get_result()->num_rows > 0) {
+			return 2;
+		}
+		if ($password === '') {
+			$save = $this->db->prepare('UPDATE users SET name = ?, username = ? WHERE id = ?');
+			$save->bind_param('ssi', $name, $username, $id);
+		} else {
+			// Preserve existing login compatibility until password migration is handled.
+			$hash = md5($password);
+			$save = $this->db->prepare('UPDATE users SET name = ?, username = ?, password = ? WHERE id = ?');
+			$save->bind_param('sssi', $name, $username, $hash, $id);
+		}
+		if (!$save->execute()) {
+			return 3;
+		}
+		$_SESSION['login_name'] = $name;
+		$_SESSION['login_username'] = $username;
+		return 1;
 	}
 	function delete_user(){
 		extract($_POST);
