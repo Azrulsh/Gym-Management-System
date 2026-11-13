@@ -1,13 +1,16 @@
 // Exercise the actual save_user and login methods against an in-memory SQL database.
 // No application accounts or password hashes are changed.
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
 import test from 'node:test';
 import { literal, run } from './helpers/php.mjs';
 
 const session = { login_id: 2, login_type: 1, login_name: 'Admin', login_username: 'admin', csrf_token: 'users-test-token' };
 const profile = { id: '', name: " Test O'Neil ", username: 'staff_test', password: 'staff_test', type: '2', csrf_token: session.csrf_token };
-const md5 = text => createHash('md5').update(text).digest('hex');
+function assertPassword(hash, password) {
+  assert.match(hash, /^\$argon2id\$/);
+  const response = run({}, `echo json_encode(password_verify(${literal(password)}, ${literal(hash)}));`);
+  assert.equal(JSON.parse(response.body), true);
+}
 
 const database = `
   class UserResult {
@@ -102,7 +105,7 @@ for (const type of ['1', '2']) {
     assert.equal(data.after.length, 3);
     assert.equal(data.after[2].name, "Test O'Neil");
     assert.equal(data.after[2].username, 'staff_test');
-    assert.equal(data.after[2].password, md5('staff_test'));
+    assertPassword(data.after[2].password, 'staff_test');
     assert.equal(data.after[2].type, Number(type));
     assert.equal(data.session.login_type, Number(type));
     assert.equal(data.session.login_password, undefined);
@@ -123,10 +126,45 @@ test('editing a user with a blank password preserves the password and other acco
 test('editing may set a new password and role for the selected user', () => {
   const data = save({ ...profile, id: '3', type: '1', password: 'new-password' });
   assert.equal(data.result, 1);
-  assert.equal(data.after[1].password, md5('new-password'));
+  assertPassword(data.after[1].password, 'new-password');
   assert.equal(data.after[1].type, 1);
   assert.deepEqual(data.after[0], data.before[0]);
   assert.equal(data.session.login_type, 1);
+});
+
+for (const password of ['', 'new-account-password']) {
+  test(`own-account update ${password ? 'hashes a new password and permits login' : 'preserves an existing modern hash'}`, () => {
+    const response = run(session, `${database}
+      $seed = $db->pdo->prepare('UPDATE users SET password = ? WHERE id = 2');
+      $seed->execute([gym_password_hash('admin')]);
+      $before = $db->snapshot();
+      $_POST = ['id' => '2', 'name' => 'Admin Updated', 'username' => 'admin',
+        'password' => ${literal(password)}, 'csrf_token' => 'users-test-token'];
+      $saved = $action->save_account();
+      $after = $db->snapshot();
+      $_POST = ['username' => 'admin', 'password' => ${literal(password || 'admin')}];
+      $login = $action->login();
+      $afterLogin = $db->snapshot();
+      unset($action);
+      echo json_encode(compact('saved', 'login', 'before', 'after', 'afterLogin'));
+    `);
+    const data = JSON.parse(response.body);
+    assert.equal(data.saved, 1);
+    assert.equal(data.login, 1);
+    assertPassword(data.after[0].password, password || 'admin');
+    assert.equal(data.after[0].password === data.before[0].password, !password);
+    assert.deepEqual(data.after[1], data.before[1]);
+    assert.deepEqual(data.afterLogin, data.after);
+  });
+}
+
+test('a blank password in user management also preserves an existing Argon2id hash', () => {
+  const data = save({ ...profile, id: '3', password: '' }, `
+    $seed = $db->pdo->prepare('UPDATE users SET password = ? WHERE id = 3');
+    $seed->execute([gym_password_hash('staff')]);
+  `);
+  assert.equal(data.result, 1);
+  assert.equal(data.after[1].password, data.before[1].password);
 });
 
 test('editing the logged-in account refreshes its session profile and role', () => {

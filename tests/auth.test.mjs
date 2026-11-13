@@ -1,6 +1,7 @@
 // Run against local XAMPP: node --test tests/auth.test.mjs
 // Set GYM_TEST_USERNAME and GYM_TEST_PASSWORD to also test authenticated access.
-// These checks read application data; they do not save or delete records.
+// Successful login can upgrade the supplied account's password hash.
+// Use credentials for a disposable test account when enabling authenticated checks.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 

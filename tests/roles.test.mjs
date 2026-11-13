@@ -114,7 +114,7 @@ const recordingDatabase = `
         return new class($this->db->role) {
           private $role;
           public function __construct($role) { $this->role = $role; }
-          public function fetch_assoc() { return ['id' => 9999, 'type' => $this->role, 'name' => 'Test User', 'username' => 'test']; }
+          public function fetch_assoc() { return ['id' => 9999, 'type' => $this->role, 'name' => 'Test User', 'username' => 'test', 'password' => gym_password_hash('test')]; }
         };
       }
       return (object) ['num_rows' => 0];

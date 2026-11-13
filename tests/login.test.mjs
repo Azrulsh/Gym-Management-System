@@ -10,18 +10,29 @@ const database = `
     public function fetch_assoc() { return $this->statement->fetch(PDO::FETCH_ASSOC); }
   }
   class LoginStatement {
+    public $affected_rows = 0;
     private $db;
     private $statement;
     private $values;
-    public function __construct($db, $sql) { $this->db = $db; $this->statement = $db->pdo->prepare($sql); }
+    private $sql;
+    public function __construct($db, $sql) { $this->db = $db; $this->sql = $sql; $this->statement = $db->pdo->prepare($sql); }
     public function bind_param($types, &...$values) {
       if (strlen($types) !== count($values)) throw new RuntimeException('Incorrect binding count');
       $this->values = $values;
     }
     public function execute() {
       if ($this->db->mode === 'execute-failure') return false;
+      if (str_starts_with($this->sql, 'UPDATE')) {
+        if ($this->db->mode === 'upgrade-failure') return false;
+        if ($this->db->mode === 'concurrent-reset') {
+          $reset = $this->db->pdo->prepare('UPDATE users SET password = ? WHERE id = 2');
+          $reset->execute([gym_password_hash('replacement-password')]);
+        }
+      }
       $values = array_map(function($value) { return $value; }, $this->values);
-      return $this->statement->execute($values);
+      $result = $this->statement->execute($values);
+      $this->affected_rows = $this->statement->rowCount();
+      return $result;
     }
     public function get_result() { return new LoginResult($this->statement); }
     public function close() { $this->statement->closeCursor(); }
@@ -69,11 +80,22 @@ function login(post, { session = { csrf_token: 'keep-token' }, mode = '', setup 
     $oldSessionId = session_id();
     $result = $action->login();
     $after = $db->snapshot();
+    $verified = isset($_SESSION['login_id']) && gym_password_verify($_POST['password'], $after[$_SESSION['login_id'] - 2]['password']);
     unset($action);
-    echo json_encode(['result' => $result, 'session' => $_SESSION, 'rotated' => session_id() !== $oldSessionId, 'before' => $before, 'after' => $after]);
+    echo json_encode(['result' => $result, 'verified' => $verified, 'session' => $_SESSION, 'rotated' => session_id() !== $oldSessionId, 'before' => $before, 'after' => $after]);
   `, mode === 'exception' ? { expectedStderr: /^Login database error \(code 1064\)\.\r?\n$/ } : {});
   const data = JSON.parse(result.body);
-  assert.deepEqual(data.after, data.before, 'login must not update accounts in this password-compatible change');
+  if (data.result === 1) {
+    assert.equal(data.verified, true);
+    for (let index = 0; index < data.before.length; index++) {
+      const before = data.before[index];
+      const after = data.after[index];
+      if (before.id === data.session.login_id) {
+        assert.match(after.password, /^\$argon2id\$/);
+        assert.deepEqual({ ...after, password: before.password }, before);
+      } else assert.deepEqual(after, before, 'other accounts must not change');
+    }
+  } else if (mode !== 'concurrent-reset') assert.deepEqual(data.after, data.before);
   return { status: result.status, ...data };
 }
 
@@ -144,7 +166,7 @@ test('an oversized password is rejected safely', () => {
   assert.equal(data.session.login_id, undefined);
 });
 
-for (const mode of ['prepare-failure', 'execute-failure', 'exception']) {
+for (const mode of ['prepare-failure', 'execute-failure', 'exception', 'upgrade-failure']) {
   test(`${mode} returns a generic service error without SQL, hashes or an authenticated session`, () => {
     const data = login({ username: 'admin', password: 'admin' }, { mode });
     assert.equal(data.status, 503);
@@ -157,4 +179,36 @@ test('the login route rejects GET before creating the Action or opening the data
   const result = run({}, "$_GET['action'] = 'login'; $_SERVER['REQUEST_METHOD'] = 'GET'; include 'ajax.php';");
   assert.equal(result.status, 405);
   assert.deepEqual(JSON.parse(result.body), { error: 'Use POST to log in.' });
+});
+
+test('a concurrent password reset is preserved and the stale password cannot authenticate', () => {
+  const data = login({ username: 'admin', password: 'admin' }, { mode: 'concurrent-reset' });
+  assert.equal(data.result, 3);
+  assert.equal(data.session.login_id, undefined);
+  assert.notEqual(data.after[0].password, data.before[0].password);
+  assert.deepEqual(data.after.slice(1), data.before.slice(1));
+});
+
+for (const [label, expression, upgrades] of [
+  ['uppercase MD5', "strtoupper(md5('admin'))", true],
+  ['current Argon2id', "gym_password_hash('admin')", false],
+  ['older Argon2id cost', "password_hash('admin', PASSWORD_ARGON2ID, ['memory_cost' => 8192, 'time_cost' => 1, 'threads' => 1])", true],
+  ['legacy bcrypt', "password_hash('admin', PASSWORD_BCRYPT)", true],
+]) {
+  test(`${label} authenticates and upgrades only when needed`, () => {
+    const data = login({ username: 'admin', password: 'admin' }, {
+      setup: `$seed = $db->pdo->prepare('UPDATE users SET password = ? WHERE id = 2'); $seed->execute([${expression}]);`,
+    });
+    assert.equal(data.result, 1);
+    assert.equal(data.after[0].password !== data.before[0].password, upgrades);
+  });
+}
+
+test('a migrated account can log in again without rewriting its hash', () => {
+  const data = login({ username: 'admin', password: 'admin' }, {
+    setup: `$_POST = ['username' => 'admin', 'password' => 'admin'];
+      if ($action->login() !== 1) throw new RuntimeException('First login failed');`,
+  });
+  assert.equal(data.result, 1);
+  assert.deepEqual(data.after, data.before);
 });

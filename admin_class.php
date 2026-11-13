@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/passwords.php';
 ini_set('display_errors', 1);
 Class Action {
 	private $db;
@@ -32,22 +33,37 @@ Class Action {
 			return $this->action_error(400, 'Enter a valid username and password.');
 		}
 		try {
-			// Preserve MD5 compatibility until the separate password migration.
-			$hash = md5($password);
-			$statement = $this->db->prepare('SELECT id, name, username, type FROM users WHERE username = ? AND password = ? LIMIT 1');
+			$statement = $this->db->prepare('SELECT id, name, username, type, password FROM users WHERE username = ? LIMIT 1');
 			if (!$statement) {
 				return $this->action_error(503, 'Unable to log in right now. Please try again.');
 			}
-			$statement->bind_param('ss', $username, $hash);
+			$statement->bind_param('s', $username);
 			if (!$statement->execute()) {
 				$statement->close();
 				return $this->action_error(503, 'Unable to log in right now. Please try again.');
 			}
 			$user = $statement->get_result()->fetch_assoc();
 			$statement->close();
-			if (!$user) return 3;
+			if (!$user || !gym_password_verify($password, (string) $user['password'])) return 3;
 			$role = (int) $user['type'];
 			if (!in_array($role, [1, 2], true)) return 2;
+			if (gym_password_needs_rehash($user['password'])) {
+				$hash = gym_password_hash($password);
+				$id = (int) $user['id'];
+				$oldHash = $user['password'];
+				// Do not overwrite a password changed by another request in the meantime.
+				$upgrade = $this->db->prepare('UPDATE users SET password = ? WHERE id = ? AND password = ?');
+				if (!$upgrade) return $this->action_error(503, 'Unable to log in right now. Please try again.');
+				$upgrade->bind_param('sis', $hash, $id, $oldHash);
+				if (!$upgrade->execute()) {
+					$upgrade->close();
+					return $this->action_error(503, 'Unable to log in right now. Please try again.');
+				}
+				$changed = $upgrade->affected_rows;
+				$upgrade->close();
+				// A concurrent password change requires a fresh login attempt.
+				if ($changed !== 1) return 3;
+			}
 			if (!session_regenerate_id(true)) {
 				return $this->action_error(503, 'Unable to log in right now. Please try again.');
 			}
@@ -58,6 +74,9 @@ Class Action {
 			return 1;
 		} catch (mysqli_sql_exception $exception) {
 			error_log('Login database error (code ' . (int) $exception->getCode() . ').');
+			return $this->action_error(503, 'Unable to log in right now. Please try again.');
+		} catch (ValueError | RuntimeException $exception) {
+			error_log('Login password hashing failed.');
 			return $this->action_error(503, 'Unable to log in right now. Please try again.');
 		}
 	}
@@ -149,16 +168,15 @@ Class Action {
 			if ($duplicate) {
 				return $this->action_error(409, 'Username already exists.');
 			}
-			// Keep the current password format until the separate login/password migration.
 			if (!$id) {
-				$hash = md5($password);
+				$hash = gym_password_hash($password);
 				$save = $this->db->prepare('INSERT INTO users (name, username, password, type) VALUES (?, ?, ?, ?)');
 				$save->bind_param('sssi', $name, $username, $hash, $type);
 			} elseif ($password === '') {
 				$save = $this->db->prepare('UPDATE users SET name = ?, username = ?, type = ? WHERE id = ?');
 				$save->bind_param('ssii', $name, $username, $type, $id);
 			} else {
-				$hash = md5($password);
+				$hash = gym_password_hash($password);
 				$save = $this->db->prepare('UPDATE users SET name = ?, username = ?, password = ?, type = ? WHERE id = ?');
 				$save->bind_param('sssii', $name, $username, $hash, $type, $id);
 			}
@@ -181,7 +199,10 @@ Class Action {
 			if ((int) $exception->getCode() === 1062) {
 				return $this->action_error(409, 'Username already exists.');
 			}
-			error_log('Unable to save user: ' . $exception->getMessage());
+			error_log('Unable to save user (database code ' . (int) $exception->getCode() . ').');
+			return $this->action_error(500, 'Unable to save user. Please try again.');
+		} catch (ValueError | RuntimeException $exception) {
+			error_log('User password hashing failed.');
 			return $this->action_error(500, 'Unable to save user. Please try again.');
 		}
 	}
@@ -203,32 +224,42 @@ Class Action {
 		}
 		$name = trim($name);
 		$username = trim($username);
-		if ($name === '' || $username === '' || strlen($username) > 200) {
+		if ($name === '' || $username === '' || strlen($username) > 200 || strlen($password) > 4096) {
 			return 3;
 		}
-		// The target comes from the session; role is never included in this update.
-		$id = (int) $_SESSION['login_id'];
-		$check = $this->db->prepare('SELECT id FROM users WHERE username = ? AND id != ?');
-		$check->bind_param('si', $username, $id);
-		$check->execute();
-		if ($check->get_result()->num_rows > 0) {
-			return 2;
-		}
-		if ($password === '') {
-			$save = $this->db->prepare('UPDATE users SET name = ?, username = ? WHERE id = ?');
-			$save->bind_param('ssi', $name, $username, $id);
-		} else {
-			// Preserve existing login compatibility until password migration is handled.
-			$hash = md5($password);
-			$save = $this->db->prepare('UPDATE users SET name = ?, username = ?, password = ? WHERE id = ?');
-			$save->bind_param('sssi', $name, $username, $hash, $id);
-		}
-		if (!$save->execute()) {
+		try {
+			// The target comes from the session; role is never included in this update.
+			$id = (int) $_SESSION['login_id'];
+			$check = $this->db->prepare('SELECT id FROM users WHERE username = ? AND id != ?');
+			if (!$check) return 3;
+			$check->bind_param('si', $username, $id);
+			if (!$check->execute()) {
+				$check->close();
+				return 3;
+			}
+			$duplicate = $check->get_result()->num_rows > 0;
+			$check->close();
+			if ($duplicate) return 2;
+			if ($password === '') {
+				$save = $this->db->prepare('UPDATE users SET name = ?, username = ? WHERE id = ?');
+				if (!$save) return 3;
+				$save->bind_param('ssi', $name, $username, $id);
+			} else {
+				$hash = gym_password_hash($password);
+				$save = $this->db->prepare('UPDATE users SET name = ?, username = ?, password = ? WHERE id = ?');
+				if (!$save) return 3;
+				$save->bind_param('sssi', $name, $username, $hash, $id);
+			}
+			$saved = $save->execute();
+			$save->close();
+			if (!$saved) return 3;
+			$_SESSION['login_name'] = $name;
+			$_SESSION['login_username'] = $username;
+			return 1;
+		} catch (mysqli_sql_exception | ValueError | RuntimeException $exception) {
+			error_log('Unable to save account.');
 			return 3;
 		}
-		$_SESSION['login_name'] = $name;
-		$_SESSION['login_username'] = $username;
-		return 1;
 	}
 	function delete_user(){
 		extract($_POST);
