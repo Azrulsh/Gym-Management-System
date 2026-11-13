@@ -16,26 +16,50 @@ Class Action {
 	}
 
 	function login(){
-		
-			extract($_POST);		
-			$qry = $this->db->query("SELECT * FROM users where username = '".$username."' and password = '".md5($password)."' ");
-			if($qry->num_rows > 0){
-				foreach ($qry->fetch_array() as $key => $value) {
-					if($key != 'password' && !is_numeric($key))
-						$_SESSION['login_'.$key] = $value;
-				}
-				if(!in_array((int) $_SESSION['login_type'], [1, 2], true)){
-					foreach ($_SESSION as $key => $value) {
-						unset($_SESSION[$key]);
-					}
-					return 2 ;
-					exit;
-				}
-					session_regenerate_id(true);
-					return 1;
-			}else{
-				return 3;
+		require_post_request('Use POST to log in.');
+		// A failed attempt must not retain authentication from a previous login.
+		foreach (array_keys($_SESSION) as $key) {
+			if (strpos((string) $key, 'login_') === 0) unset($_SESSION[$key]);
+		}
+		$username = $_POST['username'] ?? '';
+		$password = $_POST['password'] ?? '';
+		if (!is_string($username) || !is_string($password) || !preg_match('//u', $username)) {
+			return $this->action_error(400, 'Enter a valid username and password.');
+		}
+		$username = trim($username);
+		$length = function_exists('mb_strlen') ? mb_strlen($username, 'UTF-8') : strlen($username);
+		if ($username === '' || $password === '' || $length > 200 || strlen($password) > 4096) {
+			return $this->action_error(400, 'Enter a valid username and password.');
+		}
+		try {
+			// Preserve MD5 compatibility until the separate password migration.
+			$hash = md5($password);
+			$statement = $this->db->prepare('SELECT id, name, username, type FROM users WHERE username = ? AND password = ? LIMIT 1');
+			if (!$statement) {
+				return $this->action_error(503, 'Unable to log in right now. Please try again.');
 			}
+			$statement->bind_param('ss', $username, $hash);
+			if (!$statement->execute()) {
+				$statement->close();
+				return $this->action_error(503, 'Unable to log in right now. Please try again.');
+			}
+			$user = $statement->get_result()->fetch_assoc();
+			$statement->close();
+			if (!$user) return 3;
+			$role = (int) $user['type'];
+			if (!in_array($role, [1, 2], true)) return 2;
+			if (!session_regenerate_id(true)) {
+				return $this->action_error(503, 'Unable to log in right now. Please try again.');
+			}
+			$_SESSION['login_id'] = (int) $user['id'];
+			$_SESSION['login_name'] = (string) $user['name'];
+			$_SESSION['login_username'] = (string) $user['username'];
+			$_SESSION['login_type'] = $role;
+			return 1;
+		} catch (mysqli_sql_exception $exception) {
+			error_log('Login database error (code ' . (int) $exception->getCode() . ').');
+			return $this->action_error(503, 'Unable to log in right now. Please try again.');
+		}
 	}
 	function login2(){
 		

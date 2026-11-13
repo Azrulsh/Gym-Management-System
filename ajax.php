@@ -4,10 +4,24 @@ $action = $_GET['action'] ?? '';
 // The login form is the only public action in this application.
 if ($action !== 'login') {
     require_action_access($action);
+} else {
+    require_post_request('Use POST to log in.');
 }
 ob_start();
 include 'admin_class.php';
-$crud = new Action();
+if ($action === 'login') {
+    ini_set('display_errors', '0');
+}
+try {
+    $crud = new Action();
+} catch (mysqli_sql_exception $exception) {
+    if ($action !== 'login') throw $exception;
+    error_log('Login database connection error (code ' . (int) $exception->getCode() . ').');
+    http_response_code(503);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['error' => 'Unable to log in right now. Please try again.']);
+    exit;
+}
 if($action == 'login'){
 	$login = $crud->login();
 	if($login)

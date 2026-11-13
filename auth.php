@@ -123,15 +123,22 @@ function require_action_access($action)
         'save_member' => 'Use POST to save a member.',
         'save_user' => 'Use POST to save a user.',
     ];
-    if (isset($postActions[$action]) && ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
-        http_response_code(405);
-        header('Allow: POST');
-        header('Content-Type: application/json; charset=utf-8');
-        echo json_encode(['error' => $postActions[$action]]);
-        exit;
+    if (isset($postActions[$action])) {
+        require_post_request($postActions[$action]);
     }
     if (in_array($action, ['save_account', 'end_membership', 'save_member', 'save_user'], true)) {
         require_csrf_token();
+    }
+}
+
+function require_post_request($message)
+{
+    if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+        http_response_code(405);
+        header('Allow: POST');
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['error' => $message]);
+        exit;
     }
 }
 

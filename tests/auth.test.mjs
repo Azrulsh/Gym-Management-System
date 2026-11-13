@@ -78,6 +78,26 @@ test('incorrect credentials do not grant access', async () => {
   assert.equal(protectedResponse.status, 302);
 });
 
+test('login rejects GET, handles apostrophes safely and validates array input without leaking SQL', async () => {
+  const get = await request('ajax.php?action=login');
+  assert.equal(get.status, 405);
+  assert.equal(get.headers.get('allow'), 'POST');
+  assert.deepEqual(await get.json(), { error: 'Use POST to log in.' });
+  const cookies = new Map();
+  const quote = await request('ajax.php?action=login', {
+    method: 'POST', body: new URLSearchParams({ username: "'", password: 'test' }),
+  }, cookies);
+  assert.equal(quote.status, 200);
+  assert.equal((await quote.text()).trim(), '3');
+  const array = await request('ajax.php?action=login', {
+    method: 'POST', body: new URLSearchParams([['username[]', 'admin'], ['password', 'test']]),
+  }, cookies);
+  assert.equal(array.status, 400);
+  assert.deepEqual(await array.json(), { error: 'Enter a valid username and password.' });
+  const protectedPage = await request('members.php', {}, cookies);
+  assert.equal(protectedPage.status, 302);
+});
+
 test('valid login rotates session, preserves pages and modals, and logout revokes access', {
   skip: !process.env.GYM_TEST_USERNAME || !process.env.GYM_TEST_PASSWORD,
 }, async () => {

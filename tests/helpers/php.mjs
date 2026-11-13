@@ -7,7 +7,7 @@ const php = process.env.GYM_TEST_PHP || (process.platform === 'win32' ? 'C:/xamp
 export const literal = value => `'${value.replaceAll('\\', '\\\\').replaceAll("'", "\\'")}'`;
 
 // In-memory sessions keep CLI tests independent of browser sessions and disk files.
-export function run(session, code) {
+export function run(session, code, { expectedStderr } = {}) {
   const source = `
     session_set_save_handler(
       function($path, $name) { return true; }, function() { return true; },
@@ -23,7 +23,8 @@ export function run(session, code) {
   const result = spawnSync(php, ['-r', source], { cwd: root, encoding: 'utf8' });
   assert.ifError(result.error);
   assert.equal(result.status, 0, result.stderr + result.stdout);
-  assert.equal(result.stderr, '');
+  if (expectedStderr) assert.match(result.stderr, expectedStderr);
+  else assert.equal(result.stderr, '');
   const match = result.stdout.match(/\n__STATUS__(\d+)$/);
   assert.ok(match, result.stdout);
   return { status: Number(match[1]), body: result.stdout.slice(0, match.index) };

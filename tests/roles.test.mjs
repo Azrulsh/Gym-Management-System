@@ -105,26 +105,28 @@ const recordingDatabase = `
   class RecordingStatement {
     public $sql;
     public $values;
-    public function __construct($sql) { $this->sql = $sql; }
+    private $db;
+    public function __construct($sql, $db) { $this->sql = $sql; $this->db = $db; }
     public function bind_param($types, &...$values) { $this->values = $values; }
     public function execute() { return true; }
-    public function get_result() { return (object) ['num_rows' => 0]; }
+    public function get_result() {
+      if (strpos($this->sql, 'SELECT id, name, username, type') === 0) {
+        return new class($this->db->role) {
+          private $role;
+          public function __construct($role) { $this->role = $role; }
+          public function fetch_assoc() { return ['id' => 9999, 'type' => $this->role, 'name' => 'Test User', 'username' => 'test']; }
+        };
+      }
+      return (object) ['num_rows' => 0];
+    }
+    public function close() {}
   }
   class RecordingDatabase {
     public $statements = [];
     public $role;
-    public function query($sql) {
-      return new class($this->role) {
-        public $num_rows = 1;
-        private $role;
-        public function __construct($role) { $this->role = $role; }
-        public function fetch_array() {
-          return ['id' => 9999, 'type' => $this->role, 'name' => 'Test User', 'username' => 'test', 'password' => 'hidden'];
-        }
-      };
-    }
+    public function query($sql) { throw new RuntimeException('Expected a prepared statement'); }
     public function prepare($sql) {
-      $statement = new RecordingStatement($sql);
+      $statement = new RecordingStatement($sql, $this);
       $this->statements[] = $statement;
       return $statement;
     }
@@ -138,6 +140,7 @@ const recordingDatabase = `
   $property = $reflection->getProperty('db');
   $property->setAccessible(true);
   $property->setValue($action, $db);
+  $_SERVER['REQUEST_METHOD'] = 'POST';
 `;
 
 for (const [role, expected] of [[1, 1], [2, 1], [3, 2]]) {
