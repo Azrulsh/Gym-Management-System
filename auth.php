@@ -118,14 +118,15 @@ function require_action_access($action)
             deny_access(true);
         }
     }
-    if ($action === 'end_membership' && ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    $postActions = ['end_membership' => 'Use POST to end a membership.', 'save_member' => 'Use POST to save a member.'];
+    if (isset($postActions[$action]) && ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
         http_response_code(405);
         header('Allow: POST');
         header('Content-Type: application/json; charset=utf-8');
-        echo json_encode(['error' => 'Use POST to end a membership.']);
+        echo json_encode(['error' => $postActions[$action]]);
         exit;
     }
-    if (in_array($action, ['save_account', 'end_membership'], true)) {
+    if (in_array($action, ['save_account', 'end_membership', 'save_member'], true)) {
         require_csrf_token();
     }
 }

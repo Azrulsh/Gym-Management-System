@@ -122,7 +122,12 @@ test('valid login rotates session, preserves pages and modals, and logout revoke
   for (const path of ['manage_member.php', 'manage_membership.php', 'manage_schedule.php', 'manage_user.php']) {
     const modal = await request(path, { headers: { 'X-Requested-With': 'XMLHttpRequest' } }, cookies);
     assert.equal(modal.status, 200, path);
-    assert.match(await modal.text(), /<form\b/, path);
+    const markup = await modal.text();
+    assert.match(markup, /<form\b/, path);
+    if (path === 'manage_member.php') {
+      assert.match(markup, /id="manage-member-profile"/);
+      assert.match(markup, /name="csrf_token" value="[a-f0-9]+"/);
+    }
   }
   assert.ok(ownAccountPath);
   const ownAccount = await request(ownAccountPath, { headers: { 'X-Requested-With': 'XMLHttpRequest' } }, cookies);
@@ -132,6 +137,26 @@ test('valid login rotates session, preserves pages and modals, and logout revoke
   assert.doesNotMatch(ownForm, /name="type"/);
   const csrfToken = ownForm.match(/name="csrf_token" value="([a-f0-9]+)"/)?.[1];
   assert.ok(csrfToken);
+  const invalidMember = await request('ajax.php?action=save_member', {
+    method: 'POST', body: new URLSearchParams({ id: '0', csrf_token: csrfToken }),
+  }, cookies);
+  assert.equal(invalidMember.status, 400);
+  assert.deepEqual(await invalidMember.json(), { error: 'Invalid member record ID.' });
+  const missingMemberToken = await request('ajax.php?action=save_member', {
+    method: 'POST', body: new URLSearchParams({ id: '0' }),
+  }, cookies);
+  assert.equal(missingMemberToken.status, 403);
+  await missingMemberToken.text();
+  const memberGet = await request('ajax.php?action=save_member', {}, cookies);
+  assert.equal(memberGet.status, 405);
+  assert.equal(memberGet.headers.get('allow'), 'POST');
+  await memberGet.text();
+  const malformedMember = await request('manage_member.php?id=10%20OR%201=1', {}, cookies);
+  assert.equal(malformedMember.status, 400);
+  await malformedMember.text();
+  const missingMember = await request('manage_member.php?id=2147483647', {}, cookies);
+  assert.equal(missingMember.status, 404);
+  await missingMember.text();
   const invalidMembership = await request('ajax.php?action=end_membership', {
     method: 'POST', body: new URLSearchParams({ rid: '0', csrf_token: csrfToken }),
   }, cookies);

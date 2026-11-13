@@ -17,7 +17,7 @@ if(isset($_GET['id'])){
 ?>
 <div class="container-fluid">
 	<p>Member ID: <b><?php echo $mid_no ?></b></p>
-	<p>Name: <b><?php echo ucwords($name) ?></b></p>
+	<p>Name: <b><?php echo htmlspecialchars(ucwords($name), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?></b></p>
 	<p>Plan: </i> <b><?php echo $plan.' month/s' ?></b></p>
 	<p>Package: </i> <b><?php echo $package ?></b></p>
 	<p>Trainer: </i> <b><?php echo !empty($trainer_arr) ?  $trainer_arr['name'] : '' ?></b></p>

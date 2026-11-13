@@ -72,14 +72,14 @@ include 'db_connect.php';
 										 
 									</td>
 									<td class="">
-										 <p><b><?php echo ucwords($row['name']) ?></b></p>
+										 <p><b><?php echo htmlspecialchars(ucwords($row['name']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?></b></p>
 										 
 									</td>
 									<td class="">
-										 <p><b><?php echo $row['email'] ?></b></p>
+										 <p><b><?php echo htmlspecialchars($row['email'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?></b></p>
 									</td>
 									<td class="">
-										 <p><b><?php echo $row['contact'] ?></b></p>
+										 <p><b><?php echo htmlspecialchars($row['contact'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?></b></p>
 										 
 									</td>
 									<td class="text-center">

@@ -30,7 +30,7 @@ $dow_arr = !empty($dow) ? explode(',',$dow) : '';
 							$members = $conn->query("SELECT *,concat(lastname,', ',firstname,' ',middlename) as name FROM members order by concat(lastname,', ',firstname,' ',middlename) asc");
 							while($row= $members->fetch_array()):
 						?>
-							<option value="<?php echo $row['id'] ?>" <?php echo isset($member_id) && $member_id == $row['id'] ? 'selected' : '' ?>><?php echo ucwords($row['name']) ?></option>
+							<option value="<?php echo $row['id'] ?>" <?php echo isset($member_id) && $member_id == $row['id'] ? 'selected' : '' ?>><?php echo htmlspecialchars(ucwords($row['name']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?></option>
 						<?php endwhile; ?>
 						</select>
 					</div>

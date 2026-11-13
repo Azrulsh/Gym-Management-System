@@ -15,11 +15,11 @@ if(isset($_GET['id'])){
 <div class="container-fluid">
 	<div class="row">
 		<div class="col-md-4">
-			<p>Name: <b><?php echo ucwords($name) ?></b></p>
-			<p>Gender: <b><?php echo ucwords($gender) ?></b></p>
-			<p>Email: </i> <b><?php echo $email ?></b></p>
-			<p>Contact: </i> <b><?php echo $contact ?></b></p>
-			<p>Address: </i> <b><?php echo $address ?></b></p>
+			<p>Name: <b><?php echo htmlspecialchars(ucwords($name), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?></b></p>
+			<p>Gender: <b><?php echo htmlspecialchars(ucwords($gender), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?></b></p>
+			<p>Email: </i> <b><?php echo htmlspecialchars($email, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?></b></p>
+			<p>Contact: </i> <b><?php echo htmlspecialchars($contact, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?></b></p>
+			<p>Address: </i> <b><?php echo htmlspecialchars($address, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?></b></p>
 		</div>
 		<div class="col-md-8">
 			<large><b>Membership Plan List</b></large>

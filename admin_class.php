@@ -322,65 +322,103 @@ Class Action {
 		}
 	}
 	function save_member(){
-		extract($_POST);
-		$data = '';
-		foreach($_POST as $k=> $v){
-			if(!empty($v)){
-				if(!in_array($k,array('id','member_id','lastname','firstname','middlename','email','contact','gender','address'))){
-					if(empty($data))
-					$data .= " $k='{$v}' ";
-					else
-					$data .= ", $k='{$v}' ";
-				}
+		require_action_access('save_member');
+		$id = $_POST['id'] ?? '';
+		$id = $id === '' || $id === null ? 0 : filter_var($id, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 2147483647]]);
+		if ($id === false) {
+			return $this->action_error(400, 'Invalid member record ID.');
+		}
+		$fields = [];
+		foreach (['lastname', 'firstname', 'middlename', 'email', 'contact', 'gender', 'address'] as $field) {
+			$value = $_POST[$field] ?? '';
+			if (!is_string($value) || !preg_match('//u', $value)) {
+				return $this->action_error(400, 'Invalid member details.');
+			}
+			$value = trim($value);
+			$length = function_exists('mb_strlen') ? mb_strlen($value, 'UTF-8') : strlen($value);
+			if (($field === 'address' && strlen($value) > 65535) || ($field !== 'address' && $length > 100)) {
+				return $this->action_error(400, 'Member details exceed the allowed length.');
+			}
+			$fields[$field] = $value;
+		}
+		foreach (['lastname', 'firstname', 'email', 'contact', 'gender'] as $field) {
+			if ($fields[$field] === '') {
+				return $this->action_error(400, 'Complete all required member details.');
 			}
 		}
-			if(empty($member_id)){
-				$i = 1;
-				while($i == 1){
-					$rand = mt_rand(1,99999999);
-					$rand =sprintf("%'08d",$rand);
-					$chk = $this->db->query("SELECT * FROM members where member_id = '$rand' ")->num_rows;
-					if($chk <= 0){
-						$data .= ", member_id='$rand' ";
-						$i = 0;
+		if (!filter_var($fields['email'], FILTER_VALIDATE_EMAIL) || !in_array($fields['gender'], ['Male', 'Female'], true)) {
+			return $this->action_error(400, 'Enter a valid email address and gender.');
+		}
+		$number = $_POST['member_id'] ?? '';
+		if (!is_string($number)) {
+			return $this->action_error(400, 'Invalid member ID number.');
+		}
+		$number = trim($number);
+		$memberNumber = $number === '' ? null : filter_var(ltrim($number, '0'), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 2147483647]]);
+		if ($memberNumber === false || ($number !== '' && !ctype_digit($number))) {
+			return $this->action_error(400, 'Member ID number must be between 1 and 2147483647.');
+		}
+		try {
+			$current = $id ? $this->member_record($id) : null;
+			if ($id && !$current) {
+				return $this->action_error(404, 'Member no longer exists. Refresh the page.');
+			}
+			if ($memberNumber === null && $current) {
+				$memberNumber = (int) $current['member_id'];
+			}
+			if ($memberNumber === null) {
+				// Bound retries instead of looping indefinitely when generating a number.
+				for ($attempt = 0; $attempt < 10; $attempt++) {
+					$candidate = random_int(10000000, 99999999);
+					if (!$this->member_number_exists($candidate, $id)) {
+						$memberNumber = $candidate;
+						break;
 					}
 				}
-			}
-
-		if(empty($id)){
-			if(!empty($member_id)){
-				$chk = $this->db->query("SELECT * FROM members where member_id = '$member_id' ")->num_rows;
-				if($chk > 0){
-					return 2;
-					exit;
+				if ($memberNumber === null) {
+					return $this->action_error(503, 'Unable to generate a member ID number. Please try again.');
 				}
+			} elseif ($this->member_number_exists($memberNumber, $id)) {
+				return $this->action_error(409, 'ID No. already exists.');
 			}
-			$save = $this->db->query("INSERT INTO members set $data ");
-			if($save){
-				$member_id = $this->db->insert_id;
-				$data = " member_id ='$member_id' ";
-				$data .= ", plan_id ='$plan_id' ";
-				$data .= ", package_id ='$package_id' ";
-				$data .= ", trainer_id ='$trainer_id' ";
-				$data .= ", start_date ='".date("Y-m-d")."' ";
-				$plan = $this->db->query("SELECT * FROM plans where id = $plan_id")->fetch_array()['plan'];
-				$data .= ", end_date ='".date("Y-m-d",strtotime(date('Y-m-d').' +'.$plan.' months'))."' ";
-				$save = $this->db->query("INSERT INTO registration_info set $data");
-				if(!$save)
-					$this->db->query("DELETE FROM members where id = $member_id");
+			// Profile saving never creates or modifies a membership registration.
+			if ($id) {
+				$statement = $this->db->prepare('UPDATE members SET member_id = ?, lastname = ?, firstname = ?, middlename = ?, email = ?, contact = ?, gender = ?, address = ? WHERE id = ?');
+				$statement->bind_param('isssssssi', $memberNumber, $fields['lastname'], $fields['firstname'], $fields['middlename'], $fields['email'], $fields['contact'], $fields['gender'], $fields['address'], $id);
+			} else {
+				$statement = $this->db->prepare('INSERT INTO members (member_id, lastname, firstname, middlename, email, contact, gender, address) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+				$statement->bind_param('isssssss', $memberNumber, $fields['lastname'], $fields['firstname'], $fields['middlename'], $fields['email'], $fields['contact'], $fields['gender'], $fields['address']);
 			}
-		}else{
-			if(!empty($member_id)){
-				$chk = $this->db->query("SELECT * FROM members where member_id = '$member_id' and id != $id ")->num_rows;
-				if($chk > 0){
-					return 2;
-					exit;
-				}
+			$executed = $statement->execute();
+			$changed = $statement->affected_rows;
+			$statement->close();
+			if (!$executed) {
+				return $this->action_error(500, 'Unable to save member. Please try again.');
 			}
-			$save = $this->db->query("UPDATE members set $data where id=".$id);
-		}
-		if($save)
+			if ($id && $changed === 0 && !$this->member_record($id)) {
+				return $this->action_error(404, 'Member no longer exists. Refresh the page.');
+			}
 			return 1;
+		} catch (mysqli_sql_exception $exception) {
+			error_log('Unable to save member: ' . $exception->getMessage());
+			return $this->action_error(500, 'Unable to save member. Please try again.');
+		}
+	}
+	private function member_record($id){
+		$statement = $this->db->prepare('SELECT id, member_id FROM members WHERE id = ?');
+		$statement->bind_param('i', $id);
+		$statement->execute();
+		$record = $statement->get_result()->fetch_assoc();
+		$statement->close();
+		return $record;
+	}
+	private function member_number_exists($number, $excludeId){
+		$statement = $this->db->prepare('SELECT id FROM members WHERE member_id = ? AND id <> ? LIMIT 1');
+		$statement->bind_param('ii', $number, $excludeId);
+		$statement->execute();
+		$exists = $statement->get_result()->num_rows > 0;
+		$statement->close();
+		return $exists;
 	}
 	function delete_member(){
 		extract($_POST);
@@ -467,31 +505,31 @@ Class Action {
 		require_action_access('end_membership');
 		$registrationId = filter_var($_POST['rid'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
 		if ($registrationId === false) {
-			return $this->membership_error(400, 'Invalid membership ID.');
+			return $this->action_error(400, 'Invalid membership ID.');
 		}
 		try {
 			// A single conditional update also prevents duplicate requests reporting success.
 			$statement = $this->db->prepare('UPDATE registration_info SET status = 0 WHERE id = ? AND status = 1');
 			if (!$statement) {
-				return $this->membership_error(500, 'Unable to end membership. Please try again.');
+				return $this->action_error(500, 'Unable to end membership. Please try again.');
 			}
 			$statement->bind_param('i', $registrationId);
 			$executed = $statement->execute();
 			$changed = $statement->affected_rows;
 			$statement->close();
 			if (!$executed) {
-				return $this->membership_error(500, 'Unable to end membership. Please try again.');
+				return $this->action_error(500, 'Unable to end membership. Please try again.');
 			}
 			if ($changed !== 1) {
-				return $this->membership_error(409, 'Membership is already ended or no longer exists. Refresh the page.');
+				return $this->action_error(409, 'Membership is already ended or no longer exists. Refresh the page.');
 			}
 			return 1;
 		} catch (mysqli_sql_exception $exception) {
 			error_log('Unable to end membership: ' . $exception->getMessage());
-			return $this->membership_error(500, 'Unable to end membership. Please try again.');
+			return $this->action_error(500, 'Unable to end membership. Please try again.');
 		}
 	}
-	private function membership_error($status, $message){
+	private function action_error($status, $message){
 		http_response_code($status);
 		header('Content-Type: application/json; charset=utf-8');
 		return json_encode(['error' => $message]);

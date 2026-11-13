@@ -73,7 +73,7 @@ include 'db_connect.php';
 										 
 									</td>
 									<td class="">
-										 <p><b><?php echo ucwords($row['name']) ?></b></p>
+										 <p><b><?php echo htmlspecialchars(ucwords($row['name']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?></b></p>
 										 
 									</td>
 									<td class="">

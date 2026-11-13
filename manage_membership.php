@@ -23,7 +23,7 @@ if(isset($_GET['id'])){
 						$qry = $conn->query("SELECT *,concat(lastname,', ',firstname,' ',middlename) as name FROM members where id not in (SELECT member_id from registration_info where status = 1) order by concat(lastname,', ',firstname,' ',middlename) asc");
 						while($row= $qry->fetch_assoc()):
 					?>
-					<option value="<?php echo $row['id'] ?>" <?php echo isset($member_id) && $member_id == $row['id'] ? 'selected' : '' ?>><?php echo ucwords($row['name']) ?></option>
+					<option value="<?php echo $row['id'] ?>" <?php echo isset($member_id) && $member_id == $row['id'] ? 'selected' : '' ?>><?php echo htmlspecialchars(ucwords($row['name']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?></option>
 					<?php endwhile; ?>
 				</select>
 			</div>
