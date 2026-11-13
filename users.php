@@ -37,11 +37,11 @@ require_admin();
 				 		<?php echo $i++ ?>
 				 	</td>
 				 	<td>
-				 		<?php echo ucwords($row['name']) ?>
+						<?php echo htmlspecialchars(ucwords($row['name']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>
 				 	</td>
 				 	
 				 	<td>
-				 		<?php echo $row['username'] ?>
+						<?php echo htmlspecialchars($row['username'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>
 				 	</td>
 				 	<td>
 				 		<?php echo $type[$row['type']] ?>

@@ -128,6 +128,11 @@ test('valid login rotates session, preserves pages and modals, and logout revoke
       assert.match(markup, /id="manage-member-profile"/);
       assert.match(markup, /name="csrf_token" value="[a-f0-9]+"/);
     }
+    if (path === 'manage_user.php') {
+      assert.match(markup, /action="ajax.php\?action=save_user"/);
+      assert.match(markup, /name="csrf_token" value="[a-f0-9]+"/);
+      assert.match(markup, /name="password"[^>]*required/);
+    }
   }
   assert.ok(ownAccountPath);
   const ownAccount = await request(ownAccountPath, { headers: { 'X-Requested-With': 'XMLHttpRequest' } }, cookies);
@@ -135,8 +140,23 @@ test('valid login rotates session, preserves pages and modals, and logout revoke
   const ownForm = await ownAccount.text();
   assert.match(ownForm, /ajax.php\?action=save_account/);
   assert.doesNotMatch(ownForm, /name="type"/);
+  assert.doesNotMatch(ownForm, /name="password"[^>]*required/);
   const csrfToken = ownForm.match(/name="csrf_token" value="([a-f0-9]+)"/)?.[1];
   assert.ok(csrfToken);
+  const invalidUser = await request('ajax.php?action=save_user', {
+    method: 'POST', body: new URLSearchParams({ id: '0', csrf_token: csrfToken }),
+  }, cookies);
+  assert.equal(invalidUser.status, 400);
+  assert.deepEqual(await invalidUser.json(), { error: 'Invalid user record ID.' });
+  const missingUserToken = await request('ajax.php?action=save_user', {
+    method: 'POST', body: new URLSearchParams({ id: '0' }),
+  }, cookies);
+  assert.equal(missingUserToken.status, 403);
+  await missingUserToken.text();
+  const userGet = await request('ajax.php?action=save_user', {}, cookies);
+  assert.equal(userGet.status, 405);
+  assert.equal(userGet.headers.get('allow'), 'POST');
+  await userGet.text();
   const invalidMember = await request('ajax.php?action=save_member', {
     method: 'POST', body: new URLSearchParams({ id: '0', csrf_token: csrfToken }),
   }, cookies);

@@ -8,16 +8,24 @@ if ($ownAccount) {
     require_admin();
 }
 include('db_connect.php');
+$meta = [];
 if(isset($_GET['id'])){
-    $userId = filter_var($_GET['id'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+    $userId = filter_var($_GET['id'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 2147483647]]);
     if ($userId === false) {
         http_response_code(400);
         exit('Invalid user ID.');
     }
-    $user = $conn->prepare('SELECT id, name, username, type FROM users WHERE id = ?');
-    $user->bind_param('i', $userId);
-    $user->execute();
-    $meta = $user->get_result()->fetch_assoc();
+    try {
+        $user = $conn->prepare('SELECT id, name, username, type FROM users WHERE id = ?');
+        $user->bind_param('i', $userId);
+        $user->execute();
+        $meta = $user->get_result()->fetch_assoc();
+        $user->close();
+    } catch (mysqli_sql_exception $exception) {
+        error_log('Unable to load user: ' . $exception->getMessage());
+        http_response_code(500);
+        exit('Unable to load user. Please try again.');
+    }
     if (!$meta) {
         http_response_code(404);
         exit('User not found.');
@@ -25,32 +33,26 @@ if(isset($_GET['id'])){
 }
 ?>
 <div class="container-fluid">
-	<div id="msg"></div>
-	
-	<form action="" id="manage-user">	
+	<form action="ajax.php?action=<?php echo $ownAccount ? 'save_account' : 'save_user'; ?>" method="post" id="manage-user">
+		<div class="user-message" role="alert" aria-live="polite"></div>
 		<input type="hidden" name="id" value="<?php echo isset($meta['id']) ? $meta['id']: '' ?>">
-		<?php if ($ownAccount): ?>
 		<input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
-		<?php endif; ?>
 		<div class="form-group">
 			<label for="name">Name</label>
-			<input type="text" name="name" id="name" class="form-control" value="<?php echo htmlspecialchars($meta['name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" required>
+			<input type="text" name="name" id="name" class="form-control" maxlength="200" value="<?php echo htmlspecialchars($meta['name'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>" required>
 		</div>
 		<div class="form-group">
 			<label for="username">Username</label>
-			<input type="text" name="username" id="username" class="form-control" value="<?php echo htmlspecialchars($meta['username'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" required  autocomplete="off">
+			<input type="text" name="username" id="username" class="form-control" maxlength="200" value="<?php echo htmlspecialchars($meta['username'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>" required autocomplete="off">
 		</div>
 		<div class="form-group">
 			<label for="password">Password</label>
-			<input type="password" name="password" id="password" class="form-control" value="" autocomplete="off">
+			<input type="password" name="password" id="password" class="form-control" value="" maxlength="4096" autocomplete="new-password" <?php echo !isset($meta['id']) ? 'required' : ''; ?>>
 			<?php if(isset($meta['id'])): ?>
 			<small><i>Leave this blank if you dont want to change the password.</i></small>
 		<?php endif; ?>
 		</div>
 		<?php if (!$ownAccount): ?>
-		<?php if(isset($meta['type']) && $meta['type'] == 3): ?>
-			<input type="hidden" name="type" value="3">
-		<?php else: ?>
 		<div class="form-group">
 			<label for="type">User Type</label>
 			<select name="type" id="type" class="custom-select">
@@ -59,38 +61,7 @@ if(isset($_GET['id'])){
 			</select>
 		</div>
 		<?php endif; ?>
-		<?php endif; ?>
 		
 
 	</form>
 </div>
-<script>
-	
-	$('#manage-user').submit(function(e){
-		e.preventDefault();
-		start_load()
-		$.ajax({
-			url:'ajax.php?action=<?php echo $ownAccount ? 'save_account' : 'save_user'; ?>',
-			method:'POST',
-			data:$(this).serialize(),
-			success:function(resp){
-				if(resp ==1){
-					alert_toast("Data successfully saved",'success')
-					setTimeout(function(){
-						location.reload()
-					},1500)
-				}else if(resp == 2){
-					$('#msg').html('<div class="alert alert-danger">Username already exist</div>')
-					end_load()
-				}else{
-					$('#msg').html('<div class="alert alert-danger">Unable to save. Check the required fields and try again.</div>')
-					end_load()
-				}
-			},
-			error:function(){
-				end_load()
-			}
-		})
-	})
-
-</script>

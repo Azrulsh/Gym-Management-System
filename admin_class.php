@@ -85,28 +85,89 @@ Class Action {
 	}
 
 	function save_user(){
-		extract($_POST);
-		$data = " name = '$name' ";
-		$data .= ", username = '$username' ";
-		if(!empty($password))
-		$data .= ", password = '".md5($password)."' ";
-		$data .= ", type = '$type' ";
-		if($type == 1)
-			$establishment_id = 0;
-		$data .= ", establishment_id = '$establishment_id' ";
-		$chk = $this->db->query("Select * from users where username = '$username' and id !=$id ")->num_rows;
-		if($chk > 0){
-			return 2;
-			exit;
+		require_action_access('save_user');
+		$id = $_POST['id'] ?? '';
+		$id = $id === '' || $id === null ? 0 : filter_var($id, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 2147483647]]);
+		if ($id === false) {
+			return $this->action_error(400, 'Invalid user record ID.');
 		}
-		if(empty($id)){
-			$save = $this->db->query("INSERT INTO users set ".$data);
-		}else{
-			$save = $this->db->query("UPDATE users set ".$data." where id = ".$id);
+		$name = $_POST['name'] ?? '';
+		$username = $_POST['username'] ?? '';
+		$password = $_POST['password'] ?? '';
+		$type = $_POST['type'] ?? null;
+		if (!is_string($name) || !is_string($username) || !is_string($password)
+			|| !preg_match('//u', $name) || !preg_match('//u', $username)) {
+			return $this->action_error(400, 'Invalid user details.');
 		}
-		if($save){
+		$name = trim($name);
+		$username = trim($username);
+		$nameLength = function_exists('mb_strlen') ? mb_strlen($name, 'UTF-8') : strlen($name);
+		$usernameLength = function_exists('mb_strlen') ? mb_strlen($username, 'UTF-8') : strlen($username);
+		if ($name === '' || $username === '' || $nameLength > 200 || $usernameLength > 200) {
+			return $this->action_error(400, 'Name and username are required and must not exceed 200 characters.');
+		}
+		if ((!$id && $password === '') || strlen($password) > 4096) {
+			return $this->action_error(400, 'A password is required for new users and must not exceed 4096 bytes.');
+		}
+		if (!in_array($type, [1, 2, '1', '2'], true)) {
+			return $this->action_error(400, 'Choose Admin or Staff as the user type.');
+		}
+		$type = (int) $type;
+		try {
+			if ($id && !$this->user_record($id)) {
+				return $this->action_error(404, 'User no longer exists. Refresh the page.');
+			}
+			$check = $this->db->prepare('SELECT id FROM users WHERE username = ? AND id <> ? LIMIT 1');
+			$check->bind_param('si', $username, $id);
+			$check->execute();
+			$duplicate = $check->get_result()->num_rows > 0;
+			$check->close();
+			if ($duplicate) {
+				return $this->action_error(409, 'Username already exists.');
+			}
+			// Keep the current password format until the separate login/password migration.
+			if (!$id) {
+				$hash = md5($password);
+				$save = $this->db->prepare('INSERT INTO users (name, username, password, type) VALUES (?, ?, ?, ?)');
+				$save->bind_param('sssi', $name, $username, $hash, $type);
+			} elseif ($password === '') {
+				$save = $this->db->prepare('UPDATE users SET name = ?, username = ?, type = ? WHERE id = ?');
+				$save->bind_param('ssii', $name, $username, $type, $id);
+			} else {
+				$hash = md5($password);
+				$save = $this->db->prepare('UPDATE users SET name = ?, username = ?, password = ?, type = ? WHERE id = ?');
+				$save->bind_param('sssii', $name, $username, $hash, $type, $id);
+			}
+			$executed = $save->execute();
+			$changed = $save->affected_rows;
+			$save->close();
+			if (!$executed) {
+				return $this->action_error(500, 'Unable to save user. Please try again.');
+			}
+			if ($id && $changed === 0 && !$this->user_record($id)) {
+				return $this->action_error(404, 'User no longer exists. Refresh the page.');
+			}
+			if ($id === (int) $_SESSION['login_id']) {
+				$_SESSION['login_name'] = $name;
+				$_SESSION['login_username'] = $username;
+				$_SESSION['login_type'] = $type;
+			}
 			return 1;
+		} catch (mysqli_sql_exception $exception) {
+			if ((int) $exception->getCode() === 1062) {
+				return $this->action_error(409, 'Username already exists.');
+			}
+			error_log('Unable to save user: ' . $exception->getMessage());
+			return $this->action_error(500, 'Unable to save user. Please try again.');
 		}
+	}
+	private function user_record($id){
+		$statement = $this->db->prepare('SELECT id FROM users WHERE id = ?');
+		$statement->bind_param('i', $id);
+		$statement->execute();
+		$record = $statement->get_result()->fetch_assoc();
+		$statement->close();
+		return $record;
 	}
 	function save_account(){
 		require_action_access('save_account');
