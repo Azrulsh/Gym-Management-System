@@ -122,11 +122,12 @@ function require_action_access($action)
         'end_membership' => 'Use POST to end a membership.',
         'save_member' => 'Use POST to save a member.',
         'save_user' => 'Use POST to save a user.',
+        'save_plan' => 'Use POST to save a plan.',
     ];
     if (isset($postActions[$action])) {
         require_post_request($postActions[$action]);
     }
-    if (in_array($action, ['save_account', 'end_membership', 'save_member', 'save_user'], true)) {
+    if (in_array($action, ['save_account', 'end_membership', 'save_member', 'save_user', 'save_plan'], true)) {
         require_csrf_token();
     }
 }

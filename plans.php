@@ -10,20 +10,23 @@ include 'db_connect.php';
 		<div class="row">
 			<!-- FORM Panel -->
 			<div class="col-md-4">
-			<form action="" id="manage-plan">
+			<form action="ajax.php?action=save_plan" method="post" id="manage-plan">
 				<div class="card">
 					<div class="card-header">
-						    Plan Form
+						    <span class="plan-form-title" aria-live="polite">Add Plan</span>
 				  	</div>
 					<div class="card-body">
+							<p class="plan-mode-help text-muted">Fill in the form to create a new plan.</p>
+							<div class="plan-message" role="alert" aria-live="polite"></div>
+							<input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
 							<input type="hidden" name="id">
 							<div class="form-group">
-								<label class="control-label">Plan (months)</label>
-								<input type="number" class="form-control" min="1" name="plan" >
+								<label class="control-label" for="plan-months">Plan (months)</label>
+								<input type="number" id="plan-months" class="form-control" min="1" max="2147483647" step="1" name="plan" required>
 							</div>
 							<div class="form-group">
-								<label class="control-label">Amount</label>
-								<input type="number" class="form-control" step="any" name="amount">
+								<label class="control-label" for="plan-amount">Amount</label>
+								<input type="number" id="plan-amount" class="form-control" min="0" step="1" name="amount" required>
 							</div>
 							
 					</div>
@@ -31,8 +34,8 @@ include 'db_connect.php';
 					<div class="card-footer">
 						<div class="row">
 							<div class="col-md-12">
-								<button class="btn btn-md btn-success col-sm-3 offset-md-3"> Save</button>
-								<button class="btn btn-md btn-secondary col-sm-3" type="button" onclick="_reset()"> Cancel</button>
+								<button type="submit" class="btn btn-md btn-success col-sm-4 offset-md-2">Create</button>
+								<button class="btn btn-md btn-secondary col-sm-4 reset-plan" type="button">Clear</button>
 							</div>
 						</div>
 					</div>
@@ -72,13 +75,13 @@ include 'db_connect.php';
 								<tr>
 									<td class="text-center"><?php echo $i++ ?></td>
 									<td class="">
-										<p><b><?php echo $row['plan'] ?></b> month/s</p>
+										<p><b><?php echo (int) $row['plan'] ?></b> month/s</p>
 									</td>
 									<td class="text-right">
 										<b><?php echo number_format($row['amount'],2) ?></b>
 									</td>
 									<td class="text-center">
-										<button class="btn btn-md btn-outline-success edit_plan" type="button" data-id="<?php echo $row['id'] ?>" data-plan="<?php echo $row['plan'] ?>" data-description="<?php echo $row['description'] ?>" data-amount="<?php echo $row['amount'] ?>" >Edit</button>
+										<button class="btn btn-md btn-outline-success edit_plan" type="button" data-id="<?php echo (int) $row['id'] ?>" data-plan="<?php echo (int) $row['plan'] ?>" data-amount="<?php echo htmlspecialchars((string) $row['amount'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>">Edit</button>
 										<button class="btn btn-md btn-outline-danger delete_plan" type="button" data-id="<?php echo $row['id'] ?>">Delete</button>
 									</td>
 								</tr>
@@ -99,49 +102,8 @@ include 'db_connect.php';
 		vertical-align: middle !important;
 	}
 </style>
+<script src="assets/js/plans.js?v=<?php echo filemtime(__DIR__ . '/assets/js/plans.js'); ?>"></script>
 <script>
-	function _reset(){
-		$('#manage-plan').get(0).reset()
-		$('#manage-plan input,#manage-plan textarea').val('')
-	}
-	$('#manage-plan').submit(function(e){
-		e.preventDefault()
-		start_load()
-		$.ajax({
-			url:'ajax.php?action=save_plan',
-			data: new FormData($(this)[0]),
-		    cache: false,
-		    contentType: false,
-		    processData: false,
-		    method: 'POST',
-		    type: 'POST',
-			success:function(resp){
-				if(resp==1){
-					alert_toast("Data successfully added",'success')
-					setTimeout(function(){
-						location.reload()
-					},1500)
-
-				}
-				else if(resp==2){
-					alert_toast("Data successfully updated",'success')
-					setTimeout(function(){
-						location.reload()
-					},1500)
-
-				}
-			}
-		})
-	})
-	$('.edit_plan').click(function(){
-		start_load()
-		var cat = $('#manage-plan')
-		cat.get(0).reset()
-		cat.find("[name='id']").val($(this).attr('data-id'))
-		cat.find("[name='plan']").val($(this).attr('data-plan'))
-		cat.find("[name='amount']").val($(this).attr('data-amount'))
-		end_load()
-	})
 	$('.delete_plan').click(function(){
 		_conf("Are you sure to delete this plan?","delete_plan",[$(this).attr('data-id')])
 	})

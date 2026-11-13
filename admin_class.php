@@ -402,16 +402,52 @@ Class Action {
 
 	
 	function save_plan(){
-		extract($_POST);
-		$data = " plan = '$plan' ";
-		$data .= ", amount = '$amount' ";
-			if(empty($id)){
-				$save = $this->db->query("INSERT INTO plans set $data");
-			}else{
-				$save = $this->db->query("UPDATE plans set $data where id = $id");
+		require_action_access('save_plan');
+		$id = $_POST['id'] ?? '';
+		if (!is_scalar($id) || is_bool($id)) return $this->action_error(400, 'Invalid plan record ID.');
+		$id = $id === '' ? 0 : filter_var($id, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 2147483647]]);
+		if ($id === false) return $this->action_error(400, 'Invalid plan record ID.');
+		$months = $_POST['plan'] ?? null;
+		if (!is_scalar($months) || is_bool($months)) return $this->action_error(400, 'Plan months must be a positive whole number.');
+		$months = filter_var($months, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 2147483647]]);
+		if ($months === false) return $this->action_error(400, 'Plan months must be a positive whole number.');
+		$amount = $_POST['amount'] ?? '';
+		if (!is_string($amount) || strlen($amount) > 32 || !preg_match('/\A[0-9]+(?:\.[0-9]{1,2})?\z/', $amount)) {
+			return $this->action_error(400, 'Amount must be zero or greater, with up to two decimal places.');
+		}
+		try {
+			if ($id && !$this->plan_record($id)) return $this->action_error(404, 'Plan no longer exists. Refresh the page.');
+			if ($id) {
+				$save = $this->db->prepare('UPDATE plans SET plan = ?, amount = ? WHERE id = ?');
+				if (!$save) return $this->action_error(500, 'Unable to save plan. Please try again.');
+				$save->bind_param('isi', $months, $amount, $id);
+			} else {
+				$save = $this->db->prepare('INSERT INTO plans (plan, amount) VALUES (?, ?)');
+				if (!$save) return $this->action_error(500, 'Unable to save plan. Please try again.');
+				$save->bind_param('is', $months, $amount);
 			}
-		if($save)
+			$executed = $save->execute();
+			$changed = $save->affected_rows;
+			$save->close();
+			if (!$executed) return $this->action_error(500, 'Unable to save plan. Please try again.');
+			if ($id && $changed === 0 && !$this->plan_record($id)) return $this->action_error(404, 'Plan no longer exists. Refresh the page.');
 			return 1;
+		} catch (mysqli_sql_exception | RuntimeException $exception) {
+			error_log('Unable to save plan (error code ' . (int) $exception->getCode() . ').');
+			return $this->action_error(500, 'Unable to save plan. Please try again.');
+		}
+	}
+	private function plan_record($id){
+		$statement = $this->db->prepare('SELECT id FROM plans WHERE id = ?');
+		if (!$statement) throw new RuntimeException('Unable to read plan.');
+		$statement->bind_param('i', $id);
+		if (!$statement->execute()) {
+			$statement->close();
+			throw new RuntimeException('Unable to read plan.');
+		}
+		$record = $statement->get_result()->fetch_assoc();
+		$statement->close();
+		return $record;
 	}
 	function delete_plan(){
 		extract($_POST);
