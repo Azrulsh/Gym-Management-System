@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { literal, run } from './helpers/php.mjs';
 
-const session = { login_id: 2, login_type: 1 };
-const valid = { member_id: '11', date_from: '2026-02', date_to: '2026-02', time_from: '09:00', time_to: '10:00', dow: ['0', '2'] };
+const session = { login_id: 2, login_type: 1, csrf_token: 'schedule-save-test' };
+const valid = { csrf_token: session.csrf_token, member_id: '11', date_from: '2026-02', date_to: '2026-02', time_from: '09:00', time_to: '10:00', dow: ['0', '2'] };
 function attempt(post) {
   return JSON.parse(run(session, `require 'tests/helpers/membership-db.php';
     with_membership_database(function($db,$schema) {

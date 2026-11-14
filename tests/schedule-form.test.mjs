@@ -47,6 +47,7 @@ test('Edit populates the exact schedule, selected member, Sunday, months and sec
   const response = render({ id: '1' });
   assert.equal(response.status, 200);
   assert.match(response.body, /name="id" value="1"/);
+  assert.match(response.body, /type="hidden" name="csrf_token" value="[a-f0-9]{64}"/);
   assert.match(response.body, /class="btn btn-danger confirm-schedule-delete" data-id="1" data-csrf-token="[a-f0-9]{64}"/);
   assert.match(response.body, /entire recurring schedule/);
   assert.match(response.body, /value="11" selected/);
@@ -64,6 +65,7 @@ test('Add remains a blank form with available members and required schedule fiel
   const response = render({});
   assert.equal(response.status, 200);
   assert.match(response.body, /name="id" value=""/);
+  assert.match(response.body, /type="hidden" name="csrf_token" value="[a-f0-9]{64}"/);
   assert.doesNotMatch(response.body, /request-schedule-delete|confirm-schedule-delete/);
   assert.match(response.body, /name="date_from"[^>]*required value=""/);
   assert.match(response.body, /name="time_from"[^>]*required value=""/);

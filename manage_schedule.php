@@ -58,6 +58,7 @@ try {
 </style>
 <div class="container-fluid">
 	<form action="ajax.php?action=save_schedule" id="manage-schedule">
+		<input type="hidden" name="csrf_token" value="<?php echo csrf_token(); ?>">
 		<div class="schedule-message" role="alert" aria-live="polite"></div>
 		<input type="hidden" name="id" value="<?php echo isset($id) ? $id : '' ?>">
 		<div class="col-lg-12">

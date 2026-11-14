@@ -167,6 +167,7 @@ function require_action_access($action)
     $postActions = [
         'end_membership' => 'Use POST to end a membership.',
         'save_member' => 'Use POST to save a member.',
+        'save_schedule' => 'Use POST to save a schedule.',
         'save_user' => 'Use POST to save a user.',
         'save_plan' => 'Use POST to save a plan.',
         'save_package' => 'Use POST to save a package.',
@@ -184,7 +185,7 @@ function require_action_access($action)
     if (isset($postActions[$action])) {
         require_post_request($postActions[$action]);
     }
-    if (in_array($action, ['save_account', 'end_membership', 'save_member', 'save_user', 'save_plan', 'save_package', 'save_trainer', 'save_payment', 'save_membership', 'renew_membership', 'delete_plan', 'delete_package', 'delete_trainer', 'delete_member', 'delete_user', 'delete_schedule'], true)) {
+    if (in_array($action, ['save_account', 'end_membership', 'save_member', 'save_user', 'save_plan', 'save_package', 'save_trainer', 'save_payment', 'save_membership', 'renew_membership', 'delete_plan', 'delete_package', 'delete_trainer', 'delete_member', 'delete_user', 'delete_schedule', 'save_schedule'], true)) {
         require_csrf_token();
     }
 }

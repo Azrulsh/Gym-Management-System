@@ -109,7 +109,7 @@ for (const action of ['save_membership', 'save_schedule', 'edit_schedule']) {
     const data = isolated(`
       $post = ${action === 'save_membership'
         ? "['member_id'=>'13','plan_id'=>'1','package_id'=>'1','trainer_id'=>'','csrf_token'=>$_SESSION['csrf_token']]"
-        : "['id'=>'" + (action === 'edit_schedule' ? '1' : '') + "','member_id'=>'13','date_from'=>'2026-01','date_to'=>'2026-12','time_from'=>'09:00','time_to'=>'10:00','dow'=>['1','3']]"};
+        : "['id'=>'" + (action === 'edit_schedule' ? '1' : '') + "','member_id'=>'13','date_from'=>'2026-01','date_to'=>'2026-12','time_from'=>'09:00','time_to'=>'10:00','dow'=>['1','3'],'csrf_token'=>$_SESSION['csrf_token']]"};
       $method = '${action === 'edit_schedule' ? 'save_schedule' : action}';
       $db->begin_transaction();
       $db->query('SELECT id FROM members WHERE id=13 FOR UPDATE');
@@ -154,7 +154,7 @@ for (const action of ['save_membership', 'save_schedule', 'edit_schedule']) {
 
 test('schedule member validation retains existing date/day semantics and blocks missing members', () => {
   const data = isolated(`
-    $post=['id'=>'','member_id'=>'11','date_from'=>'2026-02','date_to'=>'2026-02','time_from'=>'09:00','time_to'=>'10:00','dow'=>['0','2']];
+    $post=['id'=>'','member_id'=>'11','date_from'=>'2026-02','date_to'=>'2026-02','time_from'=>'09:00','time_to'=>'10:00','dow'=>['0','2'],'csrf_token'=>$_SESSION['csrf_token']];
     $saved=new_membership_for_test($db,$post,'save_schedule');
     $after=member_delete_snapshot($db);
     $post['member_id']='999';
