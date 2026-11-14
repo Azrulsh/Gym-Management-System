@@ -2,6 +2,7 @@
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/passwords.php';
 require_once __DIR__ . '/login_throttle.php';
+require_once __DIR__ . '/membership_dates.php';
 ini_set('display_errors', 1);
 Class Action {
 	private $db;
@@ -1029,7 +1030,7 @@ Class Action {
 			$months = filter_var($plan['plan'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
 			$maxMonths = (9999 - (int) $start->format('Y')) * 12 + 12 - (int) $start->format('n');
 			if ($months === false || $months > $maxMonths) return $this->action_error(400, 'Selected plan has an invalid duration.');
-			$endDate = $start->modify('+' . $months . ' months')->format('Y-m-d');
+			$endDate = membership_end_date($start, $months);
 			if (strlen($endDate) !== 10) return $this->action_error(400, 'Selected plan has an invalid duration.');
 			$close = $this->db->prepare('UPDATE registration_info SET status = 0 WHERE id = ? AND status = 1');
 			if (!$close) throw new RuntimeException('Unable to end original membership.');
@@ -1125,7 +1126,7 @@ Class Action {
 			$maxMonths = (9999 - (int) $start->format('Y')) * 12 + 12 - (int) $start->format('n');
 			if ($months === false || $months > $maxMonths) return $this->action_error(400, 'Selected plan has an invalid duration.');
 			$startDate = $start->format('Y-m-d');
-			$endDate = $start->modify('+' . $months . ' months')->format('Y-m-d');
+			$endDate = membership_end_date($start, $months);
 			if (strlen($endDate) !== 10) return $this->action_error(400, 'Selected plan has an invalid duration.');
 			$save = $this->db->prepare("INSERT INTO registration_info (member_id, plan_id, package_id, trainer_id, start_date, end_date, status, plan_fee, package_fee, trainer_fee_snapshot, price_source, prices_recorded_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, 'captured', CURRENT_TIMESTAMP)");
 			if (!$save) throw new RuntimeException('Unable to prepare membership.');

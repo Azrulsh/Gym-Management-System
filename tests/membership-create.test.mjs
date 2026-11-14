@@ -21,7 +21,7 @@ for (const role of [1, 2]) {
       $result = new_membership_for_test($db, $post);
       $after = membership_snapshot($db);
       $today = (new DateTimeImmutable('today'))->format('Y-m-d');
-      $end = (new DateTimeImmutable('today'))->modify('+3 months')->format('Y-m-d');
+      $end = membership_end_date(new DateTimeImmutable('today'), 3);
       echo json_encode(compact('before', 'result', 'after', 'today', 'end'));
     `);
     assert.equal(data.result.result, 1);
