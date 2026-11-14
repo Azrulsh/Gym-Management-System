@@ -77,7 +77,7 @@ INSERT INTO `packages` (`id`, `package`, `description`, `amount`) VALUES
 CREATE TABLE `payments` (
   `id` int(30) NOT NULL,
   `registration_id` int(30) NOT NULL,
-  `amount` int(30) NOT NULL,
+  `amount` decimal(12,2) NOT NULL,
   `remarks` text NOT NULL,
   `type` tinyint(1) NOT NULL DEFAULT '2' COMMENT '1=registration, 2= monthly payment',
   `date_created` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP

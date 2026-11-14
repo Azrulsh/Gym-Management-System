@@ -56,6 +56,7 @@
   <script src="assets/js/membership.js"></script>
   <script src="assets/js/members.js"></script>
   <script src="assets/js/users.js"></script>
+  <script src="assets/js/payments.js?v=<?php echo filemtime(__DIR__ . '/assets/js/payments.js'); ?>"></script>
 
 
 

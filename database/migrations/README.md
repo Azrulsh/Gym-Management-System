@@ -2,6 +2,11 @@ Existing installations: select the application database in phpMyAdmin and import
 `001_login_throttle.sql` once. It only adds the `login_throttle` table. New installations
 can import `database/gym_db.sql`, which already includes the table.
 
+Also import `002_payment_amount_decimal.sql` to store payment amounts as
+`DECIMAL(12,2)`. Existing integer values are preserved, including any historical
+negative records; the new payment handler only permits positive amounts. The
+updated full database dump includes the decimal column for fresh installations.
+
 The login handler requires this table and returns a generic 503 if storage fails;
 it never falls back to unlimited login attempts. No schema changes run during login.
 

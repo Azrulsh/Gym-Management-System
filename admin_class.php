@@ -726,19 +726,33 @@ Class Action {
 			return json_encode($data);
 	}
 	function save_payment(){
-		extract($_POST);
-		$data = '';
-		foreach($_POST as $k=> $v){
-			if(!empty($v)){
-				if(empty($data))
-				$data .= " $k='{$v}' ";
-				else
-				$data .= ", $k='{$v}' ";
-			}
+		require_action_access('save_payment');
+		$id = $_POST['registration_id'] ?? null;
+		if (!is_scalar($id) || is_bool($id)) return $this->action_error(400, 'Invalid membership ID.');
+		$id = filter_var($id, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 2147483647]]);
+		if ($id === false) return $this->action_error(400, 'Invalid membership ID.');
+		$amount = $_POST['amount'] ?? '';
+		if (!is_string($amount) || !preg_match('/\A[0-9]{1,10}(?:\.[0-9]{1,2})?\z/', $amount) || (float) $amount <= 0) {
+			return $this->action_error(400, 'Amount must be greater than zero, with up to two decimal places (maximum 9999999999.99).');
 		}
-			$save = $this->db->query("INSERT INTO payments set ".$data);
-		if($save)
+		$remarks = $_POST['remarks'] ?? '';
+		if (!is_string($remarks) || !preg_match('//u', $remarks) || strlen($remarks) > 65535) return $this->action_error(400, 'Remarks must be valid text within the allowed length.');
+		$remarks = trim($remarks);
+		try {
+			// Allow only payment fields; membership must exist at the time of insertion.
+			$save = $this->db->prepare('INSERT INTO payments (registration_id, amount, remarks, type) SELECT id, ?, ?, 2 FROM registration_info WHERE id = ?');
+			if (!$save) return $this->action_error(500, 'Unable to save payment. Please try again.');
+			$save->bind_param('ssi', $amount, $remarks, $id);
+			$executed = $save->execute();
+			$changed = $save->affected_rows;
+			$save->close();
+			if (!$executed) return $this->action_error(500, 'Unable to save payment. Please try again.');
+			if ($changed !== 1) return $this->action_error(404, 'Membership no longer exists. Refresh the page.');
 			return 1;
+		} catch (mysqli_sql_exception $exception) {
+			error_log('Unable to save payment (database code ' . (int) $exception->getCode() . ').');
+			return $this->action_error(500, 'Unable to save payment. Please try again.');
+		}
 	}
 	function renew_membership(){
 		extract($_POST);
