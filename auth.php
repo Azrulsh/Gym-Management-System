@@ -21,7 +21,22 @@ function require_login($api = false)
         if (!in_array(current_role(), [1, 2], true)) {
             deny_access($api);
         }
-        return;
+        try {
+            $account = auth_session_account((int) $_SESSION['login_id']);
+        } catch (mysqli_sql_exception | RuntimeException $exception) {
+            error_log('Unable to verify login session.');
+            http_response_code(503);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['error' => 'Unable to verify your session. Please try again.']);
+            exit;
+        }
+        if ($account && in_array((int) $account['type'], [1, 2], true)) {
+            $_SESSION['login_type'] = (int) $account['type'];
+            $_SESSION['login_name'] = $account['name'];
+            $_SESSION['login_username'] = $account['username'];
+            return;
+        }
+        clear_login_session();
     }
 
     $ajax = strcasecmp($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '', 'XMLHttpRequest') === 0;
@@ -34,6 +49,37 @@ function require_login($api = false)
 
     header('Location: login.php');
     exit;
+}
+
+// A request may supply its existing database connection; otherwise use the configured DB.
+function auth_session_account($id)
+{
+    $conn = $GLOBALS['auth_connection'] ?? null;
+    $owned = $conn === null;
+    try {
+        if ($owned) include __DIR__ . '/db_connect.php';
+        $statement = $conn->prepare('SELECT id, name, username, type FROM users WHERE id = ?');
+        if (!$statement) throw new RuntimeException('Session lookup unavailable.');
+        try {
+            $statement->bind_param('i', $id);
+            if (!$statement->execute()) throw new RuntimeException('Session lookup unavailable.');
+            return $statement->get_result()->fetch_assoc();
+        } finally { $statement->close(); }
+    } finally { if ($owned && $conn) $conn->close(); }
+}
+
+function clear_login_session()
+{
+    $_SESSION = [];
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        if (ini_get('session.use_cookies') && !headers_sent()) {
+            $params = session_get_cookie_params();
+            setcookie(session_name(), '', ['expires' => time() - 3600, 'path' => $params['path'],
+                'domain' => $params['domain'], 'secure' => $params['secure'],
+                'httponly' => $params['httponly'], 'samesite' => $params['samesite'] ?? 'Lax']);
+        }
+        session_destroy();
+    }
 }
 
 function current_role()
@@ -132,11 +178,12 @@ function require_action_access($action)
         'delete_package' => 'Use POST to delete a package.',
         'delete_trainer' => 'Use POST to delete a trainer.',
         'delete_member' => 'Use POST to delete a member.',
+        'delete_user' => 'Use POST to delete a user.',
     ];
     if (isset($postActions[$action])) {
         require_post_request($postActions[$action]);
     }
-    if (in_array($action, ['save_account', 'end_membership', 'save_member', 'save_user', 'save_plan', 'save_package', 'save_trainer', 'save_payment', 'save_membership', 'renew_membership', 'delete_plan', 'delete_package', 'delete_trainer', 'delete_member'], true)) {
+    if (in_array($action, ['save_account', 'end_membership', 'save_member', 'save_user', 'save_plan', 'save_package', 'save_trainer', 'save_payment', 'save_membership', 'renew_membership', 'delete_plan', 'delete_package', 'delete_trainer', 'delete_member', 'delete_user'], true)) {
         require_csrf_token();
     }
 }

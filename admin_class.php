@@ -180,7 +180,19 @@ Class Action {
 			return $this->action_error(400, 'Choose Admin or Staff as the user type.');
 		}
 		$type = (int) $type;
+		$transaction = false;
 		try {
+			if (!$this->db->begin_transaction()) throw new RuntimeException('Unable to start user save.');
+			$transaction = true;
+			$accounts = $this->db->query('SELECT id, type FROM users ORDER BY id FOR UPDATE')->fetch_all(MYSQLI_ASSOC);
+			$adminCount = 0; $wasAdmin = false; $actorIsAdmin = false;
+			foreach ($accounts as $account) {
+				if ((int)$account['type'] === 1) $adminCount++;
+				if ((int)$account['id'] === $id && (int)$account['type'] === 1) $wasAdmin = true;
+				if ((int)$account['id'] === (int)$_SESSION['login_id'] && (int)$account['type'] === 1) $actorIsAdmin = true;
+			}
+			if (!$actorIsAdmin) return $this->action_error(403, 'Your account no longer has Admin access.');
+			if ($wasAdmin && $type !== 1 && $adminCount <= 1) return $this->action_error(409, 'Cannot change the last Admin to Staff. Create or appoint another Admin first.');
 			if ($id && !$this->user_record($id)) {
 				return $this->action_error(404, 'User no longer exists. Refresh the page.');
 			}
@@ -213,6 +225,8 @@ Class Action {
 			if ($id && $changed === 0 && !$this->user_record($id)) {
 				return $this->action_error(404, 'User no longer exists. Refresh the page.');
 			}
+			if (!$this->db->commit()) throw new RuntimeException('Unable to commit user save.');
+			$transaction = false;
 			if ($id === (int) $_SESSION['login_id']) {
 				$_SESSION['login_name'] = $name;
 				$_SESSION['login_username'] = $username;
@@ -228,7 +242,7 @@ Class Action {
 		} catch (ValueError | RuntimeException $exception) {
 			error_log('User password hashing failed.');
 			return $this->action_error(500, 'Unable to save user. Please try again.');
-		}
+		} finally { if ($transaction) $this->db->rollback(); }
 	}
 	private function user_record($id){
 		$statement = $this->db->prepare('SELECT id FROM users WHERE id = ?');
@@ -286,10 +300,48 @@ Class Action {
 		}
 	}
 	function delete_user(){
-		extract($_POST);
-		$delete = $this->db->query("DELETE FROM users where id = ".$id);
-		if($delete)
+		require_action_access('delete_user');
+		$id = $_POST['id'] ?? null;
+		$id = is_string($id) || is_int($id) ? filter_var($id, FILTER_VALIDATE_INT, ['options'=>['min_range'=>1,'max_range'=>2147483647]]) : false;
+		if ($id === false) return $this->action_error(400, 'Invalid user ID.');
+		$transaction = false;
+		try {
+			if (!$this->db->begin_transaction()) throw new RuntimeException('Unable to start user deletion.');
+			$transaction = true;
+			// All role changes/deletions lock users in the same order to preserve the final Admin.
+			$users = $this->db->query('SELECT id, type FROM users ORDER BY id FOR UPDATE')->fetch_all(MYSQLI_ASSOC);
+			$target = null; $admins = 0; $actorIsAdmin = false;
+			foreach ($users as $user) {
+				if ((int)$user['type'] === 1) $admins++;
+				if ((int)$user['id'] === $id) $target = $user;
+				if ((int)$user['id'] === (int)$_SESSION['login_id'] && (int)$user['type'] === 1) $actorIsAdmin = true;
+			}
+			if (!$actorIsAdmin) return $this->action_error(403, 'Your account no longer has Admin access.');
+			if (!$target) return $this->action_error(404, 'User no longer exists. Refresh the page.');
+			if ((int)$target['type'] === 1 && $admins <= 1) return $this->action_error(409, 'Cannot delete the last Admin. Create or appoint another Admin first.');
+			$self = $id === (int)$_SESSION['login_id'];
+			if ($self) {
+				$password = $_POST['password'] ?? null;
+				$statement = $this->db->prepare('SELECT password FROM users WHERE id = ?');
+				$statement->bind_param('i', $id); $statement->execute();
+				$hash = $statement->get_result()->fetch_assoc()['password']; $statement->close();
+				if (!is_string($password) || strlen($password) > 4096 || !gym_password_verify($password, $hash)) return $this->action_error(400, 'Enter your correct current password to delete your account.');
+			}
+			$statement = $this->db->prepare('DELETE FROM users WHERE id = ?');
+			$statement->bind_param('i', $id); $statement->execute();
+			$deleted = $statement->affected_rows; $statement->close();
+			if ($deleted !== 1 || !$this->db->commit()) throw new RuntimeException('User deletion failed.');
+			$transaction = false;
+			if ($self) {
+				clear_login_session();
+				header('Content-Type: application/json; charset=utf-8');
+				return json_encode(['deleted'=>true, 'self_deleted'=>true]);
+			}
 			return 1;
+		} catch (mysqli_sql_exception | RuntimeException $exception) {
+			error_log('Unable to delete user.');
+			return $this->action_error(500, 'Unable to delete user. Please try again.');
+		} finally { if ($transaction) $this->db->rollback(); }
 	}
 	function signup(){
 		extract($_POST);

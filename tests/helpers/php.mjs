@@ -16,6 +16,21 @@ export function run(session, code, { expectedStderr } = {}) {
     );
     session_start();
     $_SESSION = json_decode(${literal(JSON.stringify(session))}, true);
+    // Isolate existing unit fixtures from the application DB while exercising the real session guard.
+    // Integration tests replace auth_connection with their disposable database connection.
+    $GLOBALS['auth_connection'] = new class {
+      public function prepare($sql) { return new class {
+        public function bind_param($types, &...$values) {}
+        public function execute() { return true; }
+        public function close() {}
+        public function get_result() { return new class {
+          public function fetch_assoc() { return isset($_SESSION['login_id']) ? [
+            'id'=>$_SESSION['login_id'], 'type'=>$_SESSION['login_type'] ?? 0,
+            'name'=>$_SESSION['login_name'] ?? '', 'username'=>$_SESSION['login_username'] ?? ''
+          ] : null; }
+        }; }
+      }; }
+    };
     require 'auth.php';
     register_shutdown_function(function() { echo "\\n__STATUS__" . (http_response_code() ?: 200); });
     ${code}

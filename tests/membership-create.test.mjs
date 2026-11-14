@@ -118,6 +118,7 @@ test('parallel New Membership requests admit exactly one creation', () => {
       . 'require "tests/helpers/membership-db.php"; require "admin_class.php"; '
       . '$_SESSION = ' . var_export($_SESSION, true) . '; '
       . '$db = throttle_test_connection(' . var_export($schema, true) . '); '
+      . '$GLOBALS["auth_connection"] = $db; '
       . 'echo json_encode(new_membership_for_test($db, ' . var_export($post, true) . ')); $db->close();';
     $db->begin_transaction();
     $db->query('SELECT id FROM members WHERE id = 9 FOR UPDATE');

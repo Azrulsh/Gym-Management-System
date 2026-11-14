@@ -56,7 +56,7 @@ require_admin();
 								  <div class="dropdown-menu">
 								    <a class="dropdown-item edit_user" href="javascript:void(0)" data-id = '<?php echo $row['id'] ?>'>Edit</a>
 								    <div class="dropdown-divider"></div>
-								    <a class="dropdown-item delete_user" href="javascript:void(0)" data-id = '<?php echo $row['id'] ?>'>Delete</a>
+								    <a class="dropdown-item delete_user" href="javascript:void(0)" data-id="<?php echo (int)$row['id']; ?>" data-self="<?php echo (int)$row['id'] === (int)$_SESSION['login_id'] ? '1' : '0'; ?>" data-csrf-token="<?php echo csrf_token(); ?>">Delete</a>
 								  </div>
 								</div>
 								</center>
@@ -78,24 +78,4 @@ $('#new_user').click(function(){
 $('.edit_user').click(function(){
 	uni_modal('Edit User','manage_user.php?id='+$(this).attr('data-id'))
 })
-$('.delete_user').click(function(){
-		_conf("Are you sure to delete this user?","delete_user",[$(this).attr('data-id')])
-	})
-	function delete_user($id){
-		start_load()
-		$.ajax({
-			url:'ajax.php?action=delete_user',
-			method:'POST',
-			data:{id:$id},
-			success:function(resp){
-				if(resp==1){
-					alert_toast("Data successfully deleted",'success')
-					setTimeout(function(){
-						location.reload()
-					},1500)
-
-				}
-			}
-		})
-	}
 </script>

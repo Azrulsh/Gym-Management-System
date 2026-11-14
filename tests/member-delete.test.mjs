@@ -119,6 +119,7 @@ for (const action of ['save_membership', 'save_schedule', 'edit_schedule']) {
           . 'require "tests/helpers/membership-db.php"; require "admin_class.php"; '
           . '$_SESSION=' . var_export($_SESSION,true) . '; '
           . '$db=throttle_test_connection(' . var_export($schema,true) . '); '
+          . '$GLOBALS["auth_connection"]=$db; '
           . 'echo json_encode(new_membership_for_test($db,' . var_export($post,true) . ',' . var_export($method,true) . ')); $db->close();';
         $pipes=[];
         $process=proc_open([PHP_BINARY,'-r',$source],[['pipe','r'],['pipe','w'],['pipe','w']],$pipes);

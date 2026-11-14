@@ -20,6 +20,7 @@ const database = `
     public function __construct($rows) { $this->rows = $rows; $this->num_rows = count($rows); }
     public function fetch_assoc() { return array_shift($this->rows); }
     public function fetch_array() { return $this->fetch_assoc(); }
+    public function fetch_all($mode) { return $this->rows; }
   }
   class UserStatement {
     private $db;
@@ -58,7 +59,10 @@ const database = `
       $insert->execute([3, 'Staff', 'staff', md5('staff'), 2]);
     }
     public function prepare($sql) { return new UserStatement($this, $sql); }
-    public function query($sql) { return new UserResult($this->pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC)); }
+    public function query($sql) { return new UserResult($this->pdo->query(str_replace(' FOR UPDATE', '', $sql))->fetchAll(PDO::FETCH_ASSOC)); }
+    public function begin_transaction() { return $this->pdo->beginTransaction(); }
+    public function commit() { return $this->pdo->commit(); }
+    public function rollback() { return $this->pdo->rollBack(); }
     public function snapshot() { return $this->pdo->query('SELECT * FROM users ORDER BY id')->fetchAll(PDO::FETCH_ASSOC); }
     public function close() {}
   }
@@ -170,7 +174,7 @@ test('a blank password in user management also preserves an existing Argon2id ha
 });
 
 test('editing the logged-in account refreshes its session profile and role', () => {
-  const data = save({ ...profile, id: '2', username: 'renamed_admin', password: '', type: '2' });
+  const data = save({ ...profile, id: '2', username: 'renamed_admin', password: '', type: '2' }, "$db->pdo->exec('UPDATE users SET type=1 WHERE id=3');");
   assert.equal(data.result, 1);
   assert.equal(data.session.login_name, "Test O'Neil");
   assert.equal(data.session.login_username, 'renamed_admin');
