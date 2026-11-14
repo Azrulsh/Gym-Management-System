@@ -145,7 +145,7 @@ for (const password of ['', 'new-account-password']) {
       $seed->execute([gym_password_hash('admin')]);
       $before = $db->snapshot();
       $_POST = ['id' => '2', 'name' => 'Admin Updated', 'username' => 'admin',
-        'password' => ${literal(password)}, 'csrf_token' => 'users-test-token'];
+        'password' => ${literal(password)}, 'current_password'=>'admin', 'csrf_token' => 'users-test-token'];
       $saved = $action->save_account();
       $after = $db->snapshot();
       $_POST = ['username' => 'admin', 'password' => ${literal(password || 'admin')}];

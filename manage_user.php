@@ -31,6 +31,7 @@ if(isset($_GET['id'])){
         exit('User not found.');
     }
 }
+ $confirmOwnPassword = $ownAccount || (isset($meta['id']) && (int)$meta['id'] === (int)$_SESSION['login_id']);
 ?>
 <div class="container-fluid">
 	<form action="ajax.php?action=<?php echo $ownAccount ? 'save_account' : 'save_user'; ?>" method="post" id="manage-user">
@@ -46,12 +47,19 @@ if(isset($_GET['id'])){
 			<input type="text" name="username" id="username" class="form-control" maxlength="200" value="<?php echo htmlspecialchars($meta['username'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>" required autocomplete="off">
 		</div>
 		<div class="form-group">
-			<label for="password">Password</label>
+			<label for="password"><?php echo $ownAccount ? 'New Password' : 'Password'; ?></label>
 			<input type="password" name="password" id="password" class="form-control" value="" maxlength="4096" autocomplete="new-password" <?php echo !isset($meta['id']) ? 'required' : ''; ?>>
 			<?php if(isset($meta['id'])): ?>
 			<small><i>Leave this blank if you dont want to change the password.</i></small>
 		<?php endif; ?>
 		</div>
+		<?php if ($confirmOwnPassword): ?>
+		<div class="form-group">
+			<label for="current_password">Current Password</label>
+			<input type="password" name="current_password" id="current_password" class="form-control" maxlength="4096" autocomplete="current-password" aria-describedby="current-password-help">
+			<small id="current-password-help" class="form-text text-muted">Required only when setting a new password. Leave both password fields blank to update your profile only.</small>
+		</div>
+		<?php endif; ?>
 		<?php if (!$ownAccount): ?>
 		<div class="form-group">
 			<label for="type">User Type</label>

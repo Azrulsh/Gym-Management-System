@@ -195,6 +195,10 @@ Class Action {
 			if ($id && !$this->user_record($id)) {
 				return $this->action_error(404, 'User no longer exists. Refresh the page.');
 			}
+			if ($id === (int)$_SESSION['login_id'] && $password !== '') {
+				$verification = $this->verify_current_password($id);
+				if ($verification !== null) return $verification;
+			}
 			$check = $this->db->prepare('SELECT id FROM users WHERE username = ? AND id <> ? LIMIT 1');
 			$check->bind_param('si', $username, $id);
 			$check->execute();
@@ -251,6 +255,24 @@ Class Action {
 		$statement->close();
 		return $record;
 	}
+	private function verify_current_password($id){
+		$currentPassword = $_POST['current_password'] ?? null;
+		if (!is_string($currentPassword) || $currentPassword === '' || strlen($currentPassword) > 4096) {
+			return $this->action_error(400, 'Enter your current password to change your password.');
+		}
+		$verify = $this->db->prepare('SELECT password, auth_version FROM users WHERE id = ?');
+		if (!$verify) throw new RuntimeException('Unable to verify current password.');
+		try {
+			$verify->bind_param('i', $id);
+			if (!$verify->execute()) throw new RuntimeException('Unable to verify current password.');
+			$account = $verify->get_result()->fetch_assoc();
+		} finally { $verify->close(); }
+		if (!$account || (int)$account['auth_version'] !== (int)$_SESSION['login_auth_version']) {
+			return $this->action_error(409, 'Your account changed. Sign in again before changing your password.');
+		}
+		if (!gym_password_verify($currentPassword, $account['password'])) return $this->action_error(400, 'Current password is incorrect.');
+		return null;
+	}
 	function save_account(){
 		require_action_access('save_account');
 		$name = $_POST['name'] ?? '';
@@ -267,6 +289,10 @@ Class Action {
 		try {
 			// The target comes from the session; role is never included in this update.
 			$id = (int) $_SESSION['login_id'];
+			if ($password !== '') {
+				$verification = $this->verify_current_password($id);
+				if ($verification !== null) return $verification;
+			}
 			$check = $this->db->prepare('SELECT id FROM users WHERE username = ? AND id != ?');
 			if (!$check) return 3;
 			$check->bind_param('si', $username, $id);

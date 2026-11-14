@@ -50,7 +50,7 @@ test('Admin reset rejects both old staff sessions but permits fresh login with t
 test('Manage Account password change rotates current session and rejects other sessions',()=>{
   const data=isolated(`throttle_test_login($db,'staff','staff');$_SESSION['csrf_token']='version-test';
     $old=$_SESSION;$beforeId=session_id();
-    $result=new_membership_for_test($db,['id'=>'3','name'=>'Staff','username'=>'staff','password'=>'new-own','csrf_token'=>'version-test'],'save_account');
+    $result=new_membership_for_test($db,['id'=>'3','name'=>'Staff','username'=>'staff','password'=>'new-own','current_password'=>'staff','csrf_token'=>'version-test'],'save_account');
     $current=$_SESSION;$rotated=session_id()!==$beforeId;
     $oldGuard=session_guard_worker($schema,$old);$currentGuard=session_guard_worker($schema,$current);
     echo json_encode(compact('result','oldGuard','currentGuard','current','rotated'));`);
@@ -93,7 +93,7 @@ test('a concurrent reset cannot let Manage Account adopt the new version with a 
         return $this->db->prepare($sql);
       }
     };
-    $result=new_membership_for_test($proxy,['id'=>'3','name'=>'Staff','username'=>'staff','password'=>'stale-change','csrf_token'=>'version-test'],'save_account');
+    $result=new_membership_for_test($proxy,['id'=>'3','name'=>'Staff','username'=>'staff','password'=>'stale-change','current_password'=>'staff','csrf_token'=>'version-test'],'save_account');
     $guard=session_guard_worker($schema,$_SESSION);
     $hash=$db->query('SELECT password FROM users WHERE id=3')->fetch_assoc()['password'];
     $correct=gym_password_verify('admin-reset',$hash);echo json_encode(compact('result','guard','correct'));`);

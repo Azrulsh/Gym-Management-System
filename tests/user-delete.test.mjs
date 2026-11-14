@@ -136,7 +136,7 @@ test(`simultaneous self deletion and ${competingAction} preserve one Admin`, () 
     foreach ([2=>'admin',3=>'staff'] as $id=>$password) {
       $method=$id===3 ? '${competingAction}' : 'delete_user';
       $post=['id'=>(string)$id,'csrf_token'=>'delete-test','password'=>$password];
-      if($method==='save_user') $post+=['name'=>'Staff','username'=>'staff','type'=>'2'];
+      if($method==='save_user') $post+=['name'=>'Staff','username'=>'staff','type'=>'2','current_password'=>$password];
       $source='session_set_save_handler(function(){return true;},function(){return true;},function(){return "";},function(){return true;},function(){return true;},function(){return 0;}); session_start(); '
         . 'require "tests/helpers/membership-db.php"; require "admin_class.php"; '
         . '$db=throttle_test_connection('.var_export($schema,true).'); $GLOBALS["auth_connection"]=$db; '

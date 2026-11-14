@@ -5,6 +5,15 @@ import vm from 'node:vm';
 
 const source = readFileSync(new URL('../assets/js/users.js', import.meta.url), 'utf8');
 
+test('incorrect current password is shown as a validation error and permits retry', () => {
+  const state = ui('save_account'); state.submit();
+  state.requests[0].error({status:400,responseJSON:{error:'Current password is incorrect.'}});
+  state.requests[0].complete();
+  assert.equal(state.text,'Current password is incorrect.');
+  assert.equal(state.disabled,false);assert.equal(state.stopped,1);
+  state.submit();assert.equal(state.requests.length,2);
+});
+
 function ui(action = 'save_user', valid = true) {
   const state = { requests: [], messages: [], timers: [], disabled: false, stopped: 0, text: '' };
   const document = {};

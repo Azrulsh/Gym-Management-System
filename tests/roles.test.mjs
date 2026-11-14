@@ -112,6 +112,9 @@ const recordingDatabase = `
     public function bind_param($types, &...$values) { $this->values = $values; }
     public function execute() { return true; }
     public function get_result() {
+      if (strpos($this->sql, 'SELECT password, auth_version') === 0) {
+        return new class { public function fetch_assoc() { return ['password'=>gym_password_hash('test'), 'auth_version'=>1]; } };
+      }
       if (strpos($this->sql, 'SELECT id, name, username, type') === 0) {
         return new class($this->db->role) {
           private $role;
@@ -170,7 +173,7 @@ test('own-account update binds profile values, targets the session ID, and never
   for (const password of ['', 'new test password']) {
     const name = "O'Neil <test>";
     const result = run(staff, `${recordingDatabase}
-      $_POST = json_decode(${literal(JSON.stringify({ id: '9999', name, username: 'test_staff', password, csrf_token: 'test-csrf-token' }))}, true);
+      $_POST = json_decode(${literal(JSON.stringify({ id: '9999', name, username: 'test_staff', password, current_password: 'test', csrf_token: 'test-csrf-token' }))}, true);
       $result = $action->save_account();
       unset($action);
       echo json_encode(['result' => $result, 'statements' => $db->statements, 'session' => $_SESSION]);
