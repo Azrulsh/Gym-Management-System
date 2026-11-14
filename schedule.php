@@ -126,7 +126,10 @@ a.fc-timegrid-event.fc-v-event.fc-event.fc-event-start.fc-event-end.fc-event-pas
 		 							obj['data_id']=resp[k].id
 		 							obj['daysOfWeek']=resp[k].dow
 		 							obj['startRecur']=resp[k].date_from
-		 							obj['endRecur']=resp[k].date_to
+								// Stored end date is inclusive; FullCalendar's recurrence end is exclusive.
+								var endRecur = new Date(resp[k].date_to + 'T00:00:00Z');
+								endRecur.setUTCDate(endRecur.getUTCDate() + 1);
+								obj['endRecur']=endRecur.toISOString().split('T')[0];
 		 							obj['startTime']=resp[k].time_from
 		 							obj['endTime']=resp[k].time_to
 		 							evt.push(obj)
