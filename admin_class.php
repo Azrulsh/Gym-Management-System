@@ -923,6 +923,8 @@ Class Action {
 	}
 	function save_payment(){
 		require_action_access('save_payment');
+		$requestKey = $_POST['request_key'] ?? null;
+		if (!is_string($requestKey) || !preg_match('/\A[a-f0-9]{64}\z/', $requestKey)) return $this->action_error(400, 'Payment form has expired. Reopen payments and try again.');
 		$id = $_POST['registration_id'] ?? null;
 		if (!is_scalar($id) || is_bool($id)) return $this->action_error(400, 'Invalid membership ID.');
 		$id = filter_var($id, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 2147483647]]);
@@ -946,6 +948,8 @@ Class Action {
 			// Serialize payments for this membership before checking its remaining Plan fee.
 			$locked = $this->membership_lookup('SELECT id FROM registration_info WHERE id = ? FOR UPDATE', $id);
 			if (!$locked) return $this->action_error(404, 'Membership no longer exists. Refresh the page.');
+			$existing = $this->payment_request_record($requestKey);
+			if ($existing) return $this->payment_replay_result($existing, $id, $amount, $planAmount, $remarks);
 			$records = membership_read_records($this->db, null, $id);
 			if (!$records) return $this->action_error(404, 'Membership no longer exists. Refresh the page.');
 			$membershipState = membership_read_state($records[0]);
@@ -953,9 +957,9 @@ Class Action {
 			$remaining = payment_plan_balance($this->db, $id, $records[0]['pamount']);
 			if ($planCents > $remaining) return $this->action_error(409, 'Plan allocation exceeds the remaining Plan fee. Refresh payments and check the balance.');
 			// Allow only payment fields; membership must exist at the time of insertion.
-			$save = $this->db->prepare('INSERT INTO payments (registration_id, amount, remarks, type, plan_amount) SELECT id, ?, ?, 2, ? FROM registration_info WHERE id = ?');
+			$save = $this->db->prepare('INSERT INTO payments (registration_id, amount, remarks, type, plan_amount, request_key) SELECT id, ?, ?, 2, ?, ? FROM registration_info WHERE id = ?');
 			if (!$save) return $this->action_error(500, 'Unable to save payment. Please try again.');
-			$save->bind_param('sssi', $amount, $remarks, $planAmount, $id);
+			$save->bind_param('ssssi', $amount, $remarks, $planAmount, $requestKey, $id);
 			$executed = $save->execute();
 			$changed = $save->affected_rows;
 			$save->close();
@@ -965,11 +969,35 @@ Class Action {
 			$transaction = false;
 			return 1;
 		} catch (mysqli_sql_exception | RuntimeException $exception) {
+			if ((int)$exception->getCode() === 1062) {
+				// A request key raced on a different membership: check the committed winner.
+				if ($transaction) { $this->db->rollback(); $transaction = false; }
+				try {
+					$existing = $this->payment_request_record($requestKey);
+					if ($existing) return $this->payment_replay_result($existing, $id, $amount, $planAmount, $remarks);
+				} catch (mysqli_sql_exception | RuntimeException $lookupError) {
+					// Fail safely if the result cannot be confirmed; retry retains the same key.
+				}
+			}
 			error_log('Unable to save payment (database code ' . (int) $exception->getCode() . ').');
 			return $this->action_error(500, 'Unable to save payment. Please try again.');
 		} finally {
 			if ($transaction) $this->db->rollback();
 		}
+	}
+	private function payment_request_record($key){
+		$statement = $this->db->prepare('SELECT registration_id, amount, plan_amount, remarks FROM payments WHERE request_key = ?');
+		if (!$statement) throw new RuntimeException('Payment request lookup unavailable.');
+		$statement->bind_param('s', $key);
+		if (!$statement->execute()) throw new RuntimeException('Payment request lookup unavailable.');
+		$row = $statement->get_result()->fetch_assoc();
+		$statement->close();
+		return $row;
+	}
+	private function payment_replay_result($row, $id, $amount, $planAmount, $remarks){
+		if ((int)$row['registration_id'] === $id && payment_cents((string)$row['amount']) === payment_cents($amount)
+			&& payment_cents((string)$row['plan_amount']) === payment_cents($planAmount) && $row['remarks'] === $remarks) return 1;
+		return $this->action_error(409, 'This payment request was already used with different details. Check payment history before starting a new payment.');
 	}
 	function renew_membership(){
 		require_action_access('renew_membership');

@@ -29,6 +29,7 @@ function new_membership_for_test($db, $post, $method = 'save_membership')
     $property->setValue($action, $db);
     $_SERVER['REQUEST_METHOD'] = 'POST';
     $_POST = $post;
+    if ($method === 'save_payment' && !array_key_exists('request_key', $_POST)) $_POST['request_key'] = bin2hex(random_bytes(32));
     http_response_code(200);
     try {
         $result = $action->{$method}();

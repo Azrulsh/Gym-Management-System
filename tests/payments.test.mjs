@@ -3,7 +3,7 @@ import test from 'node:test';
 import { literal, run } from './helpers/php.mjs';
 
 const admin = { login_id: 2, login_type: 1, csrf_token: 'payments-test-token' };
-const profile = { registration_id: '9', amount: '10.25', remarks: ` Member's payment `, csrf_token: admin.csrf_token };
+const profile = { registration_id: '9', amount: '10.25', remarks: ` Member's payment `, csrf_token: admin.csrf_token, request_key: 'a'.repeat(64) };
 const database = `
   class PaymentResult {
     private $statement;
@@ -51,8 +51,8 @@ const database = `
       $this->pdo->exec("CREATE TABLE registration_info (id INTEGER PRIMARY KEY, member_id INTEGER, plan_id INTEGER, package_id INTEGER, trainer_id INTEGER, status INTEGER, start_date TEXT, end_date TEXT, plan_fee NUMERIC DEFAULT 100, package_fee NUMERIC DEFAULT 20, trainer_fee_snapshot NUMERIC DEFAULT 10, price_source TEXT DEFAULT 'captured')");
       $today = date('Y-m-d'); $end = date('Y-m-d', strtotime('+1 year'));
       $this->pdo->exec("INSERT INTO registration_info (id,member_id,plan_id,package_id,trainer_id,status,start_date,end_date) VALUES (9, 9, 1, 1, 0, 1, '$today', '$end'), (10, 10, 1, 1, 0, 1, '$today', '$end')");
-      $this->pdo->exec('CREATE TABLE payments (id INTEGER PRIMARY KEY AUTOINCREMENT, registration_id INTEGER, amount NUMERIC, remarks TEXT, type INTEGER, plan_amount NUMERIC)');
-      $this->pdo->exec("INSERT INTO payments VALUES (1, 10, 500, 'Existing payment', 2, NULL)");
+      $this->pdo->exec('CREATE TABLE payments (id INTEGER PRIMARY KEY AUTOINCREMENT, registration_id INTEGER, amount NUMERIC, remarks TEXT, type INTEGER, plan_amount NUMERIC, request_key TEXT UNIQUE)');
+      $this->pdo->exec("INSERT INTO payments VALUES (1, 10, 500, 'Existing payment', 2, NULL, NULL)");
     }
     public function prepare($sql) {
       if ($this->failRead && str_starts_with($sql, 'SELECT')) return false;
@@ -93,7 +93,7 @@ for (const role of [1, 2]) {
     const data = save(profile, `$_SESSION['login_type'] = ${role};`);
     assert.equal(data.result, 1);
     assert.deepEqual(data.after.slice(0, 1), data.before);
-    assert.deepEqual(data.after[1], { id: 2, registration_id: 9, amount: 10.25, remarks: "Member's payment", type: 2, plan_amount: 0 });
+    assert.deepEqual(data.after[1], { id: 2, registration_id: 9, amount: 10.25, remarks: "Member's payment", type: 2, plan_amount: 0, request_key: profile.request_key });
   });
 }
 
@@ -143,6 +143,12 @@ test('missing membership returns 404 and writes no orphan payment', () => {
   const data = save({ ...profile, registration_id: '999' });
   assert.equal(data.status, 404);
   assert.deepEqual(data.after, data.before);
+});
+
+test('missing request key is rejected without inserting a payment', () => {
+  const {request_key,...post}=profile;
+  const data=save(post);
+  assert.equal(data.status,400);assert.deepEqual(data.after,data.before);
 });
 
 test('write failure returns a safe error without claiming success', () => {
@@ -207,6 +213,7 @@ test('MariaDB decimal migration preserves old integer amounts and saves cents ex
       $property->setValue($action, $db);
       $_SERVER['REQUEST_METHOD'] = 'POST';
       $_POST = ['registration_id' => '9', 'amount' => '10.25', 'remarks' => "Member's payment", 'csrf_token' => 'payments-test-token'];
+      $_POST['request_key'] = str_repeat('a',64);
       $saved = $action->save_payment();
       $amounts = $db->query('SELECT amount FROM payments ORDER BY id')->fetch_all(MYSQLI_NUM);
       $property->setValue($action, new class { public function close() {} });

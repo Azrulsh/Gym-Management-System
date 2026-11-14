@@ -19,7 +19,7 @@ function ui(valid = true) {
     return {
       find(selector) { return selector === '.payment-message' ? message : selector.startsWith('[name=') ? { val: () => '9' } : button; },
       attr: () => 'ajax.php?action=save_payment',
-      serialize: () => 'registration_id=9&amount=10.25&remarks=Test&csrf_token=token',
+      serialize: () => 'registration_id=9&amount=10.25&remarks=Test&csrf_token=token&request_key=' + 'a'.repeat(64),
     };
   }
   $.ajax = options => state.requests.push(options);
@@ -65,10 +65,19 @@ test('network failures and raw SQL errors stop loading without leaking HTML', ()
     if (mode === 'network') state.requests[0].error({ status: 0, responseText: '<b>Fatal error: SQL</b>' });
     else state.requests[0].success('<b>Fatal error: SQL</b>');
     state.requests[0].complete();
-    assert.equal(state.text, 'Unable to save payment. Please try again.');
+    assert.equal(state.text, mode === 'network' ? 'Payment status could not be confirmed. Retry this form with the same details; check history before starting a new payment.' : 'Unable to save payment. Please try again.');
     assert.equal(state.disabled, false);
     assert.deepEqual(state.events, ['start', 'end']);
   }
+});
+
+test('timeout retry retains the original payment request key and payload', () => {
+  const state = ui();state.submit();const first=state.requests[0];
+  assert.equal(first.timeout,15000);assert.match(first.data,/request_key=[a-f0-9]{64}/);
+  first.error({status:0},'timeout');first.complete();state.submit();
+  assert.equal(state.requests.length,2);assert.equal(state.requests[1].data,first.data);
+  state.requests[1].success('1');state.requests[1].complete();
+  assert.deepEqual(state.events,['start','end','start','end','toast','modal']);
 });
 
 test('invalid browser input cannot submit', () => {

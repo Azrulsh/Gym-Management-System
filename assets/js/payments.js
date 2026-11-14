@@ -20,6 +20,7 @@
         $.ajax({
             url: $(form).attr('action'),
             method: 'POST',
+            timeout: 15000,
             data: $(form).serialize(),
             success: function (response) {
                 if (String(response).trim() !== '1') {
@@ -30,7 +31,7 @@
             },
             error: function (xhr) {
                 const error = xhr.responseJSON && xhr.responseJSON.error;
-                showError(typeof error === 'string' ? error : 'Unable to save payment. Please try again.');
+                showError(typeof error === 'string' ? error : 'Payment status could not be confirmed. Retry this form with the same details; check history before starting a new payment.');
             },
             complete: function () {
                 if (!saved) form.dataset.submitting = 'false';

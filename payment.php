@@ -80,6 +80,7 @@ try {
                 <div class="payment-message" role="alert" aria-live="polite"></div>
                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
 				<input type="hidden" name="registration_id" value="<?php echo $id ?>">
+				<input type="hidden" name="request_key" value="<?php echo bin2hex(random_bytes(32)); ?>">
 				<div class="form-group">
 					<p>Plan Fee Remaining: <b class="float-right"><?php echo $planRemaining === 0 ? 'Paid Already' : number_format($planRemaining / 100, 2); ?></b></p>
 					<p>Package Amount: </i> <b class="float-right"><?php echo number_format($ppamount,2) ?></b></p>

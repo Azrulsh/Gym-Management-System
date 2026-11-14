@@ -8,7 +8,7 @@ Fresh installation or development reset:
 4. Log out of any existing browser session, then log in again:
    Admin: `admin` / `admin`; Staff: `staff` / `staff` (local development only).
 
-`gym.sql` replaces the old `gym_db.sql` dump and integrates migrations 001 through 008.
+`gym.sql` replaces the old `gym_db.sql` dump and integrates migrations 001 through 009.
 No separate migration imports are needed after this reset. Passwords use Argon2id.
 There are four profiles: Ali has an Active membership, Siti has an Expired
 membership that can be renewed, Kumar has a Closed membership, and Mei has no
@@ -91,6 +91,18 @@ as `Unallocated (legacy)`. Never infer their purpose or collect the displayed Pl
 balance without checking original receipts. This migration preserves their totals,
 dates and remarks. Re-importing does not change existing allocations. The monthly
 Package/Trainer reference is not an arrears ledger or a record of paid months.
+
+Import `009_payment_request_keys.sql` before using replay-safe payment forms.
+Each newly opened payment form receives a random request key. Retrying the same
+key and payment details returns success for the original record, without inserting
+or allocating Plan fees again. A reused key with changed details returns 409.
+The unique database index also protects concurrent requests; distinct keys permit
+legitimate separate payments with identical amounts. Existing payments retain NULL
+keys and all existing data. Re-importing the migration preserves recorded keys.
+After a connection failure, retry the same form without changing its details.
+Opening another form creates a new key, so check history before starting a new
+payment when the previous result is uncertain. Existing duplicate records are not
+automatically removed or guessed to be retries.
 
 The login handler requires this table and returns a generic 503 if storage fails;
 it never falls back to unlimited login attempts. No schema changes run during login.
