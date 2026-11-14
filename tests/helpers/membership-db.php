@@ -20,7 +20,7 @@ function with_membership_database($test)
     });
 }
 
-function new_membership_for_test($db, $post)
+function new_membership_for_test($db, $post, $method = 'save_membership')
 {
     ob_start();
     $action = (new ReflectionClass('Action'))->newInstanceWithoutConstructor();
@@ -31,7 +31,7 @@ function new_membership_for_test($db, $post)
     $_POST = $post;
     http_response_code(200);
     try {
-        $result = $action->save_membership();
+        $result = $action->{$method}();
         return ['status' => http_response_code() ?: 200, 'result' => $result];
     } finally {
         $property->setValue($action, new class { public function close() {} });

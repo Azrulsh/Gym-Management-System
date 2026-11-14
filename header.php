@@ -55,6 +55,7 @@
   <script type="text/javascript" src="assets/js/jquery-te-1.4.0.min.js" charset="utf-8"></script>
   <script src="assets/js/membership.js"></script>
   <script src="assets/js/membership-create.js?v=<?php echo filemtime(__DIR__ . '/assets/js/membership-create.js'); ?>"></script>
+  <script src="assets/js/membership-renew.js?v=<?php echo filemtime(__DIR__ . '/assets/js/membership-renew.js'); ?>"></script>
   <script src="assets/js/members.js"></script>
   <script src="assets/js/users.js"></script>
   <script src="assets/js/payments.js?v=<?php echo filemtime(__DIR__ . '/assets/js/payments.js'); ?>"></script>

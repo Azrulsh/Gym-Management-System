@@ -127,11 +127,12 @@ function require_action_access($action)
         'save_trainer' => 'Use POST to save a trainer.',
         'save_payment' => 'Use POST to save a payment.',
         'save_membership' => 'Use POST to save a membership.',
+        'renew_membership' => 'Use POST to renew a membership.',
     ];
     if (isset($postActions[$action])) {
         require_post_request($postActions[$action]);
     }
-    if (in_array($action, ['save_account', 'end_membership', 'save_member', 'save_user', 'save_plan', 'save_package', 'save_trainer', 'save_payment', 'save_membership'], true)) {
+    if (in_array($action, ['save_account', 'end_membership', 'save_member', 'save_user', 'save_plan', 'save_package', 'save_trainer', 'save_payment', 'save_membership', 'renew_membership'], true)) {
         require_csrf_token();
     }
 }

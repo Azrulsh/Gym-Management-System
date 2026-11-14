@@ -755,28 +755,80 @@ Class Action {
 		}
 	}
 	function renew_membership(){
-		extract($_POST);
-		$prev = $this->db->query("SELECT * FROM registration_info where id = $rid")->fetch_array();
-		$data = '';
-		foreach($prev as $k=> $v){
-			if(!empty($v) && !is_numeric($k) && !in_array($k,array('id','start_date','end_date','date_created'))){
-				if(empty($data))
-				$data .= " $k='{$v}' ";
-				else
-				$data .= ", $k='{$v}' ";
-				$$k=$v;
+		require_action_access('renew_membership');
+		$rid = $_POST['rid'] ?? null;
+		if (!is_scalar($rid) || is_bool($rid)) return $this->action_error(400, 'Invalid membership ID.');
+		$rid = filter_var($rid, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 2147483647]]);
+		if ($rid === false) return $this->action_error(400, 'Invalid membership ID.');
+		$transaction = false;
+		try {
+			$source = $this->membership_lookup('SELECT member_id FROM registration_info WHERE id = ?', $rid);
+			if (!$source) return $this->action_error(404, 'Membership no longer exists. Refresh the page.');
+			if (!$this->db->begin_transaction()) throw new RuntimeException('Unable to start renewal.');
+			$transaction = true;
+			// Match New Membership lock order: member first, then membership records.
+			$memberId = (int) $source['member_id'];
+			if (!$this->membership_lookup('SELECT id FROM members WHERE id = ? FOR UPDATE', $memberId)) {
+				return $this->action_error(404, 'Member no longer exists. Refresh the page.');
 			}
+			$previous = $this->membership_lookup('SELECT id, member_id, plan_id, package_id, trainer_id, status, end_date FROM registration_info WHERE id = ? FOR UPDATE', $rid);
+			if (!$previous) return $this->action_error(404, 'Membership no longer exists. Refresh the page.');
+			if ((int) $previous['member_id'] !== $memberId || (int) $previous['status'] !== 1) {
+				return $this->action_error(409, 'Membership has already been renewed or ended. Refresh the page.');
+			}
+			$start = new DateTimeImmutable('today');
+			$startDate = $start->format('Y-m-d');
+			$oldEnd = DateTimeImmutable::createFromFormat('!Y-m-d', $previous['end_date']);
+			if (!$oldEnd || $oldEnd->format('Y-m-d') !== $previous['end_date'] || $previous['end_date'] >= $startDate) {
+				return $this->action_error(409, 'Only expired active memberships can be renewed.');
+			}
+			// The member lock already serializes creation/renewal; avoid locking unrelated history rows.
+			$other = $this->db->prepare('SELECT id FROM registration_info WHERE member_id = ? AND status = 1 AND id <> ? LIMIT 1');
+			if (!$other) throw new RuntimeException('Unable to check renewal.');
+			$other->bind_param('ii', $memberId, $rid);
+			if (!$other->execute()) {
+				$other->close();
+				throw new RuntimeException('Unable to check renewal.');
+			}
+			$conflict = $other->get_result()->fetch_assoc();
+			$other->close();
+			if ($conflict) return $this->action_error(409, 'This member has another active membership. Refresh the page.');
+			$planId = (int) $previous['plan_id'];
+			$packageId = (int) $previous['package_id'];
+			$trainerId = (int) $previous['trainer_id'];
+			$plan = $this->membership_lookup('SELECT plan FROM plans WHERE id = ? LOCK IN SHARE MODE', $planId);
+			if (!$plan || !$this->membership_lookup('SELECT id FROM packages WHERE id = ? LOCK IN SHARE MODE', $packageId)) {
+				return $this->action_error(404, 'Plan or package no longer exists. Refresh the page.');
+			}
+			if ($trainerId < 0 || $trainerId > 127) return $this->action_error(400, 'Membership has an invalid trainer ID.');
+			if ($trainerId && !$this->membership_lookup('SELECT id FROM trainers WHERE id = ? LOCK IN SHARE MODE', $trainerId)) {
+				return $this->action_error(404, 'Trainer no longer exists. Refresh the page.');
+			}
+			$months = filter_var($plan['plan'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+			$maxMonths = (9999 - (int) $start->format('Y')) * 12 + 12 - (int) $start->format('n');
+			if ($months === false || $months > $maxMonths) return $this->action_error(400, 'Selected plan has an invalid duration.');
+			$endDate = $start->modify('+' . $months . ' months')->format('Y-m-d');
+			if (strlen($endDate) !== 10) return $this->action_error(400, 'Selected plan has an invalid duration.');
+			$close = $this->db->prepare('UPDATE registration_info SET status = 0 WHERE id = ? AND status = 1');
+			if (!$close) throw new RuntimeException('Unable to end original membership.');
+			$close->bind_param('i', $rid);
+			if (!$close->execute() || $close->affected_rows !== 1) throw new RuntimeException('Unable to end original membership.');
+			$close->close();
+			$save = $this->db->prepare('INSERT INTO registration_info (member_id, plan_id, package_id, trainer_id, start_date, end_date, status) VALUES (?, ?, ?, ?, ?, ?, 1)');
+			if (!$save) throw new RuntimeException('Unable to prepare renewal.');
+			$save->bind_param('iiiiss', $memberId, $planId, $packageId, $trainerId, $startDate, $endDate);
+			$executed = $save->execute();
+			$newId = (int) $this->db->insert_id;
+			$save->close();
+			if (!$executed || $newId < 1 || !$this->db->commit()) throw new RuntimeException('Unable to save renewal.');
+			$transaction = false;
+			return $newId;
+		} catch (mysqli_sql_exception | RuntimeException $exception) {
+			error_log('Unable to renew membership (error code ' . (int) $exception->getCode() . ').');
+			return $this->action_error(500, 'Unable to renew membership. Please try again.');
+		} finally {
+			if ($transaction) $this->db->rollback();
 		}
-				$data .= ", start_date ='".date("Y-m-d")."' ";
-				$plan = $this->db->query("SELECT * FROM plans where id = $plan_id")->fetch_array()['plan'];
-				$data .= ", end_date ='".date("Y-m-d",strtotime(date('Y-m-d').' +'.$plan.' months'))."' ";
-				$save = $this->db->query("INSERT INTO registration_info set $data");
-				if($save){
-					$id = $this->db->insert_id;
-					$this->db->query("UPDATE registration_info set status = 0 where member_id = $member_id and id != $id ");
-					return $id;
-				}
-
 	}
 	function end_membership(){
 		require_action_access('end_membership');

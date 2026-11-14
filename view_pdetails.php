@@ -16,6 +16,7 @@ if(isset($_GET['id'])){
 
 ?>
 <div class="container-fluid">
+	<div class="renewal-message" role="alert" aria-live="polite"></div>
 	<p>Member ID: <b><?php echo $mid_no ?></b></p>
 	<p>Name: <b><?php echo htmlspecialchars(ucwords($name), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?></b></p>
 	<p>Plan: </i> <b><?php echo $plan.' month/s' ?></b></p>
@@ -32,8 +33,8 @@ if(isset($_GET['id'])){
 		<div class="col-md-12">
 			<button class="btn float-right btn-secondary" type="button" data-dismiss="modal">Close</button>
 			<button class="btn float-right btn-primary mr-2" type="button" id="payment">Payment</button>
-			<?php if(strtotime(date('Y-m-d')) > strtotime($end_date)): ?>
-			<button class="btn float-right btn-primary mr-2" type="button" id="renew">Renew</button>
+			<?php if ((int) $status === 1 && strtotime(date('Y-m-d')) > strtotime($end_date)): ?>
+			<button class="btn float-right btn-primary mr-2 renew-membership" type="button" data-registration-id="<?php echo (int) $id; ?>" data-csrf-token="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">Renew</button>
 			<?php endif; ?>
 			<?php if ((int) $status === 1): ?>
 			<button class="btn float-right btn-outline-danger mr-2 end-membership" type="button" data-registration-id="<?php echo (int) $id; ?>" data-csrf-token="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">End Membership</button>
@@ -55,20 +56,5 @@ if(isset($_GET['id'])){
 <script>
 	$('#payment').click(function(){
 		uni_modal('Payments','payment.php?rid=<?php echo $id ?>','large')
-	})
-	$('#renew').click(function(){
-		start_load()
-		$.ajax({
-			url:'ajax.php?action=renew_membership',
-			method:'POST',
-			data:{rid:'<?php echo $id ?>'},
-			success:function(resp){
-				if(resp > 0){
-					alert_toast('Membership Successfully renewed','success')
-					end_load()
-					uni_modal("<i class='fa fa-address-card'></i> Member Plan Details","view_pdetails.php?id="+resp,'')
-				}
-			}
-		})
 	})
 </script>
