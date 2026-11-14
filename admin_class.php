@@ -806,12 +806,34 @@ Class Action {
 		try {
 			if (!$this->db->begin_transaction()) throw new RuntimeException('Unable to start schedule save.');
 			$transaction = true;
-			// Serialize against Delete Member, including when editing a schedule's member.
-			if (!$this->membership_lookup('SELECT id FROM members WHERE id = ? LOCK IN SHARE MODE', $memberId)) {
+			// Serialize all schedule saves for this member and coordinate with Delete Member.
+			if (!$this->membership_lookup('SELECT id FROM members WHERE id = ? FOR UPDATE', $memberId)) {
 				return $this->action_error(404, 'Member no longer exists. Refresh the page.');
 			}
+			if ($id && !$this->membership_lookup('SELECT id FROM schedules WHERE id = ? FOR UPDATE', $id)) return $this->action_error(404, 'Schedule no longer exists. Refresh the page.');
+			$check = $this->db->prepare('SELECT id, dow, date_from, date_to, time_from, time_to FROM schedules WHERE member_id = ? AND id <> ? AND date_from <= ? AND date_to >= ? AND time_from < ? AND time_to > ? ORDER BY id');
+			if (!$check) throw new RuntimeException('Unable to check schedule conflicts.');
+			try {
+				$check->bind_param('iissss', $memberId, $id, $dateTo, $dateFrom, $timeTo, $timeFrom);
+				if (!$check->execute()) throw new RuntimeException('Unable to check schedule conflicts.');
+				$existing = $check->get_result()->fetch_all(MYSQLI_ASSOC);
+			} finally { $check->close(); }
+			foreach ($existing as $other) {
+				$sharedDays = array_intersect(explode(',', $dow), explode(',', $other['dow']));
+				if (!$sharedDays) continue;
+				$overlapStart = max($dateFrom, $other['date_from']);
+				$overlapEnd = min($dateTo, $other['date_to']);
+				$start = new DateTimeImmutable($overlapStart);
+				$end = new DateTimeImmutable($overlapEnd);
+				foreach ($sharedDays as $day) {
+					// A common weekday must actually occur within the intersecting dates.
+					$offset = ((int)$day - (int)$start->format('w') + 7) % 7;
+					if ($start->modify('+' . $offset . ' days') <= $end) {
+						return $this->action_error(409, 'This member already has an overlapping schedule (#' . (int)$other['id'] . ', ' . $other['time_from'] . ' - ' . $other['time_to'] . '). Choose another day or time.');
+					}
+				}
+			}
 			if ($id) {
-				if (!$this->membership_lookup('SELECT id FROM schedules WHERE id = ? FOR UPDATE', $id)) return $this->action_error(404, 'Schedule no longer exists. Refresh the page.');
 				$save = $this->db->prepare('UPDATE schedules SET member_id = ?, date_from = ?, date_to = ?, time_from = ?, time_to = ?, dow = ? WHERE id = ?');
 				if (!$save) throw new RuntimeException('Unable to prepare schedule save.');
 				$save->bind_param('isssssi', $memberId, $dateFrom, $dateTo, $timeFrom, $timeTo, $dow, $id);
