@@ -459,6 +459,10 @@ Class Action {
 		}
 	}
 
+	/*
+	 * Legacy Settings reference only; intentionally disabled.
+	 * Before rebuilding: add a supported schema/UI, prepared statements, validation,
+	 * POST/CSRF checks and safe image uploads. Do not simply uncomment this handler.
 	function save_settings(){
 		extract($_POST);
 		$data = " name = '".str_replace("'","&#x2019;",$name)."' ";
@@ -466,13 +470,10 @@ Class Action {
 		$data .= ", contact = '$contact' ";
 		$data .= ", about_content = '".htmlentities(str_replace("'","&#x2019;",$about))."' ";
 		if($_FILES['img']['tmp_name'] != ''){
-						$fname = strtotime(date('y-m-d H:i')).'_'.$_FILES['img']['name'];
-						$move = move_uploaded_file($_FILES['img']['tmp_name'],'assets/uploads/'. $fname);
-					$data .= ", cover_img = '$fname' ";
-
+			$fname = strtotime(date('y-m-d H:i')).'_'.$_FILES['img']['name'];
+			$move = move_uploaded_file($_FILES['img']['tmp_name'],'assets/uploads/'. $fname);
+			$data .= ", cover_img = '$fname' ";
 		}
-		
-		// echo "INSERT INTO system_settings set ".$data;
 		$chk = $this->db->query("SELECT * FROM system_settings");
 		if($chk->num_rows > 0){
 			$save = $this->db->query("UPDATE system_settings set ".$data);
@@ -480,17 +481,14 @@ Class Action {
 			$save = $this->db->query("INSERT INTO system_settings set ".$data);
 		}
 		if($save){
-		$query = $this->db->query("SELECT * FROM system_settings limit 1")->fetch_array();
-		foreach ($query as $key => $value) {
-			if(!is_numeric($key))
-				$_SESSION['settings'][$key] = $value;
-		}
-
+			$query = $this->db->query("SELECT * FROM system_settings limit 1")->fetch_array();
+			foreach ($query as $key => $value) {
+				if(!is_numeric($key)) $_SESSION['settings'][$key] = $value;
+			}
 			return 1;
-				}
+		}
 	}
-
-	
+	*/
 	function save_plan(){
 		require_action_access('save_plan');
 		$id = $_POST['id'] ?? '';

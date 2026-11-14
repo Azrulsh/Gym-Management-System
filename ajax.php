@@ -65,11 +65,13 @@ if($action == 'update_account'){
 	if($save)
 		echo $save;
 }
+/* Legacy Settings route kept for reference; leave disabled until rebuilt safely.
 if($action == "save_settings"){
 	$save = $crud->save_settings();
 	if($save)
 		echo $save;
 }
+*/
 if($action == "save_plan"){
 	$save = $crud->save_plan();
 	if($save)

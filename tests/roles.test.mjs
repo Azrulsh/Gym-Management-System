@@ -15,9 +15,9 @@ const sharedActions = [
 ];
 const adminActions = [
   'save_user', 'delete_user', 'save_plan', 'delete_plan', 'save_package',
-  'delete_package', 'save_trainer', 'delete_trainer', 'save_settings',
+  'delete_package', 'save_trainer', 'delete_trainer',
 ];
-const unsupportedActions = ['signup', 'login2', 'update_account', 'delete_forum', 'unknown'];
+const unsupportedActions = ['signup', 'login2', 'update_account', 'delete_forum', 'unknown', 'save_settings'];
 
 for (const [label, session, allowed] of [
   ['Admin', admin, [...sharedActions, ...adminActions]],

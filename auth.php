@@ -147,8 +147,9 @@ function can_access_action($action)
         'get_schecdule', 'save_payment', 'save_account',
     ];
     $adminActions = [
+        // 'save_settings' stays disabled; legacy handler/route are reference comments only.
         'save_user', 'delete_user', 'save_plan', 'delete_plan',
-        'save_package', 'delete_package', 'save_trainer', 'delete_trainer', 'save_settings',
+        'save_package', 'delete_package', 'save_trainer', 'delete_trainer',
     ];
     return in_array($action, $sharedActions, true)
         || (is_admin() && in_array($action, $adminActions, true));
