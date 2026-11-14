@@ -1,5 +1,7 @@
 <?php
 require_once __DIR__ . '/auth.php';
+// Legacy Settings cover reference: $_SESSION['system']['cover_img'].
+// Keep disabled until Settings and validated image loading are implemented.
 header('Cache-Control: no-store');
 if (isset($_SESSION['login_id'])) {
     header('Location: index.php?page=home');
@@ -55,7 +57,7 @@ ob_end_flush();
 		background:#59b6ec61;
 		display: flex;
 		align-items: center;
-		background: url(assets/uploads/<?php echo $_SESSION['system']['cover_img'] ?>);
+		/* Fixed background above; no dependency on the disabled Settings cover. */
 	    background-repeat: no-repeat;
 	    background-size: cover;
 	}

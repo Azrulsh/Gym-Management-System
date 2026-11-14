@@ -1,13 +1,15 @@
 <?php
 require_once __DIR__ . '/auth.php';
 require_login();
+// Legacy Settings cover reference: $_SESSION['system']['cover_img'].
+// Keep disabled until Settings and validated image loading are implemented.
 ?>
 <style>
 	.collapse a{
 		text-indent:10px;
 	}
 	nav#sidebar{
-		background: url(assets/uploads/<?php echo $_SESSION['system']['cover_img'] ?>) !important
+		background: #343a40 !important;
 	}
 </style>
 
