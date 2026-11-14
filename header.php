@@ -25,6 +25,7 @@
 
   <!-- Template Main CSS File -->
   <link href="assets/css/style.css" rel="stylesheet">
+  <link href="assets/css/money-input.css?v=<?php echo filemtime(__DIR__ . '/assets/css/money-input.css'); ?>" rel="stylesheet">
   <link type="text/css" rel="stylesheet" href="assets/css/jquery-te-1.4.0.css">
   
   <script src="assets/vendor/jquery/jquery.min.js"></script>
@@ -61,6 +62,7 @@
   <script src="assets/js/user-delete.js?v=<?php echo filemtime(__DIR__ . '/assets/js/user-delete.js'); ?>"></script>
   <script src="assets/js/catalog-delete.js?v=<?php echo filemtime(__DIR__ . '/assets/js/catalog-delete.js'); ?>"></script>
   <script src="assets/js/payments.js?v=<?php echo filemtime(__DIR__ . '/assets/js/payments.js'); ?>"></script>
+  <script src="assets/js/money-input.js?v=<?php echo filemtime(__DIR__ . '/assets/js/money-input.js'); ?>"></script>
   <script src="assets/js/schedules.js?v=<?php echo filemtime(__DIR__ . '/assets/js/schedules.js'); ?>"></script>
 
 

@@ -183,7 +183,7 @@ test('package markup escapes quotes and HTML in visible text and Edit attributes
   assert.match(response.body, /data-description="&lt;img src=x onerror=&quot;alert\(1\)&quot;&gt;"/);
   assert.match(response.body, /name="csrf_token" value="packages-test-token"/);
   assert.match(response.body, /action="ajax.php\?action=save_package" method="post"/);
-  assert.match(response.body, /min="0" step="1" name="amount" max="9999999999\.99" required/);
+  assert.match(response.body, /min="0" step="0.01" name="amount" max="9999999999\.99" required/);
   assert.match(response.body, /packages.js\?v=\d+/);
   assert.match(response.body, /Add Package/);
 });

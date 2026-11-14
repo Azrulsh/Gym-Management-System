@@ -187,7 +187,7 @@ test('trainer page escapes text and Edit attributes and provides a protected Add
   assert.match(response.body, /data-contact="&lt;img src=x onerror=&quot;alert\(1\)&quot;&gt;"/);
   assert.match(response.body, /name="csrf_token" value="trainers-test-token"/);
   assert.match(response.body, /action="ajax.php\?action=save_trainer" method="post"/);
-  assert.match(response.body, /min="0" step="1" name="rate" max="9999999999\.99" required/);
+  assert.match(response.body, /min="0" step="0.01" name="rate" max="9999999999\.99" required/);
   assert.match(response.body, /trainers.js\?v=\d+/);
   assert.match(response.body, /Add Trainer/);
 });

@@ -30,7 +30,12 @@ include 'db_connect.php';
 							</div>
 							<div class="form-group">
 								<label class="control-label" for="package-amount">Amount</label>
-								<input type="number" id="package-amount" class="form-control" min="0" step="1" name="amount" max="9999999999.99" required>
+								<div class="input-group money-input">
+								<input type="number" id="package-amount" class="form-control" min="0" step="0.01" name="amount" max="9999999999.99" required>
+								<div class="input-group-append"><div class="btn-group-vertical">
+								<button class="btn btn-outline-secondary money-arrow" type="button" data-direction="1" aria-label="Increase Package amount by RM1">&#9650;</button>
+								<button class="btn btn-outline-secondary money-arrow" type="button" data-direction="-1" aria-label="Decrease Package amount by RM1">&#9660;</button>
+								</div></div></div>
 							</div>
 							
 					</div>
