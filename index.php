@@ -157,17 +157,25 @@ if (in_array($page, ['plans', 'packages', 'trainer', 'users', 'events'], true)) 
 }
   window.uni_modal = function($title = '' , $url='',$size=""){
     start_load()
+    let modalError = '';
     $.ajax({
         url:$url,
-        error:err=>{
-            end_load()
+        method:'GET',
+        dataType:'html',
+        timeout:15000,
+        error:(err, status)=>{
             if (err.status === 401 || err.status === 403) return;
-            console.log()
-            alert("An error occured")
+            modalError = status === 'timeout'
+                ? 'Loading details took too long. Please try again.'
+                : 'Unable to load details. Please try again.';
         },
         success:function(resp){
-            if(resp){
-                $('#uni_modal .modal-title').html($title)
+            if (typeof resp !== 'string' || !resp.trim()) {
+                modalError = 'No details were returned. Please try again.';
+                return;
+            }
+            try {
+                $('#uni_modal .modal-title').text($title)
                 $('#uni_modal .modal-body').html(resp)
                 if($size != ''){
                     $('#uni_modal .modal-dialog').addClass($size)
@@ -180,8 +188,15 @@ if (in_array($page, ['plans', 'packages', 'trainer', 'users', 'events'], true)) 
                   keyboard:false,
                   focus:true
                 })
-                end_load()
+            } catch (error) {
+                $('#uni_modal .modal-body').empty();
+                $('#uni_modal').modal('hide');
+                modalError = 'Unable to display details. Please try again.';
             }
+        },
+        complete:function(){
+            end_load();
+            if (modalError) window.alert(modalError);
         }
     })
 }
