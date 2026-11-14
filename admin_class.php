@@ -853,14 +853,18 @@ Class Action {
 		}
 	}
 	function get_schecdule(){
-		extract($_POST);
-		$data = array();
-		$qry = $this->db->query("SELECT s.*,concat(m.lastname,',',m.firstname,' ', m.middlename) as name FROM schedules s inner join members m on m.id = s.member_id");
-		while($row=$qry->fetch_assoc()){
-			
-			$data[] = $row;
+		require_action_access('get_schecdule');
+		try {
+			$qry = $this->db->query("SELECT s.*,concat(m.lastname,',',m.firstname,' ', m.middlename) as name FROM schedules s inner join members m on m.id = s.member_id");
+			if (!$qry) throw new RuntimeException('Schedule lookup unavailable.');
+			$data = $qry->fetch_all(MYSQLI_ASSOC);
+			$qry->free();
+			header('Content-Type: application/json; charset=utf-8');
+			return json_encode($data, JSON_THROW_ON_ERROR);
+		} catch (mysqli_sql_exception | RuntimeException | JsonException $exception) {
+			error_log('Unable to load schedules.');
+			return $this->action_error(503, 'Unable to load schedules. Please try again.');
 		}
-			return json_encode($data);
 	}
 	function save_payment(){
 		require_action_access('save_payment');

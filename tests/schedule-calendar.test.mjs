@@ -25,8 +25,8 @@ function calendar(row) {
   let options;
   const before = structuredClone(row);
   const document = { getElementById: () => ({}), addEventListener(event, callback) { callback(); } };
-  function $() { return { click() {}, val() {} }; }
-  $.ajax = request => { request.success(JSON.stringify([row])); request.complete(); };
+  function $() { return { click() {}, val() {}, prop() {}, addClass() {}, removeClass() {}, empty() {} }; }
+  $.ajax = request => { request.success([row]); request.complete(); };
   const FullCalendar = { Calendar: function (element, config) { options = config; this.render = () => {}; } };
   vm.runInNewContext(script, { document, $, FullCalendar, start_load() {}, end_load() {} });
   assert.deepEqual(row, before, 'Calendar conversion must not change stored schedule values');
