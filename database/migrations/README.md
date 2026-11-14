@@ -8,7 +8,7 @@ Fresh installation or development reset:
 4. Log out of any existing browser session, then log in again:
    Admin: `admin` / `admin`; Staff: `staff` / `staff` (local development only).
 
-`gym.sql` replaces the old `gym_db.sql` dump and integrates migrations 001 through 004.
+`gym.sql` replaces the old `gym_db.sql` dump and integrates migrations 001 through 005.
 No separate migration imports are needed after this reset. Passwords use Argon2id.
 There are four profiles: Ali has an Active membership, Siti has an Expired
 membership that can be renewed, Kumar has a Closed membership, and Mei has no
@@ -44,6 +44,15 @@ If duplicates exist, the migration fails without deleting or renaming accounts;
 review those accounts before choosing new usernames. The migration is safe to
 re-import once its index exists. The updated save handlers return a duplicate
 username message when the database rejects a conflicting write.
+
+Import `005_unique_member_numbers.sql` to enforce unique member-facing ID No.
+values (`members.member_id`). Check first with:
+`SELECT member_id, COUNT(*) FROM members GROUP BY member_id HAVING COUNT(*) > 1;`.
+Existing duplicates must be reviewed; the migration never renumbers or deletes
+profiles automatically. Re-importing is safe once the index exists. Internal
+`members.id` values and membership/payment relationships remain unchanged.
+Explicit ID conflicts return "ID No. already exists."; automatically generated
+8-digit numbers retry up to ten candidates, including conflicts during INSERT.
 
 The login handler requires this table and returns a generic 503 if storage fails;
 it never falls back to unlimited login attempts. No schema changes run during login.

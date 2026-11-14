@@ -754,39 +754,34 @@ Class Action {
 			if ($memberNumber === null && $current) {
 				$memberNumber = (int) $current['member_id'];
 			}
-			if ($memberNumber === null) {
-				// Bound retries instead of looping indefinitely when generating a number.
-				for ($attempt = 0; $attempt < 10; $attempt++) {
-					$candidate = random_int(10000000, 99999999);
-					if (!$this->member_number_exists($candidate, $id)) {
-						$memberNumber = $candidate;
-						break;
-					}
+			$automatic = $memberNumber === null;
+			for ($attempt = 0; $attempt < ($automatic ? 10 : 1); $attempt++) {
+				if ($automatic) $memberNumber = random_int(10000000, 99999999);
+				if ($this->member_number_exists($memberNumber, $id)) {
+					if ($automatic) continue;
+					return $this->action_error(409, 'ID No. already exists.');
 				}
-				if ($memberNumber === null) {
-					return $this->action_error(503, 'Unable to generate a member ID number. Please try again.');
+				// Profile saving never creates or modifies a membership registration.
+				if ($id) {
+					$statement = $this->db->prepare('UPDATE members SET member_id = ?, lastname = ?, firstname = ?, middlename = ?, email = ?, contact = ?, gender = ?, address = ? WHERE id = ?');
+					$statement->bind_param('isssssssi', $memberNumber, $fields['lastname'], $fields['firstname'], $fields['middlename'], $fields['email'], $fields['contact'], $fields['gender'], $fields['address'], $id);
+				} else {
+					$statement = $this->db->prepare('INSERT INTO members (member_id, lastname, firstname, middlename, email, contact, gender, address) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+					$statement->bind_param('isssssss', $memberNumber, $fields['lastname'], $fields['firstname'], $fields['middlename'], $fields['email'], $fields['contact'], $fields['gender'], $fields['address']);
 				}
-			} elseif ($this->member_number_exists($memberNumber, $id)) {
-				return $this->action_error(409, 'ID No. already exists.');
+				try {
+					$executed = $statement->execute();
+					$changed = $statement->affected_rows;
+				} catch (mysqli_sql_exception $exception) {
+					if ((int)$exception->getCode() !== 1062) throw $exception;
+					if ($automatic) continue;
+					return $this->action_error(409, 'ID No. already exists.');
+				} finally { $statement->close(); }
+				if (!$executed) return $this->action_error(500, 'Unable to save member. Please try again.');
+				if ($id && $changed === 0 && !$this->member_record($id)) return $this->action_error(404, 'Member no longer exists. Refresh the page.');
+				return 1;
 			}
-			// Profile saving never creates or modifies a membership registration.
-			if ($id) {
-				$statement = $this->db->prepare('UPDATE members SET member_id = ?, lastname = ?, firstname = ?, middlename = ?, email = ?, contact = ?, gender = ?, address = ? WHERE id = ?');
-				$statement->bind_param('isssssssi', $memberNumber, $fields['lastname'], $fields['firstname'], $fields['middlename'], $fields['email'], $fields['contact'], $fields['gender'], $fields['address'], $id);
-			} else {
-				$statement = $this->db->prepare('INSERT INTO members (member_id, lastname, firstname, middlename, email, contact, gender, address) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
-				$statement->bind_param('isssssss', $memberNumber, $fields['lastname'], $fields['firstname'], $fields['middlename'], $fields['email'], $fields['contact'], $fields['gender'], $fields['address']);
-			}
-			$executed = $statement->execute();
-			$changed = $statement->affected_rows;
-			$statement->close();
-			if (!$executed) {
-				return $this->action_error(500, 'Unable to save member. Please try again.');
-			}
-			if ($id && $changed === 0 && !$this->member_record($id)) {
-				return $this->action_error(404, 'Member no longer exists. Refresh the page.');
-			}
-			return 1;
+			return $this->action_error(503, 'Unable to generate a member ID number. Please try again.');
 		} catch (mysqli_sql_exception $exception) {
 			error_log('Unable to save member: ' . $exception->getMessage());
 			return $this->action_error(500, 'Unable to save member. Please try again.');
