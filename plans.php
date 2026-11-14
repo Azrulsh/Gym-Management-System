@@ -26,7 +26,7 @@ include 'db_connect.php';
 							</div>
 							<div class="form-group">
 								<label class="control-label" for="plan-amount">Amount</label>
-								<input type="number" id="plan-amount" class="form-control" min="0" step="1" name="amount" required>
+								<input type="number" id="plan-amount" class="form-control" min="0" step="1" name="amount" max="9999999999.99" required>
 							</div>
 							
 					</div>

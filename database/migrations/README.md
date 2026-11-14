@@ -8,7 +8,7 @@ Fresh installation or development reset:
 4. Log out of any existing browser session, then log in again:
    Admin: `admin` / `admin`; Staff: `staff` / `staff` (local development only).
 
-`gym.sql` replaces the old `gym_db.sql` dump and integrates migrations 001 through 005.
+`gym.sql` replaces the old `gym_db.sql` dump and integrates migrations 001 through 006.
 No separate migration imports are needed after this reset. Passwords use Argon2id.
 There are four profiles: Ali has an Active membership, Siti has an Expired
 membership that can be renewed, Kumar has a Closed membership, and Mei has no
@@ -53,6 +53,17 @@ profiles automatically. Re-importing is safe once the index exists. Internal
 `members.id` values and membership/payment relationships remain unchanged.
 Explicit ID conflicts return "ID No. already exists."; automatically generated
 8-digit numbers retry up to ten candidates, including conflicts during INSERT.
+
+Import `006_catalog_prices_decimal.sql` to convert Plan/Package amounts and
+Trainer rates from FLOAT to DECIMAL(12,2). Audit all three columns before import:
+values outside -9999999999.99 through 9999999999.99 must be reviewed first.
+The migration enables strict mode for conversion so overflow is rejected rather
+than clipped. DDL is not transactional; resolve preflight issues before import.
+Re-importing is safe. Record IDs, historical negative values and relationships
+are retained. Prices are rounded to two decimals from the values currently stored;
+digits already lost by FLOAT cannot be recovered automatically. Review affected
+test/legacy prices manually. New saves accept 0 through 9999999999.99 with up to
+two decimal places; catalog amount/rate arrow buttons retain their increment of 1.
 
 The login handler requires this table and returns a generic 503 if storage fails;
 it never falls back to unlimited login attempts. No schema changes run during login.

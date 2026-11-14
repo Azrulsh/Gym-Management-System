@@ -501,8 +501,8 @@ Class Action {
 		$months = filter_var($months, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 2147483647]]);
 		if ($months === false) return $this->action_error(400, 'Plan months must be a positive whole number.');
 		$amount = $_POST['amount'] ?? '';
-		if (!is_string($amount) || strlen($amount) > 32 || !preg_match('/\A[0-9]+(?:\.[0-9]{1,2})?\z/', $amount)) {
-			return $this->action_error(400, 'Amount must be zero or greater, with up to two decimal places.');
+		if (!is_string($amount) || !preg_match('/\A[0-9]{1,10}(?:\.[0-9]{1,2})?\z/', $amount)) {
+			return $this->action_error(400, 'Amount must be zero or greater, with up to two decimal places (maximum 9999999999.99).');
 		}
 		try {
 			if ($id && !$this->plan_record($id)) return $this->action_error(404, 'Plan no longer exists. Refresh the page.');
@@ -558,8 +558,8 @@ Class Action {
 		if ($package === '' || $length > 200) return $this->action_error(400, 'Package name is required and must not exceed 200 characters.');
 		if (strlen($description) > 65535) return $this->action_error(400, 'Description is too long.');
 		$amount = $_POST['amount'] ?? '';
-		if (!is_string($amount) || strlen($amount) > 32 || !preg_match('/\A[0-9]+(?:\.[0-9]{1,2})?\z/', $amount)) {
-			return $this->action_error(400, 'Amount must be zero or greater, with up to two decimal places.');
+		if (!is_string($amount) || !preg_match('/\A[0-9]{1,10}(?:\.[0-9]{1,2})?\z/', $amount)) {
+			return $this->action_error(400, 'Amount must be zero or greater, with up to two decimal places (maximum 9999999999.99).');
 		}
 		try {
 			if ($id && !$this->package_record($id)) return $this->action_error(404, 'Package no longer exists. Refresh the page.');
@@ -621,8 +621,8 @@ Class Action {
 		if (!filter_var($email, FILTER_VALIDATE_EMAIL)) return $this->action_error(400, 'Enter a valid email address.');
 		if (!preg_match('/\A[+0-9(). -]+\z/', $contact) || !preg_match('/[0-9]/', $contact)) return $this->action_error(400, 'Enter a valid contact number.');
 		$rate = $_POST['rate'] ?? '';
-		if (!is_string($rate) || strlen($rate) > 32 || !preg_match('/\A[0-9]+(?:\.[0-9]{1,2})?\z/', $rate)) {
-			return $this->action_error(400, 'Rate must be zero or greater, with up to two decimal places.');
+		if (!is_string($rate) || !preg_match('/\A[0-9]{1,10}(?:\.[0-9]{1,2})?\z/', $rate)) {
+			return $this->action_error(400, 'Rate must be zero or greater, with up to two decimal places (maximum 9999999999.99).');
 		}
 		try {
 			if ($id && !$this->trainer_record($id)) return $this->action_error(404, 'Trainer no longer exists. Refresh the page.');

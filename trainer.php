@@ -34,7 +34,7 @@ include 'db_connect.php';
 							</div>
 							<div class="form-group">
 								<label class="control-label" for="trainer-rate">Rate</label>
-								<input type="number" id="trainer-rate" class="form-control" min="0" step="1" name="rate" required>
+								<input type="number" id="trainer-rate" class="form-control" min="0" step="1" name="rate" max="9999999999.99" required>
 							</div>
 					</div>
 							

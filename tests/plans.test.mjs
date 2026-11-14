@@ -163,7 +163,7 @@ test('the rendered plan page has clean Edit attributes and a CSRF-protected vali
   assert.doesNotMatch(response.body, /Warning|Fatal error|data-description/);
   assert.match(response.body, /action="ajax.php\?action=save_plan" method="post"/);
   assert.match(response.body, /name="csrf_token" value="plans-test-token"/);
-  assert.match(response.body, /min="0" step="1" name="amount" required/);
+  assert.match(response.body, /min="0" step="1" name="amount" max="9999999999\.99" required/);
   assert.match(response.body, /<script src="assets\/js\/plans.js\?v=\d+"><\/script>/);
   assert.match(response.body, /data-id="\d+" data-plan="\d+" data-amount="[^"]+">Edit/);
 });
