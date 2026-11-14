@@ -103,6 +103,16 @@ try {
 				</div>
 			</div>
 		</div>
+		<?php if ($scheduleId !== null): ?>
+		<div class="border-top pt-3 mt-3">
+			<button type="button" class="btn btn-outline-danger request-schedule-delete">Delete Schedule</button>
+			<div class="schedule-delete-confirm alert alert-warning mt-3 d-none" role="alert">
+				<p>Delete this entire recurring schedule? All its sessions will be removed from the calendar. The member profile and membership history will be kept.</p>
+				<button type="button" class="btn btn-danger confirm-schedule-delete" data-id="<?php echo $id; ?>" data-csrf-token="<?php echo csrf_token(); ?>">Confirm Delete</button>
+				<button type="button" class="btn btn-secondary cancel-schedule-delete">Cancel Delete</button>
+			</div>
+		</div>
+		<?php endif; ?>
 	</form>
 </div>
 <script>

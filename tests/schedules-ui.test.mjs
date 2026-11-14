@@ -17,7 +17,7 @@ function ui(values = {}) {
     empty() { state.text = ''; return this; }, text(value) { state.text = value; return this; },
   };
   function $(target) {
-    if (target === document) return { on(event, selector, callback) { handler = callback; } };
+    if (target === document) return { on(event, selector, callback) { if (event === 'submit') handler = callback; } };
     if (target === form) return { find: () => message, attr: () => 'ajax.php?action=save_schedule', serialize: () => 'form-data' };
     return { prop(name, value) { state.disabled = value; } };
   }

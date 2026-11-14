@@ -833,10 +833,23 @@ Class Action {
 		}
 	}
 	function delete_schedule(){
-		extract($_POST);
-		$delete = $this->db->query("DELETE FROM schedules where id = ".$id);
-		if($delete){
+		require_action_access('delete_schedule');
+		$id = $_POST['id'] ?? null;
+		$id = is_string($id) || is_int($id) ? filter_var($id, FILTER_VALIDATE_INT, ['options'=>['min_range'=>1,'max_range'=>2147483647]]) : false;
+		if ($id === false) return $this->action_error(400, 'Invalid schedule ID.');
+		try {
+			$statement = $this->db->prepare('DELETE FROM schedules WHERE id = ?');
+			if (!$statement) throw new RuntimeException('Unable to prepare schedule deletion.');
+			try {
+				$statement->bind_param('i', $id);
+				if (!$statement->execute()) throw new RuntimeException('Unable to delete schedule.');
+				$deleted = $statement->affected_rows;
+			} finally { $statement->close(); }
+			if ($deleted !== 1) return $this->action_error(404, 'Schedule no longer exists. Refresh the calendar.');
 			return 1;
+		} catch (mysqli_sql_exception | RuntimeException $exception) {
+			error_log('Unable to delete schedule.');
+			return $this->action_error(500, 'Unable to delete schedule. Please try again.');
 		}
 	}
 	function get_schecdule(){
