@@ -27,7 +27,10 @@ require_login();
             <a href="#" class="text-white dropdown-toggle"  id="account_settings" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><?php echo htmlspecialchars($_SESSION['login_name'], ENT_QUOTES, 'UTF-8'); ?> </a>
               <div class="dropdown-menu" aria-labelledby="account_settings" style="left: -2.5em;">
                 <a class="dropdown-item" href="javascript:void(0)" id="manage_my_account"><i class="fa fa-cog"></i> Manage Account</a>
-                <a class="dropdown-item" href="ajax.php?action=logout"><i class="fa fa-power-off"></i> Logout</a>
+                <form action="ajax.php?action=logout" method="post" class="m-0">
+                  <input type="hidden" name="csrf_token" value="<?php echo csrf_token(); ?>">
+                  <button type="submit" class="dropdown-item"><i class="fa fa-power-off"></i> Logout</button>
+                </form>
               </div>
         </div>
       </div>

@@ -245,8 +245,16 @@ test('valid login rotates session, preserves pages and modals, and logout revoke
   assert.equal(login.headers.get('location'), 'index.php?page=home');
   assert.equal(await login.text(), '');
 
-  const loggedOut = await request('ajax.php?action=logout', {}, cookies);
-  assert.equal(loggedOut.status, 302);
+  const logoutGet = await request('ajax.php?action=logout', {}, cookies);
+  assert.equal(logoutGet.status, 405);
+  await logoutGet.text();
+  const logoutWithoutToken = await request('ajax.php?action=logout', { method: 'POST' }, cookies);
+  assert.equal(logoutWithoutToken.status, 403);
+  await logoutWithoutToken.text();
+  const loggedOut = await request('ajax.php?action=logout', {
+    method: 'POST', body: new URLSearchParams({ csrf_token: csrfToken }),
+  }, cookies);
+  assert.equal(loggedOut.status, 303);
   await loggedOut.text();
   const members = await request('members.php', {}, cookies);
   assert.equal(members.status, 302);
