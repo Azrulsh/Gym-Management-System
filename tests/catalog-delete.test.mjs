@@ -13,8 +13,8 @@ function isolated(code, options = {}) {
     }
     with_membership_database(function($db, $schema) {
       $db->query('UPDATE plans SET plan = 3 WHERE id = 2');
-      $db->query('INSERT INTO packages VALUES (2)');
-      $db->query('INSERT INTO trainers VALUES (3)');
+      $db->query('INSERT INTO packages (id) VALUES (2)');
+      $db->query('INSERT INTO trainers (id) VALUES (3)');
       ${code}
     });`, options);
   return JSON.parse(response.body);

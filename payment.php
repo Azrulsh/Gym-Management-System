@@ -67,6 +67,9 @@ try {
 				<ul class="mb-0 pl-3"><?php foreach ($membershipState['issues'] as $issue): ?><li><?php echo membership_read_escape($issue); ?></li><?php endforeach; ?></ul>
 			</div>
 			<?php else: ?>
+			<?php if (($details['price_source'] ?? '') === 'migration_baseline'): ?>
+			<p class="small text-muted">Prices recorded at system upgrade; original signup prices could not be verified. These recorded fees stay fixed for this membership.</p>
+			<?php endif; ?>
 			<large><b>New Payment</b></large>
 			<form id="manage_payment" action="ajax.php?action=save_payment" method="post">
                 <div class="payment-message" role="alert" aria-live="polite"></div>
@@ -75,7 +78,7 @@ try {
 				<div class="form-group">
 					<p>Plan Membership Fee: </i> <b class="float-right"><?php echo ($pcount<=0)? number_format($pamount,2).' (One-time amount only)': 'Paid Already' ?></b></p>
 					<p>Package Amount: </i> <b class="float-right"><?php echo number_format($ppamount,2) ?></b></p>
-					<p>Trainer Fee: </i> <b class="float-right"><?php echo number_format($tf) ?></b></p>
+					<p>Trainer Fee: </i> <b class="float-right"><?php echo number_format($tf, 2) ?></b></p>
 				</div>
 				<hr>
 				<div class="form-group">

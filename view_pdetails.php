@@ -42,6 +42,9 @@ try {
     <p>Start: <b><?php echo membership_read_escape($row['start_date']); ?></b></p>
     <p>End: <b><?php echo membership_read_escape($row['end_date']); ?></b></p>
     <hr>
+    <?php if (($row['price_source'] ?? '') === 'migration_baseline'): ?>
+    <p class="small text-muted">Prices recorded at system upgrade; original signup prices could not be verified. These recorded fees stay fixed for this membership.</p>
+    <?php endif; ?>
     <p>Plan Membership Fee: <b><?php echo $row['pamount'] !== null ? number_format($row['pamount'], 2) : 'Unavailable'; ?></b></p>
     <p>Package Amount: <b><?php echo $row['ppamount'] !== null ? number_format($row['ppamount'], 2) : 'Unavailable'; ?></b></p>
     <p>Trainer Fee: <b><?php echo $trainerFee !== null ? number_format($trainerFee, 2) : 'Unavailable'; ?></b></p>

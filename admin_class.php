@@ -998,14 +998,18 @@ Class Action {
 			$planId = (int) $previous['plan_id'];
 			$packageId = (int) $previous['package_id'];
 			$trainerId = (int) $previous['trainer_id'];
-			$plan = $this->membership_lookup('SELECT plan FROM plans WHERE id = ? LOCK IN SHARE MODE', $planId);
-			if (!$plan || !$this->membership_lookup('SELECT id FROM packages WHERE id = ? LOCK IN SHARE MODE', $packageId)) {
+			$plan = $this->membership_lookup('SELECT plan, amount FROM plans WHERE id = ? LOCK IN SHARE MODE', $planId);
+			$package = $this->membership_lookup('SELECT id, amount FROM packages WHERE id = ? LOCK IN SHARE MODE', $packageId);
+			if (!$plan || !$package) {
 				return $this->action_error(404, 'Plan or package no longer exists. Refresh the page.');
 			}
 			if ($trainerId < 0 || $trainerId > 127) return $this->action_error(400, 'Membership has an invalid trainer ID.');
-			if ($trainerId && !$this->membership_lookup('SELECT id FROM trainers WHERE id = ? LOCK IN SHARE MODE', $trainerId)) {
+			$trainer = $trainerId ? $this->membership_lookup('SELECT id, rate FROM trainers WHERE id = ? LOCK IN SHARE MODE', $trainerId) : ['rate'=>'0.00'];
+			if (!$trainer) {
 				return $this->action_error(404, 'Trainer no longer exists. Refresh the page.');
 			}
+			$fees = $this->membership_price_snapshot($plan, $package, $trainer);
+			if ($fees === false) return $this->action_error(400, 'Selected plan, package or trainer has an invalid price.');
 			$months = filter_var($plan['plan'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
 			$maxMonths = (9999 - (int) $start->format('Y')) * 12 + 12 - (int) $start->format('n');
 			if ($months === false || $months > $maxMonths) return $this->action_error(400, 'Selected plan has an invalid duration.');
@@ -1016,9 +1020,9 @@ Class Action {
 			$close->bind_param('i', $rid);
 			if (!$close->execute() || $close->affected_rows !== 1) throw new RuntimeException('Unable to end original membership.');
 			$close->close();
-			$save = $this->db->prepare('INSERT INTO registration_info (member_id, plan_id, package_id, trainer_id, start_date, end_date, status) VALUES (?, ?, ?, ?, ?, ?, 1)');
+			$save = $this->db->prepare("INSERT INTO registration_info (member_id, plan_id, package_id, trainer_id, start_date, end_date, status, plan_fee, package_fee, trainer_fee_snapshot, price_source, prices_recorded_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, 'captured', CURRENT_TIMESTAMP)");
 			if (!$save) throw new RuntimeException('Unable to prepare renewal.');
-			$save->bind_param('iiiiss', $memberId, $planId, $packageId, $trainerId, $startDate, $endDate);
+			$save->bind_param('iiiisssss', $memberId, $planId, $packageId, $trainerId, $startDate, $endDate, $fees[0], $fees[1], $fees[2]);
 			$executed = $save->execute();
 			$newId = (int) $this->db->insert_id;
 			$save->close();
@@ -1091,12 +1095,15 @@ Class Action {
 			if (!$member) return $this->action_error(404, 'Member no longer exists. Refresh the page.');
 			$active = $this->membership_lookup('SELECT id FROM registration_info WHERE member_id = ? AND status = 1 LIMIT 1 FOR UPDATE', $ids['member_id']);
 			if ($active) return $this->action_error(409, 'This member already has an active membership. Refresh the page before continuing.');
-			$plan = $this->membership_lookup('SELECT plan FROM plans WHERE id = ? LOCK IN SHARE MODE', $ids['plan_id']);
-			$package = $this->membership_lookup('SELECT id FROM packages WHERE id = ? LOCK IN SHARE MODE', $ids['package_id']);
+			$plan = $this->membership_lookup('SELECT plan, amount FROM plans WHERE id = ? LOCK IN SHARE MODE', $ids['plan_id']);
+			$package = $this->membership_lookup('SELECT id, amount FROM packages WHERE id = ? LOCK IN SHARE MODE', $ids['package_id']);
 			if (!$plan || !$package) return $this->action_error(404, 'Plan or package no longer exists. Refresh the page.');
-			if ($ids['trainer_id'] && !$this->membership_lookup('SELECT id FROM trainers WHERE id = ? LOCK IN SHARE MODE', $ids['trainer_id'])) {
+			$trainer = $ids['trainer_id'] ? $this->membership_lookup('SELECT id, rate FROM trainers WHERE id = ? LOCK IN SHARE MODE', $ids['trainer_id']) : ['rate'=>'0.00'];
+			if (!$trainer) {
 				return $this->action_error(404, 'Trainer no longer exists. Refresh the page.');
 			}
+			$fees = $this->membership_price_snapshot($plan, $package, $trainer);
+			if ($fees === false) return $this->action_error(400, 'Selected plan, package or trainer has an invalid price.');
 			$start = new DateTimeImmutable('today');
 			$months = filter_var($plan['plan'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
 			$maxMonths = (9999 - (int) $start->format('Y')) * 12 + 12 - (int) $start->format('n');
@@ -1104,9 +1111,9 @@ Class Action {
 			$startDate = $start->format('Y-m-d');
 			$endDate = $start->modify('+' . $months . ' months')->format('Y-m-d');
 			if (strlen($endDate) !== 10) return $this->action_error(400, 'Selected plan has an invalid duration.');
-			$save = $this->db->prepare('INSERT INTO registration_info (member_id, plan_id, package_id, trainer_id, start_date, end_date, status) VALUES (?, ?, ?, ?, ?, ?, 1)');
+			$save = $this->db->prepare("INSERT INTO registration_info (member_id, plan_id, package_id, trainer_id, start_date, end_date, status, plan_fee, package_fee, trainer_fee_snapshot, price_source, prices_recorded_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, 'captured', CURRENT_TIMESTAMP)");
 			if (!$save) throw new RuntimeException('Unable to prepare membership.');
-			$save->bind_param('iiiiss', $ids['member_id'], $ids['plan_id'], $ids['package_id'], $ids['trainer_id'], $startDate, $endDate);
+			$save->bind_param('iiiisssss', $ids['member_id'], $ids['plan_id'], $ids['package_id'], $ids['trainer_id'], $startDate, $endDate, $fees[0], $fees[1], $fees[2]);
 			$executed = $save->execute();
 			$save->close();
 			if (!$executed || !$this->db->commit()) throw new RuntimeException('Unable to save membership.');
@@ -1118,6 +1125,11 @@ Class Action {
 		} finally {
 			if ($transaction) $this->db->rollback();
 		}
+	}
+	private function membership_price_snapshot($plan, $package, $trainer){
+		$fees = [(string)$plan['amount'], (string)$package['amount'], (string)$trainer['rate']];
+		foreach ($fees as $fee) if (!preg_match('/\A[0-9]{1,10}(?:\.[0-9]{1,2})?\z/', $fee)) return false;
+		return $fees;
 	}
 	private function membership_lookup($sql, $id){
 		$statement = $this->db->prepare($sql);

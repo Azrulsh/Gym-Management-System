@@ -5,9 +5,9 @@ function membership_read_records($db, $memberId = null, $registrationId = null)
 {
     $sql = "SELECT r.*, r.id AS registration_id, m.id AS existing_member_id,
         m.member_id AS member_number, CONCAT_WS(', ', m.lastname, CONCAT_WS(' ', m.firstname, m.middlename)) AS name,
-        p.id AS existing_plan_id, p.plan, p.amount AS pamount,
-        pp.id AS existing_package_id, pp.package, pp.amount AS ppamount,
-        t.id AS existing_trainer_id, t.name AS trainer_name, t.rate AS trainer_fee,
+        p.id AS existing_plan_id, p.plan, r.plan_fee AS pamount,
+        pp.id AS existing_package_id, pp.package, r.package_fee AS ppamount,
+        t.id AS existing_trainer_id, t.name AS trainer_name, r.trainer_fee_snapshot AS trainer_fee,
         COALESCE(open_records.total, 0) AS open_count
         FROM registration_info r
         LEFT JOIN members m ON m.id = r.member_id
@@ -52,6 +52,8 @@ function membership_read_state($row, $today = null)
     if (!membership_valid_date($row['start_date']) || !membership_valid_date($row['end_date']) || $row['end_date'] < $row['start_date']) $issues[] = 'Membership dates are invalid.';
     $open = (int) $row['status'] === 1;
     if ($open && (int) $row['open_count'] > 1) $issues[] = 'Multiple open memberships exist for this member. End the extra records before continuing.';
+    $canRenew = $open && !$issues && $row['end_date'] < $today;
+    if ($row['pamount'] === null || $row['ppamount'] === null || ((int)$row['trainer_id'] !== 0 && $row['trainer_fee'] === null)) $issues[] = 'Recorded membership prices are incomplete. Review the original agreement before adding payments.';
     if (!$open) $label = 'Closed';
     elseif ($issues) $label = 'Needs attention';
     elseif ($row['start_date'] > $today) $label = 'Scheduled';
@@ -59,7 +61,7 @@ function membership_read_state($row, $today = null)
     else $label = 'Active';
     $classes = ['Closed' => 'secondary', 'Needs attention' => 'warning', 'Scheduled' => 'info', 'Expired' => 'danger', 'Active' => 'success'];
     return ['label' => $label, 'class' => $classes[$label], 'issues' => $issues,
-        'can_renew' => $label === 'Expired', 'can_pay' => !$issues];
+        'can_renew' => $canRenew, 'can_pay' => !$issues];
 }
 
 function membership_read_summary($db, $rows)

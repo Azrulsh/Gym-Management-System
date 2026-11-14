@@ -8,7 +8,7 @@ Fresh installation or development reset:
 4. Log out of any existing browser session, then log in again:
    Admin: `admin` / `admin`; Staff: `staff` / `staff` (local development only).
 
-`gym.sql` replaces the old `gym_db.sql` dump and integrates migrations 001 through 006.
+`gym.sql` replaces the old `gym_db.sql` dump and integrates migrations 001 through 007.
 No separate migration imports are needed after this reset. Passwords use Argon2id.
 There are four profiles: Ali has an Active membership, Siti has an Expired
 membership that can be renewed, Kumar has a Closed membership, and Mei has no
@@ -64,6 +64,19 @@ are retained. Prices are rounded to two decimals from the values currently store
 digits already lost by FLOAT cannot be recovered automatically. Review affected
 test/legacy prices manually. New saves accept 0 through 9999999999.99 with up to
 two decimal places; catalog amount/rate arrow buttons retain their increment of 1.
+
+Import `007_membership_price_snapshots.sql` before using membership price snapshots.
+New memberships capture current Plan, Package and Trainer fees within the creation
+transaction. Renew closes the previous membership and captures current catalog
+fees in the new row. Editing catalog prices never changes recorded fees or payments.
+No trainer means a recorded trainer fee of 0.00.
+
+Existing records receive an explicitly labelled `migration_baseline`: the prices
+available at upgrade time, not a claim about their original signup prices. Missing
+references retain NULL fees; original fees are never inferred from payment totals.
+Incomplete fees require review before accepting new payments. Migration re-imports
+never overwrite captured/baselined fees. Existing IDs, dates, statuses and payment
+records are preserved. The fresh dump's demo records have known captured fees.
 
 The login handler requires this table and returns a generic 503 if storage fails;
 it never falls back to unlimited login attempts. No schema changes run during login.

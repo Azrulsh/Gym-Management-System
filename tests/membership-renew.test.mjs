@@ -74,7 +74,7 @@ for (const [label, setup, expected] of [
   ['ended record', "$post['rid'] = '8';", 409],
   ['expires today', "$db->query('UPDATE registration_info SET end_date = CURDATE() WHERE id = 9');", 409],
   ['not yet expired', "$db->query('UPDATE registration_info SET end_date = DATE_ADD(CURDATE(), INTERVAL 1 DAY) WHERE id = 9');", 409],
-  ['another active membership', `$db->query("INSERT INTO registration_info VALUES (12, 10, 1, 1, 0, '2026-01-01', '2027-01-01', 1)");`, 409],
+  ['another active membership', `$db->query("INSERT INTO registration_info (id,member_id,plan_id,package_id,trainer_id,start_date,end_date,status) VALUES (12, 10, 1, 1, 0, '2026-01-01', '2027-01-01', 1)");`, 409],
   ['missing source', "$post['rid'] = '999';", 404],
   ['missing member', "$db->query('DELETE FROM members WHERE id = 10');", 404],
   ['missing plan', "$db->query('DELETE FROM plans WHERE id = 1');", 404],

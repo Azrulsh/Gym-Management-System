@@ -13,7 +13,7 @@ test('dashboard and list classify dates, closed history, missing references and 
   const data = isolated(`
     $db->query('INSERT INTO members (id,member_id) VALUES (12,10012),(13,10013),(14,10014),(15,10015),(16,10016),(17,10017)');
     $db->query('UPDATE registration_info SET start_date=CURDATE(),end_date=DATE_ADD(CURDATE(),INTERVAL 3 MONTH) WHERE id=9');
-    $db->query("INSERT INTO registration_info VALUES
+    $db->query("INSERT INTO registration_info (id,member_id,plan_id,package_id,trainer_id,start_date,end_date,status) VALUES
       (10,11,1,1,0,DATE_ADD(CURDATE(),INTERVAL 1 DAY),DATE_ADD(CURDATE(),INTERVAL 1 MONTH),1),
       (11,12,1,1,0,'2020-01-01','2020-04-01',1),
       (12,13,99,1,0,CURDATE(),DATE_ADD(CURDATE(),INTERVAL 1 MONTH),1),
@@ -72,7 +72,8 @@ test('orphaned membership stays visible, can be ended, releases dropdown and all
   assert.match(data.listBefore, /data-membership-id="9"/);
   assert.match(data.detailsBefore, /Plan missing \(ID 1\)/);
   assert.match(data.detailsBefore, /Package missing \(ID 1\)/);
-  assert.match(data.detailsBefore, /Unavailable/);
+  assert.match(data.detailsBefore, /Plan Membership Fee: <b>100\.00/);
+  assert.match(data.detailsBefore, /Package Amount: <b>20\.00/);
   assert.match(data.detailsBefore, /end-membership"[^>]*data-registration-id="9"/);
   assert.doesNotMatch(data.detailsBefore, /mr-2 renew-membership/);
   assert.match(data.historyBefore, /Plan missing/);
@@ -95,7 +96,7 @@ test('orphaned membership stays visible, can be ended, releases dropdown and all
 
 test('the empty member dropdown explains open records and becomes eligible only after all duplicates end', () => {
   const data = isolated(`
-    $db->query("INSERT INTO registration_info VALUES
+    $db->query("INSERT INTO registration_info (id,member_id,plan_id,package_id,trainer_id,start_date,end_date,status) VALUES
       (10,9,1,1,0,'2020-01-01','2020-04-01',1),
       (11,9,1,1,0,'2020-01-01','2020-04-01',1),
       (12,11,99,1,0,'2020-01-01','2020-04-01',1)");
