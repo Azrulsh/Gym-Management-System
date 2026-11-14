@@ -60,6 +60,7 @@
   <script src="assets/js/users.js"></script>
   <script src="assets/js/catalog-delete.js?v=<?php echo filemtime(__DIR__ . '/assets/js/catalog-delete.js'); ?>"></script>
   <script src="assets/js/payments.js?v=<?php echo filemtime(__DIR__ . '/assets/js/payments.js'); ?>"></script>
+  <script src="assets/js/schedules.js?v=<?php echo filemtime(__DIR__ . '/assets/js/schedules.js'); ?>"></script>
 
 
 

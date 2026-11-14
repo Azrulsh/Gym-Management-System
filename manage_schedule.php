@@ -17,7 +17,8 @@ $dow_arr = !empty($dow) ? explode(',',$dow) : '';
 	
 </style>
 <div class="container-fluid">
-	<form action="" id="manage-schedule">
+	<form action="ajax.php?action=save_schedule" id="manage-schedule">
+		<div class="schedule-message" role="alert" aria-live="polite"></div>
 		<input type="hidden" name="id" value="<?php echo isset($id) ? $id : '' ?>">
 		<div class="col-lg-12">
 			<div class="row">
@@ -36,7 +37,7 @@ $dow_arr = !empty($dow) ? explode(',',$dow) : '';
 					</div>
 					<div class="form-group">
 						<label for="" class="control-label">Days of Week</label>
-						<select name="dow[]" id="" class="custom-select select2" multiple="multiple">
+						<select name="dow[]" id="schedule-days" class="custom-select select2" multiple="multiple" required>
 							<?php 
 							$dow = array("Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday");
 							for($i = 0; $i < 7;$i++):
@@ -47,19 +48,20 @@ $dow_arr = !empty($dow) ? explode(',',$dow) : '';
 					</div>
 					<div class="form-group">
 						<label for="" class="control-label">Month From</label>
-						<input type="month" name="date_from" id="date_from" class="form-control" value="<?php echo isset($date_from) ? date('Y-m',strtotime($date_from)):'' ?>">
+						<input type="month" name="date_from" id="date_from" class="form-control" min="1000-01" max="9999-12" required value="<?php echo isset($date_from) ? date('Y-m',strtotime($date_from)):'' ?>">
 					</div>
 					<div class="form-group">
 						<label for="" class="control-label">Month To</label>
-						<input type="month" name="date_to" id="date_to" class="form-control" value="<?php echo isset($date_to) ? date('Y-m',strtotime($date_to)) :'' ?>">
+						<input type="month" name="date_to" id="date_to" class="form-control" min="1000-01" max="9999-12" required value="<?php echo isset($date_to) ? date('Y-m',strtotime($date_to)) :'' ?>">
 					</div>
 					<div class="form-group">
 						<label for="" class="control-label">Time From</label>
-						<input type="time" name="time_from" id="time_from" class="form-control" value="<?php echo isset($time_from) ? $time_from : '' ?>">
+						<input type="time" name="time_from" id="time_from" class="form-control" step="1" required value="<?php echo isset($time_from) ? $time_from : '' ?>">
 					</div>
 					<div class="form-group">
 						<label for="" class="control-label">Time To</label>
-						<input type="time" name="time_to" id="time_to" class="form-control" value="<?php echo isset($time_to) ? $time_to : '' ?>">
+						<input type="time" name="time_to" id="time_to" class="form-control" step="1" required value="<?php echo isset($time_to) ? $time_to : '' ?>">
+						<small class="form-text text-muted">End time must be after start time on the same day.</small>
 					</div>
 				</div>
 			</div>
@@ -70,30 +72,6 @@ $dow_arr = !empty($dow) ? explode(',',$dow) : '';
 	$('.select2').select2({
 		placeholder:'Please Select Here',
 		width:'100%'
-	})
-	$('#manage-schedule').submit(function(e){
-		e.preventDefault()
-		start_load()
-		$('#msg').html('')
-		$.ajax({
-			url:'ajax.php?action=save_schedule',
-			data: new FormData($(this)[0]),
-		    cache: false,
-		    contentType: false,
-		    processData: false,
-		    method: 'POST',
-		    type: 'POST',
-			success:function(resp){
-				if(resp==1){
-					alert_toast("Data successfully saved",'success')
-					setTimeout(function(){
-						location.reload()
-					},1500)
-
-				}
-				
-			}
-		})
 	})
 	
 </script>

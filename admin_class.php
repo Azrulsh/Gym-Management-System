@@ -736,7 +736,7 @@ Class Action {
 			if (!is_string($value) || !preg_match($pattern, $value)) return $this->action_error(400, 'Enter valid schedule months and times.');
 		}
 		$days = $_POST['dow'] ?? [];
-		if (!is_array($days)) return $this->action_error(400, 'Choose valid schedule days.');
+		if (!is_array($days) || !$days) return $this->action_error(400, 'Choose at least one schedule day.');
 		foreach ($days as $day) {
 			if (!in_array($day, [0,1,2,3,4,5,6,'0','1','2','3','4','5','6'], true)) return $this->action_error(400, 'Choose valid schedule days.');
 		}
@@ -745,6 +745,11 @@ Class Action {
 		$dateTo = (new DateTimeImmutable($_POST['date_to'] . '-01'))->modify('last day of this month')->format('Y-m-d');
 		$timeFrom = $_POST['time_from'];
 		$timeTo = $_POST['time_to'];
+		if ($dateTo < $dateFrom) return $this->action_error(400, 'Month To must be the same as or after Month From.');
+		// Normalize optional seconds before comparing; sessions end on the same day.
+		$timeFrom = strlen($timeFrom) === 5 ? $timeFrom . ':00' : $timeFrom;
+		$timeTo = strlen($timeTo) === 5 ? $timeTo . ':00' : $timeTo;
+		if ($timeTo <= $timeFrom) return $this->action_error(400, 'Time To must be after Time From on the same day.');
 		$transaction = false;
 		try {
 			if (!$this->db->begin_transaction()) throw new RuntimeException('Unable to start schedule save.');
