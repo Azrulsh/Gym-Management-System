@@ -92,23 +92,11 @@ for (const [label, status, days, visible] of [
 ]) {
   test(`details modal shows Renew correctly for ${label} membership`, () => {
     const response = run({ login_id: 2, login_type: 1, csrf_token: 'renew-token' }, `
-      class RenewalPageResult {
-        public $num_rows;
-        private $row;
-        public function __construct($row) { $this->row = $row; $this->num_rows = $row ? 1 : 0; }
-        public function fetch_array() { return $this->row; }
-      }
-      class RenewalPageDatabase {
-        public function query($sql) {
-          if (strpos($sql, 'SELECT r.*') !== 0) return new RenewalPageResult(null);
-          return new RenewalPageResult(['id' => 9, 'trainer_id' => 0, 'mid_no' => 12345, 'name' => 'Test User', 'plan' => 3,
-            'package' => 'Test Package', 'pamount' => 100, 'ppamount' => 20, 'status' => ${status},
-            'end_date' => (new DateTimeImmutable('today'))->modify('${days} days')->format('Y-m-d')]);
-        }
-      }
-      $_GET['id']='9';
-      $page = str_replace("include 'db_connect.php';", '$conn = new RenewalPageDatabase();', file_get_contents('view_pdetails.php'));
-      eval('?>' . $page);
+      require 'tests/helpers/membership-read-db.php';
+      with_membership_read_database(function($db,$schema) {
+        $db->query('UPDATE registration_info SET status=${status}, start_date=DATE_SUB(CURDATE(),INTERVAL 1 YEAR), end_date=DATE_ADD(CURDATE(),INTERVAL ${days} DAY) WHERE id=9');
+        echo render_membership_read_page($db,'view_pdetails.php',['id'=>'9']);
+      });
     `);
     assert.equal(response.body.includes('mr-2 renew-membership'), visible);
     assert.doesNotMatch(response.body, /Warning|Fatal error/);

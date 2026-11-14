@@ -3,7 +3,7 @@
 
     let pending = null;
     let submitting = false;
-    const kinds = ['plan', 'package', 'trainer'];
+    const kinds = ['plan', 'package', 'trainer', 'member'];
 
     kinds.forEach(function (kind) {
         $(document).on('click', '.delete_' + kind, function () {
@@ -12,7 +12,10 @@
             if (submitting || !Number.isSafeInteger(id) || id < 1 || id > 2147483647 || !token) return;
             pending = { kind: kind, id: id, token: token };
             $('#confirm_modal #confirm').prop('disabled', false);
-            window._conf('Delete this ' + kind + '? Records used by membership history cannot be deleted.', 'delete_' + kind, [id]);
+            const explanation = kind === 'member'
+                ? 'Members with membership history or schedule records cannot be deleted.'
+                : 'Records used by membership history cannot be deleted.';
+            window._conf('Delete this ' + kind + '? ' + explanation, 'delete_' + kind, [id]);
             $('#confirm_modal .modal-body').append('<div class="catalog-delete-message" role="alert" aria-live="polite"></div>');
         });
 

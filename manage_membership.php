@@ -11,22 +11,37 @@ if (array_key_exists('id', $_GET)) {
 		exit('<div class="alert alert-danger">Invalid member ID.</div>');
 	}
 }
-include 'db_connect.php';
+try {
+	include 'db_connect.php';
+	$eligibleResult = $conn->query("SELECT m.*, CONCAT_WS(', ', m.lastname, CONCAT_WS(' ', m.firstname, m.middlename)) AS name FROM members m WHERE NOT EXISTS (SELECT 1 FROM registration_info r WHERE r.member_id = m.id AND r.status = 1) ORDER BY m.lastname, m.firstname, m.middlename");
+	if (!$eligibleResult) throw new RuntimeException('Member lookup unavailable.');
+	$eligibleMembers = $eligibleResult->fetch_all(MYSQLI_ASSOC);
+} catch (mysqli_sql_exception | RuntimeException $exception) {
+	error_log('Unable to load membership choices.');
+	http_response_code(503);
+	exit('<div class="alert alert-danger">Unable to load members. Please try again.</div>');
+}
 ?>
 <div class="container-fluid">
 	<form action="ajax.php?action=save_membership" method="post" id="manage-member">
 		<div class="membership-message" role="alert" aria-live="polite"></div>
 		<input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
+		<?php if (!$eligibleMembers): ?>
+		<div class="alert alert-info" role="status">
+			No eligible members are available. Members with an open membership remain unavailable even if it is expired or needs attention.
+			<a href="index.php?page=registered_members">Review Membership Validity</a>: Renew an eligible expired membership, or End all open records before selecting a new plan.
+			If there is no member profile, <a href="index.php?page=members">add a member</a> first.
+		</div>
+		<?php endif; ?>
 			<div class="form-group">
 				<label class="control-label">Member</label>
 				<select name="member_id" required="required" class="custom-select select2" id="">
 					<option value=""></option>
 					<?php
-						$qry = $conn->query("SELECT *,concat(lastname,', ',firstname,' ',middlename) as name FROM members where id not in (SELECT member_id from registration_info where status = 1) order by concat(lastname,', ',firstname,' ',middlename) asc");
-						while($row= $qry->fetch_assoc()):
+						foreach ($eligibleMembers as $row):
 					?>
 					<option value="<?php echo $row['id'] ?>" <?php echo isset($member_id) && $member_id == $row['id'] ? 'selected' : '' ?>><?php echo htmlspecialchars(ucwords($row['name']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?></option>
-					<?php endwhile; ?>
+						<?php endforeach; ?>
 				</select>
 			</div>
 			<div class="form-group">

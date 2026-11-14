@@ -85,7 +85,7 @@ include 'db_connect.php';
 									<td class="text-center">
 										<button class="btn btn-sm btn-outline-success view_member" type="button" data-id="<?php echo $row['id'] ?>" >View</button>
 										<button class="btn btn-sm btn-outline-primary edit_member" type="button" data-id="<?php echo $row['id'] ?>" >Edit</button>
-										<button class="btn btn-sm btn-outline-danger delete_member" type="button" data-id="<?php echo $row['id'] ?>">Delete</button>
+										<button class="btn btn-sm btn-outline-danger delete_member" type="button" data-id="<?php echo (int) $row['id']; ?>" data-csrf-token="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">Delete</button>
 									</td>
 								</tr>
 								<?php endwhile; ?>
@@ -127,25 +127,4 @@ include 'db_connect.php';
 		uni_modal("<i class='fa fa-edit'></i> Manage Member Details","manage_member.php?id="+$(this).attr('data-id'),'mid-large')
 		
 	})
-	$('.delete_member').click(function(){
-		_conf("Are you sure to delete this topic?","delete_member",[$(this).attr('data-id')],'mid-large')
-	})
-
-	function delete_member($id){
-		start_load()
-		$.ajax({
-			url:'ajax.php?action=delete_member',
-			method:'POST',
-			data:{id:$id},
-			success:function(resp){
-				if(resp==1){
-					alert_toast("Data successfully deleted",'success')
-					setTimeout(function(){
-						location.reload()
-					},1500)
-
-				}
-			}
-		})
-	}
 </script>

@@ -578,6 +578,7 @@ Class Action {
 			'plan' => ['plans', 'plan_id'],
 			'package' => ['packages', 'package_id'],
 			'trainer' => ['trainers', 'trainer_id'],
+			'member' => ['members', 'member_id'],
 		];
 		require_action_access('delete_' . $kind);
 		[$table, $column] = $resources[$kind];
@@ -595,7 +596,13 @@ Class Action {
 			// A non-locking read avoids reversing the membership creation lock order.
 			$reference = $this->membership_lookup('SELECT id FROM registration_info WHERE ' . $column . ' = ? LIMIT 1', $id);
 			if ($reference) {
-				return $this->action_error(409, 'Cannot delete this ' . $kind . ' because it is used by membership records, including closed memberships.');
+				$message = $kind === 'member'
+					? 'Cannot delete this member because membership history exists, including closed memberships.'
+					: 'Cannot delete this ' . $kind . ' because it is used by membership records, including closed memberships.';
+				return $this->action_error(409, $message);
+			}
+			if ($kind === 'member' && $this->membership_lookup('SELECT id FROM schedules WHERE member_id = ? LIMIT 1', $id)) {
+				return $this->action_error(409, 'Cannot delete this member because schedule records exist.');
 			}
 			$delete = $this->db->prepare('DELETE FROM ' . $table . ' WHERE id = ?');
 			if (!$delete) throw new RuntimeException('Unable to prepare deletion.');
@@ -713,29 +720,60 @@ Class Action {
 		return $exists;
 	}
 	function delete_member(){
-		extract($_POST);
-		$delete = $this->db->query("DELETE FROM members where id = ".$id);
-		if($delete){
-			return 1;
-		}
+		return $this->delete_membership_resource('member');
 	}
 	function save_schedule(){
-		extract($_POST);
-		$data = " member_id = '$member_id' ";
-		$data .= ", date_from = '{$date_from}-1' ";
-		$data .= ", date_to = '".(date("Y-m-d",strtotime($date_to.'-1 +1 month -1 day')))."' ";
-		$data .= ", time_from = '$time_from' ";
-		$data .= ", time_to = '$time_to' ";
-		$data .= ", dow = '".(implode(",",$dow))."'";
-
-		if(empty($id)){
-
-			$save = $this->db->query("INSERT INTO schedules set ".$data);
-		}else{
-			$save = $this->db->query("UPDATE schedules set ".$data." where id=".$id);
+		require_action_access('save_schedule');
+		$id = $_POST['id'] ?? '';
+		$memberId = $_POST['member_id'] ?? null;
+		if (!is_scalar($id) || is_bool($id) || !is_scalar($memberId) || is_bool($memberId)) return $this->action_error(400, 'Invalid schedule or member ID.');
+		$id = $id === '' ? 0 : filter_var($id, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 2147483647]]);
+		$memberId = filter_var($memberId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 2147483647]]);
+		if ($id === false || $memberId === false) return $this->action_error(400, 'Invalid schedule or member ID.');
+		foreach (['date_from', 'date_to', 'time_from', 'time_to'] as $field) {
+			$value = $_POST[$field] ?? '';
+			$pattern = strpos($field, 'date_') === 0 ? '/\A[1-9][0-9]{3}-(?:0[1-9]|1[0-2])\z/' : '/\A(?:[01][0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?\z/';
+			if (!is_string($value) || !preg_match($pattern, $value)) return $this->action_error(400, 'Enter valid schedule months and times.');
 		}
-		if($save)
+		$days = $_POST['dow'] ?? [];
+		if (!is_array($days)) return $this->action_error(400, 'Choose valid schedule days.');
+		foreach ($days as $day) {
+			if (!in_array($day, [0,1,2,3,4,5,6,'0','1','2','3','4','5','6'], true)) return $this->action_error(400, 'Choose valid schedule days.');
+		}
+		$dow = implode(',', array_unique($days));
+		$dateFrom = $_POST['date_from'] . '-01';
+		$dateTo = (new DateTimeImmutable($_POST['date_to'] . '-01'))->modify('last day of this month')->format('Y-m-d');
+		$timeFrom = $_POST['time_from'];
+		$timeTo = $_POST['time_to'];
+		$transaction = false;
+		try {
+			if (!$this->db->begin_transaction()) throw new RuntimeException('Unable to start schedule save.');
+			$transaction = true;
+			// Serialize against Delete Member, including when editing a schedule's member.
+			if (!$this->membership_lookup('SELECT id FROM members WHERE id = ? LOCK IN SHARE MODE', $memberId)) {
+				return $this->action_error(404, 'Member no longer exists. Refresh the page.');
+			}
+			if ($id) {
+				if (!$this->membership_lookup('SELECT id FROM schedules WHERE id = ? FOR UPDATE', $id)) return $this->action_error(404, 'Schedule no longer exists. Refresh the page.');
+				$save = $this->db->prepare('UPDATE schedules SET member_id = ?, date_from = ?, date_to = ?, time_from = ?, time_to = ?, dow = ? WHERE id = ?');
+				if (!$save) throw new RuntimeException('Unable to prepare schedule save.');
+				$save->bind_param('isssssi', $memberId, $dateFrom, $dateTo, $timeFrom, $timeTo, $dow, $id);
+			} else {
+				$save = $this->db->prepare('INSERT INTO schedules (member_id, date_from, date_to, time_from, time_to, dow) VALUES (?, ?, ?, ?, ?, ?)');
+				if (!$save) throw new RuntimeException('Unable to prepare schedule save.');
+				$save->bind_param('isssss', $memberId, $dateFrom, $dateTo, $timeFrom, $timeTo, $dow);
+			}
+			$executed = $save->execute();
+			$save->close();
+			if (!$executed || !$this->db->commit()) throw new RuntimeException('Unable to save schedule.');
+			$transaction = false;
 			return 1;
+		} catch (mysqli_sql_exception | RuntimeException $exception) {
+			error_log('Unable to save schedule (error code ' . (int) $exception->getCode() . ').');
+			return $this->action_error(500, 'Unable to save schedule. Please try again.');
+		} finally {
+			if ($transaction) $this->db->rollback();
+		}
 	}
 	function delete_schedule(){
 		extract($_POST);
@@ -768,6 +806,11 @@ Class Action {
 		if (!is_string($remarks) || !preg_match('//u', $remarks) || strlen($remarks) > 65535) return $this->action_error(400, 'Remarks must be valid text within the allowed length.');
 		$remarks = trim($remarks);
 		try {
+			require_once __DIR__ . '/membership_read.php';
+			$records = membership_read_records($this->db, null, $id);
+			if (!$records) return $this->action_error(404, 'Membership no longer exists. Refresh the page.');
+			$membershipState = membership_read_state($records[0]);
+			if (!$membershipState['can_pay']) return $this->action_error(409, 'Membership details need attention. Review Membership Validity before adding payments.');
 			// Allow only payment fields; membership must exist at the time of insertion.
 			$save = $this->db->prepare('INSERT INTO payments (registration_id, amount, remarks, type) SELECT id, ?, ?, 2 FROM registration_info WHERE id = ?');
 			if (!$save) return $this->action_error(500, 'Unable to save payment. Please try again.');
@@ -778,7 +821,7 @@ Class Action {
 			if (!$executed) return $this->action_error(500, 'Unable to save payment. Please try again.');
 			if ($changed !== 1) return $this->action_error(404, 'Membership no longer exists. Refresh the page.');
 			return 1;
-		} catch (mysqli_sql_exception $exception) {
+		} catch (mysqli_sql_exception | RuntimeException $exception) {
 			error_log('Unable to save payment (database code ' . (int) $exception->getCode() . ').');
 			return $this->action_error(500, 'Unable to save payment. Please try again.');
 		}
@@ -800,7 +843,7 @@ Class Action {
 			if (!$this->membership_lookup('SELECT id FROM members WHERE id = ? FOR UPDATE', $memberId)) {
 				return $this->action_error(404, 'Member no longer exists. Refresh the page.');
 			}
-			$previous = $this->membership_lookup('SELECT id, member_id, plan_id, package_id, trainer_id, status, end_date FROM registration_info WHERE id = ? FOR UPDATE', $rid);
+            $previous = $this->membership_lookup('SELECT id, member_id, plan_id, package_id, trainer_id, status, start_date, end_date FROM registration_info WHERE id = ? FOR UPDATE', $rid);
 			if (!$previous) return $this->action_error(404, 'Membership no longer exists. Refresh the page.');
 			if ((int) $previous['member_id'] !== $memberId || (int) $previous['status'] !== 1) {
 				return $this->action_error(409, 'Membership has already been renewed or ended. Refresh the page.');
@@ -808,7 +851,9 @@ Class Action {
 			$start = new DateTimeImmutable('today');
 			$startDate = $start->format('Y-m-d');
 			$oldEnd = DateTimeImmutable::createFromFormat('!Y-m-d', $previous['end_date']);
-			if (!$oldEnd || $oldEnd->format('Y-m-d') !== $previous['end_date'] || $previous['end_date'] >= $startDate) {
+			$oldStart = DateTimeImmutable::createFromFormat('!Y-m-d', $previous['start_date']);
+			if (!$oldStart || $oldStart->format('Y-m-d') !== $previous['start_date'] || $previous['start_date'] < '1000-01-01'
+				|| !$oldEnd || $oldEnd->format('Y-m-d') !== $previous['end_date'] || $previous['end_date'] < $previous['start_date'] || $previous['end_date'] >= $startDate) {
 				return $this->action_error(409, 'Only expired active memberships can be renewed.');
 			}
 			// The member lock already serializes creation/renewal; avoid locking unrelated history rows.

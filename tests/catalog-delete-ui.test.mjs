@@ -32,7 +32,7 @@ function ui() {
   return state;
 }
 
-for (const kind of ['plan', 'package', 'trainer']) {
+for (const kind of ['plan', 'package', 'trainer', 'member']) {
   test(`${kind} deletion uses confirmation, token, and one request`, () => {
     const state = ui(); state.open(kind);
     assert.equal(state.confirmation.callback, 'delete_' + kind);
@@ -56,7 +56,9 @@ for (const kind of ['plan', 'package', 'trainer']) {
 
   test(`${kind} reference conflict keeps the confirmation open and displays why deletion is blocked`, () => {
     const state = ui(); state.open(kind); state.confirm(kind);
-    const text = `Cannot delete this ${kind} because it is used by membership records, including closed memberships.`;
+    const text = kind === 'member'
+      ? 'Cannot delete this member because membership history exists, including closed memberships.'
+      : `Cannot delete this ${kind} because it is used by membership records, including closed memberships.`;
     state.requests[0].error({ status: 409, responseJSON: { error: text } });
     state.requests[0].complete();
     assert.equal(state.text, text);
@@ -91,9 +93,22 @@ test('missing tokens, malformed IDs and mismatched callbacks cannot submit a del
 });
 
 test('delete controls on each page include a CSRF token and no longer contain old AJAX handlers', () => {
-  for (const [kind, file] of [['plan', 'plans.php'], ['package', 'packages.php'], ['trainer', 'trainer.php']]) {
+  for (const [kind, file] of [['plan', 'plans.php'], ['package', 'packages.php'], ['trainer', 'trainer.php'], ['member', 'members.php']]) {
     const page = readFileSync(new URL('../' + file, import.meta.url), 'utf8');
     assert.match(page, new RegExp(`delete_${kind}[^\\n]+data-csrf-token=`));
     assert.doesNotMatch(page, new RegExp(`function delete_${kind}\\(`));
   }
+});
+
+test('member confirmation uses member wording and shows schedule conflicts in the modal', () => {
+  const state = ui(); state.open('member');
+  assert.match(state.confirmation.text, /Delete this member\?/);
+  assert.match(state.confirmation.text, /membership history or schedule records/);
+  assert.doesNotMatch(state.confirmation.text, /topic/);
+  state.confirm('member');
+  state.requests[0].error({ status: 409, responseJSON: { error: 'Cannot delete this member because schedule records exist.' } });
+  state.requests[0].complete();
+  assert.equal(state.text, 'Cannot delete this member because schedule records exist.');
+  assert.equal(state.hidden, false);
+  assert.equal(state.stopped, 1);
 });

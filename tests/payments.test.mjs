@@ -9,6 +9,7 @@ const database = `
     private $statement;
     public function __construct($statement) { $this->statement = $statement; }
     public function fetch_assoc() { return $this->statement->fetch(PDO::FETCH_ASSOC); }
+    public function fetch_all($mode) { return $this->statement->fetchAll(PDO::FETCH_ASSOC); }
   }
   class PaymentStatement {
     private $db;
@@ -39,8 +40,17 @@ const database = `
     public function __construct() {
       $this->pdo = new PDO('sqlite::memory:');
       $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-      $this->pdo->exec('CREATE TABLE registration_info (id INTEGER PRIMARY KEY)');
-      $this->pdo->exec('INSERT INTO registration_info VALUES (9), (10)');
+      $this->pdo->sqliteCreateFunction('CONCAT_WS', function($separator, ...$values) { return implode($separator, array_filter($values, function($value) { return $value !== null; })); }, -1);
+      $this->pdo->exec('CREATE TABLE members (id INTEGER PRIMARY KEY, member_id INTEGER, firstname TEXT, lastname TEXT, middlename TEXT)');
+      $this->pdo->exec("INSERT INTO members VALUES (9, 10009, 'Test', 'User', ''), (10, 10010, 'Another', 'User', '')");
+      $this->pdo->exec('CREATE TABLE plans (id INTEGER PRIMARY KEY, plan INTEGER, amount NUMERIC)');
+      $this->pdo->exec('INSERT INTO plans VALUES (1, 3, 100)');
+      $this->pdo->exec('CREATE TABLE packages (id INTEGER PRIMARY KEY, package TEXT, amount NUMERIC)');
+      $this->pdo->exec("INSERT INTO packages VALUES (1, 'Test Package', 20)");
+      $this->pdo->exec('CREATE TABLE trainers (id INTEGER PRIMARY KEY, name TEXT, rate NUMERIC)');
+      $this->pdo->exec('CREATE TABLE registration_info (id INTEGER PRIMARY KEY, member_id INTEGER, plan_id INTEGER, package_id INTEGER, trainer_id INTEGER, status INTEGER, start_date TEXT, end_date TEXT)');
+      $today = date('Y-m-d'); $end = date('Y-m-d', strtotime('+1 year'));
+      $this->pdo->exec("INSERT INTO registration_info VALUES (9, 9, 1, 1, 0, 1, '$today', '$end'), (10, 10, 1, 1, 0, 1, '$today', '$end')");
       $this->pdo->exec('CREATE TABLE payments (id INTEGER PRIMARY KEY AUTOINCREMENT, registration_id INTEGER, amount NUMERIC, remarks TEXT, type INTEGER)');
       $this->pdo->exec("INSERT INTO payments VALUES (1, 10, 500, 'Existing payment', 2)");
     }
@@ -163,20 +173,13 @@ test('payment modal validates missing and malformed IDs before reading the datab
 
 test('modal safely displays saved remarks and decimal amounts and handles absent trainer', () => {
   const response = run(admin, `
-    class PaymentPageResult {
-      public function fetch_assoc() { return ['id' => 9, 'pamount' => 100, 'ppamount' => 20, 'trainer_fee' => 0]; }
-      public function fetch_all($mode) { return [['amount' => '10.25', 'remarks' => '<img src=x onerror="alert(1)">', 'date_created' => '2026-01-01']]; }
-    }
-    class PaymentPageStatement {
-      public function bind_param($types, &...$values) {}
-      public function execute() { return true; }
-      public function get_result() { return new PaymentPageResult(); }
-      public function close() {}
-    }
-    class PaymentPageDatabase { public function prepare($sql) { return new PaymentPageStatement(); } }
-    $_GET['rid'] = '9';
-    $page = str_replace("include 'db_connect.php';", '$conn = new PaymentPageDatabase();', file_get_contents('payment.php'));
-    eval('?>' . $page);
+    require 'tests/helpers/membership-read-db.php';
+    with_membership_read_database(function($db,$schema) {
+      $db->query('UPDATE registration_info SET trainer_id=0 WHERE id=9');
+      $statement=$db->prepare('INSERT INTO payments (registration_id,amount,remarks) VALUES (9,10.25,?)');
+      $remarks='<img src=x onerror="alert(1)">'; $statement->bind_param('s',$remarks); $statement->execute(); $statement->close();
+      echo render_membership_read_page($db,'payment.php',['rid'=>'9']);
+    });
   `);
   assert.doesNotMatch(response.body, /Warning|Fatal error|<img src=x/);
   assert.match(response.body, /10\.25/);
@@ -188,11 +191,10 @@ test('modal safely displays saved remarks and decimal amounts and handles absent
 
 test('MariaDB decimal migration preserves old integer amounts and saves cents exactly', () => {
   const response = run(admin, `
-    require 'tests/helpers/throttle-db.php';
-    with_throttle_database(function($db, $schema) {
-      $db->query('CREATE TABLE registration_info (id INT PRIMARY KEY) ENGINE=InnoDB');
-      $db->query('INSERT INTO registration_info VALUES (9)');
-      $db->query('CREATE TABLE payments (id INT PRIMARY KEY AUTO_INCREMENT, registration_id INT, amount INT NOT NULL, remarks TEXT NOT NULL, type TINYINT NOT NULL DEFAULT 2) ENGINE=InnoDB');
+    require 'tests/helpers/membership-read-db.php';
+    with_membership_read_database(function($db, $schema) {
+      $db->query('DELETE FROM payments');
+      $db->query('ALTER TABLE payments MODIFY amount INT NOT NULL');
       $db->query("INSERT INTO payments (registration_id, amount, remarks) VALUES (9, -11, 'old'), (9, 5000, 'old')");
       $db->query(file_get_contents('database/migrations/002_payment_amount_decimal.sql'));
       ob_start();

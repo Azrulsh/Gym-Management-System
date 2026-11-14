@@ -1,6 +1,25 @@
-Existing installations: select the application database in phpMyAdmin and import
-`001_login_throttle.sql` once. It only adds the `login_throttle` table. New installations
-can import `database/gym_db.sql`, which already includes the table.
+Fresh installation or development reset:
+
+1. Start Apache and MySQL in XAMPP. Open phpMyAdmin.
+2. Create/select `gym`, matching `db_connect.php`.
+3. Import `database/gym.sql`. It DROPS and recreates the nine application tables
+   in the selected database, replacing their records with consistent demo data.
+   Other databases and unrelated tables are not changed.
+4. Log out of any existing browser session, then log in again:
+   Admin: `admin` / `admin`; Staff: `staff` / `staff` (local development only).
+
+`gym.sql` replaces the old `gym_db.sql` dump and integrates migrations 001 and 002.
+No separate migration imports are needed after this reset. Passwords use Argon2id.
+There are four profiles: Ali has an Active membership, Siti has an Expired
+membership that can be renewed, Kumar has a Closed membership, and Mei has no
+membership yet. Kumar and Mei appear in the Add Membership Validity dropdown.
+All membership/payment references exist. Dates are relative to import day.
+Immediately after import, expect 1 Active Member, 4 profiles total and no
+Needs attention warning on the dashboard.
+
+Existing installations keeping their data: do NOT import the reset dump. Select
+the application database in phpMyAdmin and import `001_login_throttle.sql` once.
+It only adds the `login_throttle` table.
 
 Also import `002_payment_amount_decimal.sql` to store payment amounts as
 `DECIMAL(12,2)`. Existing integer values are preserved, including any historical

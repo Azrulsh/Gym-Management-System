@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/auth.php';
 require_login();
+require_once __DIR__ . '/membership_read.php';
 $registrationId = $_GET['rid'] ?? null;
 if (!is_scalar($registrationId) || is_bool($registrationId)) $registrationId = false;
 else $registrationId = filter_var($registrationId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 2147483647]]);
@@ -10,20 +11,17 @@ if ($registrationId === false) {
 }
 try {
     include 'db_connect.php';
-    $statement = $conn->prepare('SELECT r.id, p.amount AS pamount, pp.amount AS ppamount, COALESCE(t.rate, 0) AS trainer_fee FROM registration_info r INNER JOIN plans p ON p.id = r.plan_id INNER JOIN packages pp ON pp.id = r.package_id LEFT JOIN trainers t ON t.id = r.trainer_id WHERE r.id = ?');
-    if (!$statement) throw new RuntimeException('Payment lookup failed.');
-    $statement->bind_param('i', $registrationId);
-    if (!$statement->execute()) throw new RuntimeException('Payment lookup failed.');
-    $details = $statement->get_result()->fetch_assoc();
-    $statement->close();
-    if (!$details) {
+    $records = membership_read_records($conn, null, $registrationId);
+    if (!$records) {
         http_response_code(404);
         exit('<div class="alert alert-danger">Membership details are unavailable. Refresh the page.</div>');
     }
+    $details = $records[0];
+    $membershipState = membership_read_state($details);
     $id = (int) $details['id'];
     $pamount = $details['pamount'];
     $ppamount = $details['ppamount'];
-    $tf = $details['trainer_fee'];
+    $tf = (int) $details['trainer_id'] === 0 ? 0 : $details['trainer_fee'];
     $statement = $conn->prepare('SELECT amount, remarks, date_created FROM payments WHERE registration_id = ? ORDER BY id ASC');
     if (!$statement) throw new RuntimeException('Payment history lookup failed.');
     $statement->bind_param('i', $id);
@@ -63,6 +61,12 @@ try {
 			</table>
 		</div>
 		<div class="col-md-6">
+			<?php if (!$membershipState['can_pay']): ?>
+			<div class="alert alert-warning" role="alert">
+				Payment history is kept. New payments are unavailable until membership details are resolved; missing prices are not estimated.
+				<ul class="mb-0 pl-3"><?php foreach ($membershipState['issues'] as $issue): ?><li><?php echo membership_read_escape($issue); ?></li><?php endforeach; ?></ul>
+			</div>
+			<?php else: ?>
 			<large><b>New Payment</b></large>
 			<form id="manage_payment" action="ajax.php?action=save_payment" method="post">
                 <div class="payment-message" role="alert" aria-live="polite"></div>
@@ -89,6 +93,7 @@ try {
 					<button type="submit" class="btn btn-primary">Save Payment</button>
 				</div>
 			</form>
+			<?php endif; ?>
 		</div>
 	</div>
 </div>

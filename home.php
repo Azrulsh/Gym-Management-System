@@ -2,6 +2,14 @@
 require_once __DIR__ . '/auth.php';
 require_login();
 include 'db_connect.php';
+require_once __DIR__ . '/membership_read.php';
+try {
+    $summary = membership_read_summary($conn, membership_read_records($conn));
+} catch (mysqli_sql_exception | RuntimeException $exception) {
+    error_log('Unable to load membership summary.');
+    http_response_code(503);
+    exit('<div class="alert alert-danger">Unable to load dashboard. Please try again.</div>');
+}
 ?>
 <style>
    span.float-right.summary_icon {
@@ -45,8 +53,14 @@ include 'db_connect.php';
         <div class="col-lg-12">
             <div class="card">
                 <div class="card-body">
-                    <?php echo "Welcome back ". $_SESSION['login_name']."!"  ?>
+                    <?php echo "Welcome back ". membership_read_escape($_SESSION['login_name'])."!"  ?>
                     <hr>
+                    <?php if ($summary['needs_attention'] > 0): ?>
+                    <div class="alert alert-warning" role="alert">
+                        <?php echo $summary['needs_attention']; ?> open membership record(s) need attention.
+                        <a href="index.php?page=registered_members">Review Membership Validity</a> to resolve missing details or duplicate records.
+                    </div>
+                    <?php endif; ?>
                     <div class="row">
                         <div class="col-md-4">
                             <div class="card">
@@ -54,9 +68,10 @@ include 'db_connect.php';
                                     <div class="card-body text-white">
                                         <span class="float-right summary_icon"><i class="fa fa-users"></i></span>
                                         <h4><b>
-                                            <?php echo $conn->query("SELECT * FROM registration_info where status = 1")->num_rows; ?>
+                                            <?php echo $summary['active_members']; ?>
                                         </b></h4>
                                         <p><b>Active Members</b></p>
+                                        <small><?php echo $summary['total_members']; ?> member profiles total. Active means one complete, current membership.</small>
                                     </div>
                                 </div>
                             </div>
