@@ -82,7 +82,7 @@ include 'db_connect.php';
 									</td>
 									<td class="text-center">
 										<button class="btn btn-md btn-outline-success edit_plan" type="button" data-id="<?php echo (int) $row['id'] ?>" data-plan="<?php echo (int) $row['plan'] ?>" data-amount="<?php echo htmlspecialchars((string) $row['amount'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>">Edit</button>
-										<button class="btn btn-md btn-outline-danger delete_plan" type="button" data-id="<?php echo $row['id'] ?>">Delete</button>
+										<button class="btn btn-md btn-outline-danger delete_plan" type="button" data-id="<?php echo $row['id'] ?>" data-csrf-token="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">Delete</button>
 									</td>
 								</tr>
 								<?php endwhile; ?>
@@ -104,25 +104,5 @@ include 'db_connect.php';
 </style>
 <script src="assets/js/plans.js?v=<?php echo filemtime(__DIR__ . '/assets/js/plans.js'); ?>"></script>
 <script>
-	$('.delete_plan').click(function(){
-		_conf("Are you sure to delete this plan?","delete_plan",[$(this).attr('data-id')])
-	})
-	function delete_plan($id){
-		start_load()
-		$.ajax({
-			url:'ajax.php?action=delete_plan',
-			method:'POST',
-			data:{id:$id},
-			success:function(resp){
-				if(resp==1){
-					alert_toast("Data successfully deleted",'success')
-					setTimeout(function(){
-						location.reload()
-					},1500)
-
-				}
-			}
-		})
-	}
 	$('table').dataTable()
 </script>

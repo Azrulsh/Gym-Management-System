@@ -88,7 +88,7 @@ include 'db_connect.php';
 									</td>
 									<td class="text-center">
 										<button class="btn btn-md btn-outline-success edit_package" type="button" data-id="<?php echo (int) $row['id'] ?>" data-package="<?php echo htmlspecialchars($row['package'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>" data-description="<?php echo htmlspecialchars($row['description'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>" data-amount="<?php echo htmlspecialchars((string) $row['amount'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>">Edit</button>
-										<button class="btn btn-md btn-outline-danger delete_package" type="button" data-id="<?php echo $row['id'] ?>">Delete</button>
+										<button class="btn btn-md btn-outline-danger delete_package" type="button" data-id="<?php echo $row['id'] ?>" data-csrf-token="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">Delete</button>
 									</td>
 								</tr>
 								<?php endwhile; ?>
@@ -110,25 +110,5 @@ include 'db_connect.php';
 </style>
 <script src="assets/js/packages.js?v=<?php echo filemtime(__DIR__ . '/assets/js/packages.js'); ?>"></script>
 <script>
-	$('.delete_package').click(function(){
-		_conf("Are you sure to delete this package?","delete_package",[$(this).attr('data-id')])
-	})
-	function delete_package($id){
-		start_load()
-		$.ajax({
-			url:'ajax.php?action=delete_package',
-			method:'POST',
-			data:{id:$id},
-			success:function(resp){
-				if(resp==1){
-					alert_toast("Data successfully deleted",'success')
-					setTimeout(function(){
-						location.reload()
-					},1500)
-
-				}
-			}
-		})
-	}
 	$('table').dataTable()
 </script>

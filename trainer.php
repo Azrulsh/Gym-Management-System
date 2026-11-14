@@ -83,7 +83,7 @@ include 'db_connect.php';
 									</td>
 									<td class="text-center">
 										<button class="btn btn-md btn-outline-success edit_trainer" type="button" data-id="<?php echo (int) $row['id'] ?>" data-name="<?php echo htmlspecialchars((string) $row['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>" data-email="<?php echo htmlspecialchars((string) $row['email'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>" data-contact="<?php echo htmlspecialchars((string) $row['contact'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>" data-rate="<?php echo htmlspecialchars((string) $row['rate'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>" >Edit</button>
-										<button class="btn btn-md btn-outline-danger delete_trainer" type="button" data-id="<?php echo (int) $row['id'] ?>">Delete</button>
+										<button class="btn btn-md btn-outline-danger delete_trainer" type="button" data-id="<?php echo (int) $row['id'] ?>" data-csrf-token="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">Delete</button>
 									</td>
 								</tr>
 								<?php endwhile; ?>
@@ -108,25 +108,5 @@ include 'db_connect.php';
 </style>
 <script src="assets/js/trainers.js?v=<?php echo filemtime(__DIR__ . '/assets/js/trainers.js'); ?>"></script>
 <script>
-	$('.delete_trainer').click(function(){
-		_conf("Are you sure to delete this trainer?","delete_trainer",[$(this).attr('data-id')])
-	})
-	function delete_trainer($id){
-		start_load()
-		$.ajax({
-			url:'ajax.php?action=delete_trainer',
-			method:'POST',
-			data:{id:$id},
-			success:function(resp){
-				if(resp==1){
-					alert_toast("Data successfully deleted",'success')
-					setTimeout(function(){
-						location.reload()
-					},1500)
-
-				}
-			}
-		})
-	}
 	$('table').dataTable()
 </script>

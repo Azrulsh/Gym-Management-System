@@ -450,11 +450,7 @@ Class Action {
 		return $record;
 	}
 	function delete_plan(){
-		extract($_POST);
-		$delete = $this->db->query("DELETE FROM plans where id = ".$id);
-		if($delete){
-			return 1;
-		}
+		return $this->delete_membership_resource('plan');
 	}
 	function save_package(){
 		require_action_access('save_package');
@@ -511,11 +507,7 @@ Class Action {
 		return $record;
 	}
 	function delete_package(){
-		extract($_POST);
-		$delete = $this->db->query("DELETE FROM packages where id = ".$id);
-		if($delete){
-			return 1;
-		}
+		return $this->delete_membership_resource('package');
 	}
 	function save_trainer(){
 		require_action_access('save_trainer');
@@ -578,10 +570,47 @@ Class Action {
 		return $record;
 	}
 	function delete_trainer(){
-		extract($_POST);
-		$delete = $this->db->query("DELETE FROM trainers where id = ".$id);
-		if($delete){
+		return $this->delete_membership_resource('trainer');
+	}
+	private function delete_membership_resource($kind){
+		// SQL identifiers come only from this internal allowlist.
+		$resources = [
+			'plan' => ['plans', 'plan_id'],
+			'package' => ['packages', 'package_id'],
+			'trainer' => ['trainers', 'trainer_id'],
+		];
+		require_action_access('delete_' . $kind);
+		[$table, $column] = $resources[$kind];
+		$id = $_POST['id'] ?? null;
+		if (!is_scalar($id) || is_bool($id)) return $this->action_error(400, 'Invalid ' . $kind . ' ID.');
+		$id = filter_var($id, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 2147483647]]);
+		if ($id === false) return $this->action_error(400, 'Invalid ' . $kind . ' ID.');
+		$transaction = false;
+		try {
+			if (!$this->db->begin_transaction()) throw new RuntimeException('Unable to start deletion.');
+			$transaction = true;
+			// Creation/renewal hold a shared lock here; wait before checking committed references.
+			$record = $this->membership_lookup('SELECT id FROM ' . $table . ' WHERE id = ? FOR UPDATE', $id);
+			if (!$record) return $this->action_error(404, ucfirst($kind) . ' no longer exists. Refresh the page.');
+			// A non-locking read avoids reversing the membership creation lock order.
+			$reference = $this->membership_lookup('SELECT id FROM registration_info WHERE ' . $column . ' = ? LIMIT 1', $id);
+			if ($reference) {
+				return $this->action_error(409, 'Cannot delete this ' . $kind . ' because it is used by membership records, including closed memberships.');
+			}
+			$delete = $this->db->prepare('DELETE FROM ' . $table . ' WHERE id = ?');
+			if (!$delete) throw new RuntimeException('Unable to prepare deletion.');
+			$delete->bind_param('i', $id);
+			$executed = $delete->execute();
+			$changed = $delete->affected_rows;
+			$delete->close();
+			if (!$executed || $changed !== 1 || !$this->db->commit()) throw new RuntimeException('Unable to delete record.');
+			$transaction = false;
 			return 1;
+		} catch (mysqli_sql_exception | RuntimeException $exception) {
+			error_log('Unable to delete ' . $kind . ' (error code ' . (int) $exception->getCode() . ').');
+			return $this->action_error(500, 'Unable to delete ' . $kind . '. Please try again.');
+		} finally {
+			if ($transaction) $this->db->rollback();
 		}
 	}
 	function save_member(){
