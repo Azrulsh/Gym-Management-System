@@ -13,6 +13,13 @@ No separate migration imports are needed after this reset. Passwords use Argon2i
 There are four profiles: Ali has an Active membership, Siti has an Expired
 membership that can be renewed, Kumar has a Closed membership, and Mei has no
 membership yet. Kumar and Mei appear in the Add Membership Validity dropdown.
+
+Application time is set in `app_config.php`: PHP uses `Asia/Kuala_Lumpur`, and
+each application database connection uses session timezone `+08:00`. The fresh
+dump also sets its import session to `+08:00`. No server-wide PHP/MySQL setting or
+timezone-table installation is needed. Existing DATE/DATETIME values are not
+converted: their original timezone is not known, so review historical records
+separately if necessary. Login throttle expiry continues to use Unix timestamps.
 All membership/payment references exist. Dates are relative to import day.
 Immediately after import, expect 1 Active Member, 4 profiles total and no
 Needs attention warning on the dashboard.

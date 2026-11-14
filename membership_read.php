@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/app_config.php';
 
 // Read all history, including records whose related data was deleted previously.
 function membership_read_records($db, $memberId = null, $registrationId = null)

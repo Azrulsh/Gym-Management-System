@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/app_config.php';
 // Load this file before output so redirects and session cookies can be sent.
 if (session_status() !== PHP_SESSION_ACTIVE) {
     ini_set('session.use_strict_mode', '1');

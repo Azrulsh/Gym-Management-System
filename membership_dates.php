@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/app_config.php';
 
 // Keep the signup day where possible; shorter target months use their last day.
 function membership_end_date(DateTimeImmutable $start, int $months): string

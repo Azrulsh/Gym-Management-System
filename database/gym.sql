@@ -4,6 +4,7 @@
 -- Local demo accounts: admin / admin (Admin), staff / staff (Staff).
 -- No CREATE DATABASE or USE: the caller chooses the target database.
 SET NAMES utf8mb4;
+SET SESSION time_zone = '+08:00';
 
 DROP TABLE IF EXISTS payments;
 DROP TABLE IF EXISTS schedules;

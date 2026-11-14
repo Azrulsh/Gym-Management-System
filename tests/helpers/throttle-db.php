@@ -2,7 +2,10 @@
 // Only isolated test databases are created; never select the application database.
 function throttle_test_connection($schema = '')
 {
-    return new mysqli(getenv('GYM_TEST_DB_HOST') ?: 'localhost', getenv('GYM_TEST_DB_USER') ?: 'root', getenv('GYM_TEST_DB_PASSWORD') ?: '', $schema);
+    require_once dirname(__DIR__, 2) . '/app_config.php';
+    $connection = new mysqli(getenv('GYM_TEST_DB_HOST') ?: 'localhost', getenv('GYM_TEST_DB_USER') ?: 'root', getenv('GYM_TEST_DB_PASSWORD') ?: '', $schema);
+    configure_database_timezone($connection);
+    return $connection;
 }
 
 function with_throttle_database($test)
