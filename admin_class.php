@@ -933,25 +933,41 @@ Class Action {
 		$remarks = $_POST['remarks'] ?? '';
 		if (!is_string($remarks) || !preg_match('//u', $remarks) || strlen($remarks) > 65535) return $this->action_error(400, 'Remarks must be valid text within the allowed length.');
 		$remarks = trim($remarks);
+		require_once __DIR__ . '/payment_read.php';
+		$planAmount = array_key_exists('plan_amount', $_POST) ? $_POST['plan_amount'] : '0.00';
+		$planCents = payment_cents($planAmount);
+		if ($planCents === false || $planCents > payment_cents($amount)) return $this->action_error(400, 'Plan allocation must be between zero and the payment amount, with up to two decimal places.');
+		$transaction = false;
 		try {
 			require_once __DIR__ . '/membership_read.php';
+			if (!$this->db->begin_transaction()) throw new RuntimeException('Unable to start payment transaction.');
+			$transaction = true;
+			// Serialize payments for this membership before checking its remaining Plan fee.
+			$locked = $this->membership_lookup('SELECT id FROM registration_info WHERE id = ? FOR UPDATE', $id);
+			if (!$locked) return $this->action_error(404, 'Membership no longer exists. Refresh the page.');
 			$records = membership_read_records($this->db, null, $id);
 			if (!$records) return $this->action_error(404, 'Membership no longer exists. Refresh the page.');
 			$membershipState = membership_read_state($records[0]);
 			if (!$membershipState['can_pay']) return $this->action_error(409, 'Membership details need attention. Review Membership Validity before adding payments.');
+			$remaining = payment_plan_balance($this->db, $id, $records[0]['pamount']);
+			if ($planCents > $remaining) return $this->action_error(409, 'Plan allocation exceeds the remaining Plan fee. Refresh payments and check the balance.');
 			// Allow only payment fields; membership must exist at the time of insertion.
-			$save = $this->db->prepare('INSERT INTO payments (registration_id, amount, remarks, type) SELECT id, ?, ?, 2 FROM registration_info WHERE id = ?');
+			$save = $this->db->prepare('INSERT INTO payments (registration_id, amount, remarks, type, plan_amount) SELECT id, ?, ?, 2, ? FROM registration_info WHERE id = ?');
 			if (!$save) return $this->action_error(500, 'Unable to save payment. Please try again.');
-			$save->bind_param('ssi', $amount, $remarks, $id);
+			$save->bind_param('sssi', $amount, $remarks, $planAmount, $id);
 			$executed = $save->execute();
 			$changed = $save->affected_rows;
 			$save->close();
 			if (!$executed) return $this->action_error(500, 'Unable to save payment. Please try again.');
 			if ($changed !== 1) return $this->action_error(404, 'Membership no longer exists. Refresh the page.');
+			if (!$this->db->commit()) throw new RuntimeException('Unable to commit payment.');
+			$transaction = false;
 			return 1;
 		} catch (mysqli_sql_exception | RuntimeException $exception) {
 			error_log('Unable to save payment (database code ' . (int) $exception->getCode() . ').');
 			return $this->action_error(500, 'Unable to save payment. Please try again.');
+		} finally {
+			if ($transaction) $this->db->rollback();
 		}
 	}
 	function renew_membership(){

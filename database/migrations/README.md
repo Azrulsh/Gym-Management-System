@@ -8,7 +8,7 @@ Fresh installation or development reset:
 4. Log out of any existing browser session, then log in again:
    Admin: `admin` / `admin`; Staff: `staff` / `staff` (local development only).
 
-`gym.sql` replaces the old `gym_db.sql` dump and integrates migrations 001 through 007.
+`gym.sql` replaces the old `gym_db.sql` dump and integrates migrations 001 through 008.
 No separate migration imports are needed after this reset. Passwords use Argon2id.
 There are four profiles: Ali has an Active membership, Siti has an Expired
 membership that can be renewed, Kumar has a Closed membership, and Mei has no
@@ -77,6 +77,20 @@ references retain NULL fees; original fees are never inferred from payment total
 Incomplete fees require review before accepting new payments. Migration re-imports
 never overwrite captured/baselined fees. Existing IDs, dates, statuses and payment
 records are preserved. The fresh dump's demo records have known captured fees.
+
+Import `008_payment_plan_allocation.sql` before using payment allocations.
+Each new payment records `plan_amount`, the portion of its total amount applied
+to the one-time Plan fee. The remainder is for Package/Trainer. Only recorded
+Plan allocations reduce the Plan balance; the number of transactions never
+marks a Plan paid. Amounts are calculated in integer cents and allocations cannot
+exceed either the payment total or the remaining Plan fee. A membership row lock
+serializes simultaneous payment submissions before checking the balance.
+
+Existing payments (including demo payments) retain NULL allocations and are shown
+as `Unallocated (legacy)`. Never infer their purpose or collect the displayed Plan
+balance without checking original receipts. This migration preserves their totals,
+dates and remarks. Re-importing does not change existing allocations. The monthly
+Package/Trainer reference is not an arrears ledger or a record of paid months.
 
 The login handler requires this table and returns a generic 503 if storage fails;
 it never falls back to unlimited login attempts. No schema changes run during login.

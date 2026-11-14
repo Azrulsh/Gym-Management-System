@@ -17,7 +17,7 @@ const database = `
     private $statement;
     private $values;
     public $affected_rows = 0;
-    public function __construct($db, $sql) { $this->db = $db; $this->sql = $sql; $this->statement = $db->pdo->prepare($sql); }
+    public function __construct($db, $sql) { $this->db = $db; $this->sql = $sql; $this->statement = $db->pdo->prepare(str_replace(' FOR UPDATE', '', $sql)); }
     public function bind_param($types, &...$values) {
       if (strlen($types) !== count($values)) throw new RuntimeException('Incorrect binding count');
       $this->values = $values;
@@ -51,14 +51,17 @@ const database = `
       $this->pdo->exec("CREATE TABLE registration_info (id INTEGER PRIMARY KEY, member_id INTEGER, plan_id INTEGER, package_id INTEGER, trainer_id INTEGER, status INTEGER, start_date TEXT, end_date TEXT, plan_fee NUMERIC DEFAULT 100, package_fee NUMERIC DEFAULT 20, trainer_fee_snapshot NUMERIC DEFAULT 10, price_source TEXT DEFAULT 'captured')");
       $today = date('Y-m-d'); $end = date('Y-m-d', strtotime('+1 year'));
       $this->pdo->exec("INSERT INTO registration_info (id,member_id,plan_id,package_id,trainer_id,status,start_date,end_date) VALUES (9, 9, 1, 1, 0, 1, '$today', '$end'), (10, 10, 1, 1, 0, 1, '$today', '$end')");
-      $this->pdo->exec('CREATE TABLE payments (id INTEGER PRIMARY KEY AUTOINCREMENT, registration_id INTEGER, amount NUMERIC, remarks TEXT, type INTEGER)');
-      $this->pdo->exec("INSERT INTO payments VALUES (1, 10, 500, 'Existing payment', 2)");
+      $this->pdo->exec('CREATE TABLE payments (id INTEGER PRIMARY KEY AUTOINCREMENT, registration_id INTEGER, amount NUMERIC, remarks TEXT, type INTEGER, plan_amount NUMERIC)');
+      $this->pdo->exec("INSERT INTO payments VALUES (1, 10, 500, 'Existing payment', 2, NULL)");
     }
     public function prepare($sql) {
       if ($this->failRead && str_starts_with($sql, 'SELECT')) return false;
       return new PaymentStatement($this, $sql);
     }
     public function query($sql) { throw new RuntimeException('Use prepared SQL'); }
+    public function begin_transaction() { return $this->pdo->beginTransaction(); }
+    public function commit() { return $this->pdo->commit(); }
+    public function rollback() { return $this->pdo->rollBack(); }
     public function snapshot() { return $this->pdo->query('SELECT * FROM payments ORDER BY id')->fetchAll(PDO::FETCH_ASSOC); }
     public function close() {}
   }
@@ -90,7 +93,7 @@ for (const role of [1, 2]) {
     const data = save(profile, `$_SESSION['login_type'] = ${role};`);
     assert.equal(data.result, 1);
     assert.deepEqual(data.after.slice(0, 1), data.before);
-    assert.deepEqual(data.after[1], { id: 2, registration_id: 9, amount: 10.25, remarks: "Member's payment", type: 2 });
+    assert.deepEqual(data.after[1], { id: 2, registration_id: 9, amount: 10.25, remarks: "Member's payment", type: 2, plan_amount: 0 });
   });
 }
 

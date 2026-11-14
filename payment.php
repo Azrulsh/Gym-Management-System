@@ -2,6 +2,7 @@
 require_once __DIR__ . '/auth.php';
 require_login();
 require_once __DIR__ . '/membership_read.php';
+require_once __DIR__ . '/payment_read.php';
 $registrationId = $_GET['rid'] ?? null;
 if (!is_scalar($registrationId) || is_bool($registrationId)) $registrationId = false;
 else $registrationId = filter_var($registrationId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 2147483647]]);
@@ -22,7 +23,8 @@ try {
     $pamount = $details['pamount'];
     $ppamount = $details['ppamount'];
     $tf = (int) $details['trainer_id'] === 0 ? 0 : $details['trainer_fee'];
-    $statement = $conn->prepare('SELECT amount, remarks, date_created FROM payments WHERE registration_id = ? ORDER BY id ASC');
+    $planRemaining = $pamount === null ? null : payment_plan_balance($conn, $id, $pamount);
+    $statement = $conn->prepare('SELECT amount, plan_amount, remarks, date_created FROM payments WHERE registration_id = ? ORDER BY id ASC');
     if (!$statement) throw new RuntimeException('Payment history lookup failed.');
     $statement->bind_param('i', $id);
     if (!$statement->execute()) throw new RuntimeException('Payment history lookup failed.');
@@ -42,18 +44,18 @@ try {
 					<tr>
 						<th>Date</th>
 						<th>Amount</th>
+						<th>For Plan Fee</th>
 						<th>Remarks</th>
 					</tr>
 				</thead>
 				<tbody>
 					<?php 
-						$pcount=0;
 					foreach ($history as $row):
-						$pcount++;
 					?>
 					<tr>
 						<td><?php echo date("M d,Y",strtotime($row['date_created'])) ?></td>
 						<td class="text-right"><?php echo number_format($row['amount'], 2) ?></td>
+						<td><?php echo $row['plan_amount'] === null ? 'Unallocated (legacy)' : number_format($row['plan_amount'], 2); ?></td>
 						<td><?php echo htmlspecialchars($row['remarks'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?></td>
 					</tr>
 					<?php endforeach; ?>
@@ -71,22 +73,31 @@ try {
 			<p class="small text-muted">Prices recorded at system upgrade; original signup prices could not be verified. These recorded fees stay fixed for this membership.</p>
 			<?php endif; ?>
 			<large><b>New Payment</b></large>
+			<?php if (array_filter($history, function ($payment) { return $payment['plan_amount'] === null; })): ?>
+			<div class="alert alert-warning">Legacy payments have no recorded allocation. They are kept in history but do not confirm that the Plan fee is paid. Check the original receipts before collecting any remaining Plan fee.</div>
+			<?php endif; ?>
 			<form id="manage_payment" action="ajax.php?action=save_payment" method="post">
                 <div class="payment-message" role="alert" aria-live="polite"></div>
                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
 				<input type="hidden" name="registration_id" value="<?php echo $id ?>">
 				<div class="form-group">
-					<p>Plan Membership Fee: </i> <b class="float-right"><?php echo ($pcount<=0)? number_format($pamount,2).' (One-time amount only)': 'Paid Already' ?></b></p>
+					<p>Plan Fee Remaining: <b class="float-right"><?php echo $planRemaining === 0 ? 'Paid Already' : number_format($planRemaining / 100, 2); ?></b></p>
 					<p>Package Amount: </i> <b class="float-right"><?php echo number_format($ppamount,2) ?></b></p>
 					<p>Trainer Fee: </i> <b class="float-right"><?php echo number_format($tf, 2) ?></b></p>
 				</div>
 				<hr>
 				<div class="form-group">
-					<p>Amount Payable: </i> <b class="float-right"><?php echo ($pcount<=0)? number_format(($ppamount + $tf+$pamount),2) : number_format(($ppamount + $tf),2) ?></b></p>
+					<p>Plan balance + one month Package/Trainer: <b class="float-right"><?php echo number_format($planRemaining / 100 + $ppamount + $tf, 2); ?></b></p>
+					<small class="text-muted">Reference amount only. Monthly payment periods and arrears are not tracked here.</small>
 				</div>
 				<div class="form-group">
 					<label for="payment-amount" class="control-label">Amount</label>
 					<input type="number" id="payment-amount" class="form-control" name="amount" min="0.01" max="9999999999.99" step="0.01" required>
+				</div>
+				<div class="form-group">
+					<label for="payment-plan-amount">Of this payment, amount for Plan fee</label>
+					<input type="number" id="payment-plan-amount" class="form-control" name="plan_amount" min="0" max="<?php echo payment_decimal($planRemaining); ?>" step="0.01" value="0.00" required>
+					<small class="text-muted">Included in Amount above. Enter 0 for Package/Trainer only; the rest of this payment is for Package/Trainer.</small>
 				</div>
 				<div class="form-group">
 					<label for="payment-remarks" class="control-label">Remarks</label>
