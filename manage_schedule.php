@@ -1,15 +1,55 @@
 <?php
 require_once __DIR__ . '/auth.php';
 require_login();
-include 'db_connect.php';
-?>
-<?php
-if(isset($_GET['id'])){
-$qry = $conn->query("SELECT * FROM schedules where id= ".$_GET['id']);
-foreach($qry->fetch_array() as $k => $val){
-	$$k=$val;
+// No ID means Add; a supplied ID must identify exactly one existing schedule.
+$scheduleId = null;
+if (array_key_exists('id', $_GET)) {
+    $value = $_GET['id'];
+    $scheduleId = is_string($value) || is_int($value)
+        ? filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 2147483647]])
+        : false;
+    if ($scheduleId === false) {
+        http_response_code(400);
+        echo '<div class="alert alert-danger" role="alert">Invalid schedule ID.</div>';
+        return;
+    }
 }
-$dow_arr = !empty($dow) ? explode(',',$dow) : '';
+$id = $member_id = $date_from = $date_to = $time_from = $time_to = '';
+$dow_arr = [];
+try {
+    include 'db_connect.php';
+    if ($scheduleId !== null) {
+        $statement = $conn->prepare('SELECT id, member_id, dow, date_from, date_to, time_from, time_to FROM schedules WHERE id = ?');
+        if (!$statement) throw new RuntimeException('Schedule lookup unavailable.');
+        $statement->bind_param('i', $scheduleId);
+        try {
+            if (!$statement->execute()) throw new RuntimeException('Schedule lookup unavailable.');
+            $schedule = $statement->get_result()->fetch_assoc();
+        } finally {
+            $statement->close();
+        }
+        if (!$schedule) {
+            http_response_code(404);
+            echo '<div class="alert alert-danger" role="alert">Schedule not found. It may have been deleted. Refresh the calendar.</div>';
+            return;
+        }
+        $id = (int) $schedule['id'];
+        $member_id = (int) $schedule['member_id'];
+        $date_from = substr($schedule['date_from'], 0, 7);
+        $date_to = substr($schedule['date_to'], 0, 7);
+        $time_from = $schedule['time_from'];
+        $time_to = $schedule['time_to'];
+        $dow_arr = explode(',', $schedule['dow']);
+    }
+    $result = $conn->query("SELECT id, CONCAT_WS(', ', lastname, CONCAT_WS(' ', firstname, middlename)) AS name FROM members ORDER BY name ASC");
+    if (!$result) throw new RuntimeException('Member lookup unavailable.');
+    $scheduleMembers = $result->fetch_all(MYSQLI_ASSOC);
+    $result->free();
+} catch (mysqli_sql_exception | RuntimeException $exception) {
+    error_log('Unable to load schedule form.');
+    http_response_code(503);
+    echo '<div class="alert alert-danger" role="alert">Unable to load schedule. Please try again.</div>';
+    return;
 }
 ?>
 <style>
@@ -27,12 +67,9 @@ $dow_arr = !empty($dow) ? explode(',',$dow) : '';
 						<label for="" class="control-label">Member</label>
 						<select name="member_id" id="" class="custom-select select2" required>
 							<option value=""></option>
-						<?php 
-							$members = $conn->query("SELECT *,concat(lastname,', ',firstname,' ',middlename) as name FROM members order by concat(lastname,', ',firstname,' ',middlename) asc");
-							while($row= $members->fetch_array()):
-						?>
+						<?php foreach ($scheduleMembers as $row): ?>
 							<option value="<?php echo $row['id'] ?>" <?php echo isset($member_id) && $member_id == $row['id'] ? 'selected' : '' ?>><?php echo htmlspecialchars(ucwords($row['name']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?></option>
-						<?php endwhile; ?>
+						<?php endforeach; ?>
 						</select>
 					</div>
 					<div class="form-group">
@@ -48,19 +85,19 @@ $dow_arr = !empty($dow) ? explode(',',$dow) : '';
 					</div>
 					<div class="form-group">
 						<label for="" class="control-label">Month From</label>
-						<input type="month" name="date_from" id="date_from" class="form-control" min="1000-01" max="9999-12" required value="<?php echo isset($date_from) ? date('Y-m',strtotime($date_from)):'' ?>">
+						<input type="month" name="date_from" id="date_from" class="form-control" min="1000-01" max="9999-12" required value="<?php echo htmlspecialchars($date_from, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>">
 					</div>
 					<div class="form-group">
 						<label for="" class="control-label">Month To</label>
-						<input type="month" name="date_to" id="date_to" class="form-control" min="1000-01" max="9999-12" required value="<?php echo isset($date_to) ? date('Y-m',strtotime($date_to)) :'' ?>">
+						<input type="month" name="date_to" id="date_to" class="form-control" min="1000-01" max="9999-12" required value="<?php echo htmlspecialchars($date_to, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>">
 					</div>
 					<div class="form-group">
 						<label for="" class="control-label">Time From</label>
-						<input type="time" name="time_from" id="time_from" class="form-control" step="1" required value="<?php echo isset($time_from) ? $time_from : '' ?>">
+						<input type="time" name="time_from" id="time_from" class="form-control" step="1" required value="<?php echo htmlspecialchars($time_from, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>">
 					</div>
 					<div class="form-group">
 						<label for="" class="control-label">Time To</label>
-						<input type="time" name="time_to" id="time_to" class="form-control" step="1" required value="<?php echo isset($time_to) ? $time_to : '' ?>">
+						<input type="time" name="time_to" id="time_to" class="form-control" step="1" required value="<?php echo htmlspecialchars($time_to, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>">
 						<small class="form-text text-muted">End time must be after start time on the same day.</small>
 					</div>
 				</div>
