@@ -36,7 +36,7 @@ Class Action {
 		}
 		$throttle = $this->loginThrottle ?? new LoginThrottle($this->db);
 		try {
-			$statement = $this->db->prepare('SELECT id, name, username, type, password FROM users WHERE username = ? LIMIT 1');
+			$statement = $this->db->prepare('SELECT id, name, username, type, password, auth_version FROM users WHERE username = ? LIMIT 1');
 			if (!$statement) {
 				return $this->action_error(503, 'Unable to log in right now. Please try again.');
 			}
@@ -93,6 +93,7 @@ Class Action {
 			$_SESSION['login_name'] = (string) $user['name'];
 			$_SESSION['login_username'] = (string) $user['username'];
 			$_SESSION['login_type'] = $role;
+			$_SESSION['login_auth_version'] = (int) $user['auth_version'];
 			return 1;
 		} catch (mysqli_sql_exception $exception) {
 			error_log('Login database error (code ' . (int) $exception->getCode() . ').');
@@ -211,7 +212,7 @@ Class Action {
 				$save->bind_param('ssii', $name, $username, $type, $id);
 			} else {
 				$hash = gym_password_hash($password);
-				$save = $this->db->prepare('UPDATE users SET name = ?, username = ?, password = ?, type = ? WHERE id = ?');
+				$save = $this->db->prepare('UPDATE users SET name = ?, username = ?, password = ?, type = ?, auth_version = auth_version + 1 WHERE id = ?');
 				$save->bind_param('sssii', $name, $username, $hash, $type, $id);
 			}
 			$executed = $save->execute();
@@ -282,13 +283,21 @@ Class Action {
 				$save->bind_param('ssi', $name, $username, $id);
 			} else {
 				$hash = gym_password_hash($password);
-				$save = $this->db->prepare('UPDATE users SET name = ?, username = ?, password = ? WHERE id = ?');
+				$version = (int) $_SESSION['login_auth_version'];
+				$save = $this->db->prepare('UPDATE users SET name = ?, username = ?, password = ?, auth_version = auth_version + 1 WHERE id = ? AND auth_version = ?');
 				if (!$save) return 3;
-				$save->bind_param('sssi', $name, $username, $hash, $id);
+				$save->bind_param('sssii', $name, $username, $hash, $id, $version);
 			}
 			$saved = $save->execute();
+			$changed = $save->affected_rows;
 			$save->close();
 			if (!$saved) return 3;
+			if ($password !== '') {
+				// Do not adopt the version of a concurrent password reset.
+				if ($changed !== 1) return $this->action_error(409, 'Your account changed. Sign in again before changing your password.');
+				if (!session_regenerate_id(true)) { clear_login_session(); return 3; }
+				$_SESSION['login_auth_version'] = $version + 1;
+			}
 			$_SESSION['login_name'] = $name;
 			$_SESSION['login_username'] = $username;
 			return 1;

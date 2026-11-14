@@ -53,8 +53,8 @@ const database = `
     public function __construct() {
       $this->pdo = new PDO('sqlite::memory:');
       $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-      $this->pdo->exec('CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, username TEXT COLLATE NOCASE NOT NULL, password TEXT NOT NULL, type INTEGER NOT NULL)');
-      $insert = $this->pdo->prepare('INSERT INTO users VALUES (?, ?, ?, ?, ?)');
+      $this->pdo->exec('CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, username TEXT COLLATE NOCASE NOT NULL, password TEXT NOT NULL, type INTEGER NOT NULL, auth_version INTEGER NOT NULL DEFAULT 1)');
+      $insert = $this->pdo->prepare('INSERT INTO users (id,name,username,password,type) VALUES (?, ?, ?, ?, ?)');
       $insert->execute([2, 'Admin', 'admin', md5('admin'), 1]);
       $insert->execute([3, 'Staff', 'staff', md5('staff'), 2]);
     }

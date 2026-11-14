@@ -30,7 +30,9 @@ function require_login($api = false)
             echo json_encode(['error' => 'Unable to verify your session. Please try again.']);
             exit;
         }
-        if ($account && in_array((int) $account['type'], [1, 2], true)) {
+        if ($account && isset($_SESSION['login_auth_version'], $account['auth_version'])
+            && (string) $_SESSION['login_auth_version'] === (string) $account['auth_version']
+            && in_array((int) $account['type'], [1, 2], true)) {
             $_SESSION['login_type'] = (int) $account['type'];
             $_SESSION['login_name'] = $account['name'];
             $_SESSION['login_username'] = $account['username'];
@@ -58,7 +60,7 @@ function auth_session_account($id)
     $owned = $conn === null;
     try {
         if ($owned) include __DIR__ . '/db_connect.php';
-        $statement = $conn->prepare('SELECT id, name, username, type FROM users WHERE id = ?');
+        $statement = $conn->prepare('SELECT id, name, username, type, auth_version FROM users WHERE id = ?');
         if (!$statement) throw new RuntimeException('Session lookup unavailable.');
         try {
             $statement->bind_param('i', $id);

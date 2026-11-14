@@ -104,6 +104,7 @@ test('page paths cannot bypass the page allowlist', () => {
 // Action methods use this recording database only; no SQL reaches MySQL.
 const recordingDatabase = `
   class RecordingStatement {
+    public $affected_rows = 1;
     public $sql;
     public $values;
     private $db;
@@ -115,7 +116,7 @@ const recordingDatabase = `
         return new class($this->db->role) {
           private $role;
           public function __construct($role) { $this->role = $role; }
-          public function fetch_assoc() { return ['id' => 9999, 'type' => $this->role, 'name' => 'Test User', 'username' => 'test', 'password' => gym_password_hash('test')]; }
+          public function fetch_assoc() { return ['id' => 9999, 'type' => $this->role, 'name' => 'Test User', 'username' => 'test', 'password' => gym_password_hash('test'), 'auth_version'=>1]; }
         };
       }
       return (object) ['num_rows' => 0];
@@ -180,7 +181,7 @@ test('own-account update binds profile values, targets the session ID, and never
     assert.match(update.sql, /WHERE id = \?/);
     assert.doesNotMatch(update.sql, /\btype\b|establishment_id|O'Neil/);
     assert.equal(update.values[0], name);
-    assert.equal(update.values.at(-1), 9999);
+    assert.equal(update.values.at(password ? -2 : -1), 9999);
     assert.equal(data.session.login_type, 2);
     assert.equal(data.session.login_name, name);
   }

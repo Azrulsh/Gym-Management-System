@@ -8,7 +8,7 @@ Fresh installation or development reset:
 4. Log out of any existing browser session, then log in again:
    Admin: `admin` / `admin`; Staff: `staff` / `staff` (local development only).
 
-`gym.sql` replaces the old `gym_db.sql` dump and integrates migrations 001 and 002.
+`gym.sql` replaces the old `gym_db.sql` dump and integrates migrations 001, 002 and 003.
 No separate migration imports are needed after this reset. Passwords use Argon2id.
 There are four profiles: Ali has an Active membership, Siti has an Expired
 membership that can be renewed, Kumar has a Closed membership, and Mei has no
@@ -25,6 +25,16 @@ Also import `002_payment_amount_decimal.sql` to store payment amounts as
 `DECIMAL(12,2)`. Existing integer values are preserved, including any historical
 negative records; the new payment handler only permits positive amounts. The
 updated full database dump includes the decimal column for fresh installations.
+
+Import `003_user_auth_version.sql` on existing MariaDB installations before using
+the updated login/session handlers. It adds `users.auth_version` (default 1) and
+preserves accounts and hashes; re-importing is safe. Existing browser sessions
+without a version must sign in again after deployment. Password resets through
+Users invalidate all previous sessions for that account. Password changes through
+Manage Account keep the current session with a rotated session ID, while other
+sessions are rejected on their next request. Profile-only edits and automatic
+MD5/Argon2id rehashes during login do not increment the version. Importing the full
+`gym.sql` reset is not necessary for this upgrade.
 
 The login handler requires this table and returns a generic 503 if storage fails;
 it never falls back to unlimited login attempts. No schema changes run during login.

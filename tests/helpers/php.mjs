@@ -16,6 +16,7 @@ export function run(session, code, { expectedStderr } = {}) {
     );
     session_start();
     $_SESSION = json_decode(${literal(JSON.stringify(session))}, true);
+    if (isset($_SESSION['login_id']) && !isset($_SESSION['login_auth_version'])) $_SESSION['login_auth_version'] = 1;
     // Isolate existing unit fixtures from the application DB while exercising the real session guard.
     // Integration tests replace auth_connection with their disposable database connection.
     $GLOBALS['auth_connection'] = new class {
@@ -26,7 +27,8 @@ export function run(session, code, { expectedStderr } = {}) {
         public function get_result() { return new class {
           public function fetch_assoc() { return isset($_SESSION['login_id']) ? [
             'id'=>$_SESSION['login_id'], 'type'=>$_SESSION['login_type'] ?? 0,
-            'name'=>$_SESSION['login_name'] ?? '', 'username'=>$_SESSION['login_username'] ?? ''
+            'name'=>$_SESSION['login_name'] ?? '', 'username'=>$_SESSION['login_username'] ?? '',
+            'auth_version'=>$_SESSION['login_auth_version'] ?? 1
           ] : null; }
         }; }
       }; }

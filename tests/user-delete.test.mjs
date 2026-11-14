@@ -90,7 +90,7 @@ const worker = `
     $source='session_set_save_handler(function(){return true;},function(){return true;},function(){return "";},function(){return true;},function(){return true;},function(){return 0;}); session_start(); '
       . 'require "tests/helpers/throttle-db.php"; require "auth.php"; '
       . '$GLOBALS["auth_connection"]=throttle_test_connection('.var_export($schema,true).'); '
-      . '$_SESSION=["login_id"=>'.(int)$id.',"login_type"=>1]; '
+      . '$_SESSION=["login_id"=>'.(int)$id.',"login_type"=>1,"login_auth_version"=>1]; '
       . 'register_shutdown_function(function(){echo json_encode(["status"=>http_response_code()?:200,"session"=>$_SESSION]);}); '
       . 'require_login('.($api?'true':'false').'); echo "ALLOWED";';
     $pipes=[]; $process=proc_open([PHP_BINARY,'-r',$source],[['pipe','r'],['pipe','w'],['pipe','w']],$pipes);
@@ -140,7 +140,7 @@ test(`simultaneous self deletion and ${competingAction} preserve one Admin`, () 
       $source='session_set_save_handler(function(){return true;},function(){return true;},function(){return "";},function(){return true;},function(){return true;},function(){return 0;}); session_start(); '
         . 'require "tests/helpers/membership-db.php"; require "admin_class.php"; '
         . '$db=throttle_test_connection('.var_export($schema,true).'); $GLOBALS["auth_connection"]=$db; '
-        . '$_SESSION=["login_id"=>'.$id.',"login_type"=>1,"csrf_token"=>"delete-test"]; '
+        . '$_SESSION=["login_id"=>'.$id.',"login_type"=>1,"login_auth_version"=>1,"csrf_token"=>"delete-test"]; '
         . 'echo json_encode(new_membership_for_test($db,'.var_export($post,true).','.var_export($method,true).'));';
       $pipes=[];$p=proc_open([PHP_BINARY,'-r',$source],[['pipe','r'],['pipe','w'],['pipe','w']],$pipes);
       fclose($pipes[0]);$workers[]=[$p,$pipes];
