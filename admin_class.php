@@ -327,7 +327,11 @@ Class Action {
 			$_SESSION['login_name'] = $name;
 			$_SESSION['login_username'] = $username;
 			return 1;
-		} catch (mysqli_sql_exception | ValueError | RuntimeException $exception) {
+		} catch (mysqli_sql_exception $exception) {
+			if ((int)$exception->getCode() === 1062) return $this->action_error(409, 'Username already exists.');
+			error_log('Unable to save account.');
+			return 3;
+		} catch (ValueError | RuntimeException $exception) {
 			error_log('Unable to save account.');
 			return 3;
 		}

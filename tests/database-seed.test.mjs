@@ -30,6 +30,7 @@ test('development reset imports twice, integrates migrations and provides comple
       $db->query(file_get_contents('database/migrations/001_login_throttle.sql'));
       $db->query(file_get_contents('database/migrations/002_payment_amount_decimal.sql'));
       $db->query(file_get_contents('database/migrations/003_user_auth_version.sql'));
+      $db->query(file_get_contents('database/migrations/004_unique_usernames.sql'));
       $after = $db->query('SELECT * FROM payments ORDER BY id')->fetch_all(MYSQLI_ASSOC);
       $column = $db->query("SHOW COLUMNS FROM payments LIKE 'amount'")->fetch_assoc();
       $users = $db->query('SELECT username,password,type FROM users ORDER BY id')->fetch_all(MYSQLI_ASSOC);

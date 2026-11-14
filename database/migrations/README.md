@@ -8,7 +8,7 @@ Fresh installation or development reset:
 4. Log out of any existing browser session, then log in again:
    Admin: `admin` / `admin`; Staff: `staff` / `staff` (local development only).
 
-`gym.sql` replaces the old `gym_db.sql` dump and integrates migrations 001, 002 and 003.
+`gym.sql` replaces the old `gym_db.sql` dump and integrates migrations 001 through 004.
 No separate migration imports are needed after this reset. Passwords use Argon2id.
 There are four profiles: Ali has an Active membership, Siti has an Expired
 membership that can be renewed, Kumar has a Closed membership, and Mei has no
@@ -35,6 +35,15 @@ Manage Account keep the current session with a rotated session ID, while other
 sessions are rejected on their next request. Profile-only edits and automatic
 MD5/Argon2id rehashes during login do not increment the version. Importing the full
 `gym.sql` reset is not necessary for this upgrade.
+
+Import `004_unique_usernames.sql` to enforce unique usernames in the database,
+including concurrent Manage Account saves. Check first with:
+`SELECT username, COUNT(*) FROM users GROUP BY username HAVING COUNT(*) > 1;`.
+Comparisons use the existing username collation (including case/accent handling).
+If duplicates exist, the migration fails without deleting or renaming accounts;
+review those accounts before choosing new usernames. The migration is safe to
+re-import once its index exists. The updated save handlers return a duplicate
+username message when the database rejects a conflicting write.
 
 The login handler requires this table and returns a generic 503 if storage fails;
 it never falls back to unlimited login attempts. No schema changes run during login.
