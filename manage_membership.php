@@ -1,20 +1,22 @@
 <?php
 require_once __DIR__ . '/auth.php';
 require_login();
-include 'db_connect.php';
-?>
-<?php
-if(isset($_GET['id'])){
-	$qry = $conn->query("SELECT * FROM members where id=".$_GET['id'])->fetch_array();
-	foreach($qry as $k =>$v){
-		$$k = $v;
+$member_id = null;
+if (array_key_exists('id', $_GET)) {
+	$value = $_GET['id'];
+	$member_id = is_scalar($value) && !is_bool($value)
+		? filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 2147483647]]) : false;
+	if ($member_id === false) {
+		http_response_code(400);
+		exit('<div class="alert alert-danger">Invalid member ID.</div>');
 	}
 }
-
+include 'db_connect.php';
 ?>
 <div class="container-fluid">
-	<form action="" id="manage-member">
-		<div id="msg"></div>
+	<form action="ajax.php?action=save_membership" method="post" id="manage-member">
+		<div class="membership-message" role="alert" aria-live="polite"></div>
+		<input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
 			<div class="form-group">
 				<label class="control-label">Member</label>
 				<select name="member_id" required="required" class="custom-select select2" id="">
@@ -70,22 +72,5 @@ if(isset($_GET['id'])){
 	$('.select2').select2({
 		placeholder:'Select Here',
 		width:'100%'
-	})
-	$('#manage-member').submit(function(e){
-		e.preventDefault()
-		start_load()
-		$.ajax({
-			url:'ajax.php?action=save_membership',
-			method:'POST',
-			data:$(this).serialize(),
-			success:function(resp){
-				if(resp ==1){
-					alert_toast("Data successfully saved.",'success')
-					setTimeout(function(){
-						location.reload()
-					},1000)
-				}
-			}
-		})
 	})
 </script>

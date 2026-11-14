@@ -813,25 +813,68 @@ Class Action {
 	}
 	
 	function save_membership(){
-		extract($_POST);
-		$data = '';
-		foreach($_POST as $k=> $v){
-		if(!empty($v)){
-			if(empty($data))
-			$data .= " $k='{$v}' ";
-			else
-			$data .= ", $k='{$v}' ";
-			$$k=$v;
+		require_action_access('save_membership');
+		$ids = [];
+		foreach (['member_id', 'plan_id', 'package_id', 'trainer_id'] as $field) {
+			$value = $_POST[$field] ?? '';
+			if ($field === 'trainer_id' && ($value === '' || $value === '0' || $value === 0)) {
+				$ids[$field] = 0;
+				continue;
+			}
+			if (!is_scalar($value) || is_bool($value)) return $this->action_error(400, 'Choose valid member, plan, package and trainer records.');
+			$value = filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 2147483647]]);
+			if ($value === false) return $this->action_error(400, 'Choose valid member, plan, package and trainer records.');
+			$ids[$field] = $value;
+		}
+		// registration_info.trainer_id is currently a signed TINYINT, not an INT.
+		if ($ids['trainer_id'] > 127) return $this->action_error(400, 'Selected trainer exceeds the supported ID range.');
+		$transaction = false;
+		try {
+			if (!$this->db->begin_transaction()) throw new RuntimeException('Unable to start membership transaction.');
+			$transaction = true;
+			// All New Membership requests for the same member serialize on this row.
+			$member = $this->membership_lookup('SELECT id FROM members WHERE id = ? FOR UPDATE', $ids['member_id']);
+			if (!$member) return $this->action_error(404, 'Member no longer exists. Refresh the page.');
+			$active = $this->membership_lookup('SELECT id FROM registration_info WHERE member_id = ? AND status = 1 LIMIT 1 FOR UPDATE', $ids['member_id']);
+			if ($active) return $this->action_error(409, 'This member already has an active membership. Refresh the page before continuing.');
+			$plan = $this->membership_lookup('SELECT plan FROM plans WHERE id = ? LOCK IN SHARE MODE', $ids['plan_id']);
+			$package = $this->membership_lookup('SELECT id FROM packages WHERE id = ? LOCK IN SHARE MODE', $ids['package_id']);
+			if (!$plan || !$package) return $this->action_error(404, 'Plan or package no longer exists. Refresh the page.');
+			if ($ids['trainer_id'] && !$this->membership_lookup('SELECT id FROM trainers WHERE id = ? LOCK IN SHARE MODE', $ids['trainer_id'])) {
+				return $this->action_error(404, 'Trainer no longer exists. Refresh the page.');
+			}
+			$start = new DateTimeImmutable('today');
+			$months = filter_var($plan['plan'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+			$maxMonths = (9999 - (int) $start->format('Y')) * 12 + 12 - (int) $start->format('n');
+			if ($months === false || $months > $maxMonths) return $this->action_error(400, 'Selected plan has an invalid duration.');
+			$startDate = $start->format('Y-m-d');
+			$endDate = $start->modify('+' . $months . ' months')->format('Y-m-d');
+			if (strlen($endDate) !== 10) return $this->action_error(400, 'Selected plan has an invalid duration.');
+			$save = $this->db->prepare('INSERT INTO registration_info (member_id, plan_id, package_id, trainer_id, start_date, end_date, status) VALUES (?, ?, ?, ?, ?, ?, 1)');
+			if (!$save) throw new RuntimeException('Unable to prepare membership.');
+			$save->bind_param('iiiiss', $ids['member_id'], $ids['plan_id'], $ids['package_id'], $ids['trainer_id'], $startDate, $endDate);
+			$executed = $save->execute();
+			$save->close();
+			if (!$executed || !$this->db->commit()) throw new RuntimeException('Unable to save membership.');
+			$transaction = false;
+			return 1;
+		} catch (mysqli_sql_exception | RuntimeException $exception) {
+			error_log('Unable to save membership (error code ' . (int) $exception->getCode() . ').');
+			return $this->action_error(500, 'Unable to save membership. Please try again.');
+		} finally {
+			if ($transaction) $this->db->rollback();
 		}
 	}
-	$data .= ", start_date ='".date("Y-m-d")."' ";
-	$plan = $this->db->query("SELECT * FROM plans where id = $plan_id")->fetch_array()['plan'];
-	$data .= ", end_date ='".date("Y-m-d",strtotime(date('Y-m-d').' +'.$plan.' months'))."' ";
-	$save = $this->db->query("INSERT INTO registration_info set $data");
-	if($save){
-		$id = $this->db->insert_id;
-		$this->db->query("UPDATE registration_info set status = 0 where member_id = $member_id and id != $id ");
-		return 1;
-	}
+	private function membership_lookup($sql, $id){
+		$statement = $this->db->prepare($sql);
+		if (!$statement) throw new RuntimeException('Unable to look up membership records.');
+		$statement->bind_param('i', $id);
+		if (!$statement->execute()) {
+			$statement->close();
+			throw new RuntimeException('Unable to look up membership records.');
+		}
+		$record = $statement->get_result()->fetch_assoc();
+		$statement->close();
+		return $record;
 	}
 }
