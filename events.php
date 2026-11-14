@@ -1,6 +1,12 @@
 <?php
 require_once __DIR__ . '/auth.php';
 require_admin();
+http_response_code(404);
+exit('Events module is not available.');
+
+/*
+Legacy Events code retained for future implementation; intentionally disabled.
+Rebuild the schema, pages, validation, escaping and POST/CSRF protections before enabling.
 include 'db_connect.php';
 ?>
 
@@ -134,3 +140,4 @@ include 'db_connect.php';
 		})
 	}
 </script>
+*/
