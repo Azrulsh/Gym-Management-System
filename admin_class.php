@@ -1066,9 +1066,9 @@ Class Action {
 			$close->bind_param('i', $rid);
 			if (!$close->execute() || $close->affected_rows !== 1) throw new RuntimeException('Unable to end original membership.');
 			$close->close();
-			$save = $this->db->prepare("INSERT INTO registration_info (member_id, plan_id, package_id, trainer_id, start_date, end_date, status, plan_fee, package_fee, trainer_fee_snapshot, price_source, prices_recorded_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, 'captured', CURRENT_TIMESTAMP)");
+			$save = $this->db->prepare("INSERT INTO registration_info (member_id, plan_id, package_id, trainer_id, start_date, end_date, status, plan_fee, package_fee, trainer_fee_snapshot, price_source, prices_recorded_at, plan_months) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, 'captured', CURRENT_TIMESTAMP, ?)");
 			if (!$save) throw new RuntimeException('Unable to prepare renewal.');
-			$save->bind_param('iiiisssss', $memberId, $planId, $packageId, $trainerId, $startDate, $endDate, $fees[0], $fees[1], $fees[2]);
+			$save->bind_param('iiiisssssi', $memberId, $planId, $packageId, $trainerId, $startDate, $endDate, $fees[0], $fees[1], $fees[2], $months);
 			$executed = $save->execute();
 			$newId = (int) $this->db->insert_id;
 			$save->close();
@@ -1157,9 +1157,9 @@ Class Action {
 			$startDate = $start->format('Y-m-d');
 			$endDate = membership_end_date($start, $months);
 			if (strlen($endDate) !== 10) return $this->action_error(400, 'Selected plan has an invalid duration.');
-			$save = $this->db->prepare("INSERT INTO registration_info (member_id, plan_id, package_id, trainer_id, start_date, end_date, status, plan_fee, package_fee, trainer_fee_snapshot, price_source, prices_recorded_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, 'captured', CURRENT_TIMESTAMP)");
+			$save = $this->db->prepare("INSERT INTO registration_info (member_id, plan_id, package_id, trainer_id, start_date, end_date, status, plan_fee, package_fee, trainer_fee_snapshot, price_source, prices_recorded_at, plan_months) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, 'captured', CURRENT_TIMESTAMP, ?)");
 			if (!$save) throw new RuntimeException('Unable to prepare membership.');
-			$save->bind_param('iiiisssss', $ids['member_id'], $ids['plan_id'], $ids['package_id'], $ids['trainer_id'], $startDate, $endDate, $fees[0], $fees[1], $fees[2]);
+			$save->bind_param('iiiisssssi', $ids['member_id'], $ids['plan_id'], $ids['package_id'], $ids['trainer_id'], $startDate, $endDate, $fees[0], $fees[1], $fees[2], $months);
 			$executed = $save->execute();
 			$save->close();
 			if (!$executed || !$this->db->commit()) throw new RuntimeException('Unable to save membership.');

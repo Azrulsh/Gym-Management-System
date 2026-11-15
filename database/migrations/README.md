@@ -8,7 +8,7 @@ Fresh installation or development reset:
 4. Log out of any existing browser session, then log in again:
    Admin: `admin` / `admin`; Staff: `staff` / `staff` (local development only).
 
-`gym.sql` replaces the old `gym_db.sql` dump and integrates migrations 001 through 009.
+`gym.sql` replaces the old `gym_db.sql` dump and integrates migrations 001 through 010.
 No separate migration imports are needed after this reset. Passwords use Argon2id.
 There are four profiles: Ali has an Active membership, Siti has an Expired
 membership that can be renewed, Kumar has a Closed membership, and Mei has no
@@ -110,6 +110,19 @@ After a connection failure, retry the same form without changing its details.
 Opening another form creates a new key, so check history before starting a new
 payment when the previous result is uncertain. Existing duplicate records are not
 automatically removed or guessed to be retries.
+
+Import `010_membership_duration_snapshots.sql` before using recorded Plan durations.
+New registrations and Renew capture current catalog months in `plan_months` within
+their transaction. Membership lists/details use this snapshot; edits to catalog
+months never relabel existing memberships or change their stored dates or fees.
+Renew still uses the current catalog duration and creates a separate history row.
+
+Existing records retain NULL duration: the original signup duration was never
+recorded and cannot safely be inferred from current catalog values or dates.
+They show `Original duration not recorded; see start/end dates` and retain normal
+status/payment/renewal eligibility based on their dates and existing validations.
+Re-importing never overwrites a captured duration. Fresh demo rows have known
+durations captured from their seed plans. No existing dates or payments are changed.
 
 The login handler requires this table and returns a generic 503 if storage fails;
 it never falls back to unlimited login attempts. No schema changes run during login.

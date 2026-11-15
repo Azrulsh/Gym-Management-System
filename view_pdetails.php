@@ -36,7 +36,7 @@ try {
     <?php endif; ?>
     <p>Member ID: <b><?php echo $row['existing_member_id'] !== null ? membership_read_escape($row['member_number']) : 'Member profile missing'; ?></b></p>
     <p>Name: <b><?php echo $row['existing_member_id'] !== null ? membership_read_escape(ucwords($row['name'])) : 'Member profile missing'; ?></b></p>
-    <p>Plan: <b><?php echo $row['existing_plan_id'] !== null ? (int) $row['plan'] . ' month(s)' : 'Plan missing (ID ' . (int) $row['plan_id'] . ')'; ?></b></p>
+    <p>Plan: <b><?php echo membership_read_escape(membership_plan_label($row)); ?></b></p>
     <p>Package: <b><?php echo $row['existing_package_id'] !== null ? membership_read_escape($row['package']) : 'Package missing (ID ' . (int) $row['package_id'] . ')'; ?></b></p>
     <p>Trainer: <b><?php echo (int) $row['trainer_id'] === 0 ? 'None' : ($row['existing_trainer_id'] !== null ? membership_read_escape($row['trainer_name']) : 'Trainer missing'); ?></b></p>
     <p>Start: <b><?php echo membership_read_escape($row['start_date']); ?></b></p>

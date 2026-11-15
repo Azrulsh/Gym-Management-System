@@ -51,6 +51,7 @@ const database = `
       $this->pdo->exec("CREATE TABLE registration_info (id INTEGER PRIMARY KEY, member_id INTEGER, plan_id INTEGER, package_id INTEGER, trainer_id INTEGER, status INTEGER, start_date TEXT, end_date TEXT, plan_fee NUMERIC DEFAULT 100, package_fee NUMERIC DEFAULT 20, trainer_fee_snapshot NUMERIC DEFAULT 10, price_source TEXT DEFAULT 'captured')");
       $today = date('Y-m-d'); $end = date('Y-m-d', strtotime('+1 year'));
       $this->pdo->exec("INSERT INTO registration_info (id,member_id,plan_id,package_id,trainer_id,status,start_date,end_date) VALUES (9, 9, 1, 1, 0, 1, '$today', '$end'), (10, 10, 1, 1, 0, 1, '$today', '$end')");
+      $this->pdo->exec('ALTER TABLE registration_info ADD COLUMN plan_months INTEGER DEFAULT 3');
       $this->pdo->exec('CREATE TABLE payments (id INTEGER PRIMARY KEY AUTOINCREMENT, registration_id INTEGER, amount NUMERIC, remarks TEXT, type INTEGER, plan_amount NUMERIC, request_key TEXT UNIQUE)');
       $this->pdo->exec("INSERT INTO payments VALUES (1, 10, 500, 'Existing payment', 2, NULL, NULL)");
     }

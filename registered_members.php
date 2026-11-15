@@ -31,7 +31,7 @@ try {
                             <small class="d-block text-muted">Membership #<?php echo (int) $row['registration_id']; ?></small>
                         </td>
                         <td><?php echo $row['existing_member_id'] !== null ? membership_read_escape(ucwords($row['name'])) : 'Member profile missing'; ?></td>
-                        <td><?php echo $row['existing_plan_id'] !== null ? (int) $row['plan'] . ' month(s)' : 'Plan missing (ID ' . (int) $row['plan_id'] . ')'; ?></td>
+                        <td><?php echo membership_read_escape(membership_plan_label($row)); ?></td>
                         <td><?php echo $row['existing_package_id'] !== null ? membership_read_escape($row['package']) : 'Package missing (ID ' . (int) $row['package_id'] . ')'; ?></td>
                         <td><?php echo membership_read_escape($row['start_date']); ?><br><?php echo membership_read_escape($row['end_date']); ?></td>
                         <td>

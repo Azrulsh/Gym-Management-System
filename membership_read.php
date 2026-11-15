@@ -6,7 +6,7 @@ function membership_read_records($db, $memberId = null, $registrationId = null)
 {
     $sql = "SELECT r.*, r.id AS registration_id, m.id AS existing_member_id,
         m.member_id AS member_number, CONCAT_WS(', ', m.lastname, CONCAT_WS(' ', m.firstname, m.middlename)) AS name,
-        p.id AS existing_plan_id, p.plan, r.plan_fee AS pamount,
+        p.id AS existing_plan_id, r.plan_months AS plan, r.plan_fee AS pamount,
         pp.id AS existing_package_id, pp.package, r.package_fee AS ppamount,
         t.id AS existing_trainer_id, t.name AS trainer_name, r.trainer_fee_snapshot AS trainer_fee,
         COALESCE(open_records.total, 0) AS open_count
@@ -43,11 +43,12 @@ function membership_valid_date($date)
 function membership_read_state($row, $today = null)
 {
     $today = $today ?? date('Y-m-d');
-    $maxMonths = (9999 - (int) substr($today, 0, 4)) * 12 + 12 - (int) substr($today, 5, 2);
+    $durationStart = membership_valid_date($row['start_date']) ? $row['start_date'] : $today;
+    $maxMonths = (9999 - (int) substr($durationStart, 0, 4)) * 12 + 12 - (int) substr($durationStart, 5, 2);
     $issues = [];
     if ($row['existing_member_id'] === null) $issues[] = 'Member profile missing (record ID ' . (int) $row['member_id'] . ').';
     if ($row['existing_plan_id'] === null) $issues[] = 'Plan missing (ID ' . (int) $row['plan_id'] . ').';
-    elseif ((int) $row['plan'] < 1 || (int) $row['plan'] > $maxMonths) $issues[] = 'Plan duration is invalid.';
+    elseif ($row['plan'] !== null && ((int) $row['plan'] < 1 || (int) $row['plan'] > $maxMonths)) $issues[] = 'Recorded plan duration is invalid.';
     if ($row['existing_package_id'] === null) $issues[] = 'Package missing (ID ' . (int) $row['package_id'] . ').';
     if ((int) $row['trainer_id'] < 0 || ((int) $row['trainer_id'] > 0 && $row['existing_trainer_id'] === null)) $issues[] = 'Trainer missing or invalid.';
     if (!membership_valid_date($row['start_date']) || !membership_valid_date($row['end_date']) || $row['end_date'] < $row['start_date']) $issues[] = 'Membership dates are invalid.';
@@ -63,6 +64,13 @@ function membership_read_state($row, $today = null)
     $classes = ['Closed' => 'secondary', 'Needs attention' => 'warning', 'Scheduled' => 'info', 'Expired' => 'danger', 'Active' => 'success'];
     return ['label' => $label, 'class' => $classes[$label], 'issues' => $issues,
         'can_renew' => $canRenew, 'can_pay' => !$issues];
+}
+
+function membership_plan_label($row)
+{
+    if ($row['existing_plan_id'] === null) return 'Plan missing (ID ' . (int)$row['plan_id'] . ')';
+    if ($row['plan'] === null) return 'Original duration not recorded; see start/end dates';
+    return (int)$row['plan'] . ' month(s)';
 }
 
 function membership_read_summary($db, $rows)

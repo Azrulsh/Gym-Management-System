@@ -1,6 +1,6 @@
 -- DEVELOPMENT RESET: replaces application tables and data in the SELECTED database.
 -- phpMyAdmin: select `gym` (matching db_connect.php), then import this entire file.
--- Includes migrations 001 through 009. Not an upgrade script for existing records.
+-- Includes migrations 001 through 010. Not an upgrade script for existing records.
 -- Local demo accounts: admin / admin (Admin), staff / staff (Staff).
 -- No CREATE DATABASE or USE: the caller chooses the target database.
 SET NAMES utf8mb4;
@@ -67,6 +67,7 @@ CREATE TABLE registration_info (
   trainer_fee_snapshot DECIMAL(12,2) NULL,
   price_source VARCHAR(24) NOT NULL DEFAULT 'legacy_unrecorded',
   prices_recorded_at DATETIME NULL,
+  plan_months INT NULL,
   KEY plan_id (plan_id),
   KEY package_id (package_id),
   KEY trainer_id (trainer_id)
@@ -147,6 +148,6 @@ INSERT INTO payments (registration_id, amount, remarks, type) VALUES
 -- Demo memberships were created above using these known fees.
 UPDATE registration_info r JOIN plans p ON p.id=r.plan_id
 JOIN packages pp ON pp.id=r.package_id LEFT JOIN trainers t ON t.id=r.trainer_id
-SET r.plan_fee=p.amount, r.package_fee=pp.amount,
+SET r.plan_fee=p.amount, r.package_fee=pp.amount, r.plan_months=p.plan,
     r.trainer_fee_snapshot=CASE WHEN r.trainer_id=0 THEN 0 ELSE t.rate END,
     r.price_source='captured', r.prices_recorded_at=CURRENT_TIMESTAMP;
