@@ -168,9 +168,7 @@ Class Action {
 		}
 		$name = trim($name);
 		$username = trim($username);
-		$nameLength = function_exists('mb_strlen') ? mb_strlen($name, 'UTF-8') : strlen($name);
-		$usernameLength = function_exists('mb_strlen') ? mb_strlen($username, 'UTF-8') : strlen($username);
-		if ($name === '' || $username === '' || $nameLength > 200 || $usernameLength > 200) {
+		if (!$this->valid_user_identity($name, $username)) {
 			return $this->action_error(400, 'Name and username are required and must not exceed 200 characters.');
 		}
 		if ((!$id && $password === '') || strlen($password) > 4096) {
@@ -248,6 +246,10 @@ Class Action {
 			return $this->action_error(500, 'Unable to save user. Please try again.');
 		} finally { if ($transaction) $this->db->rollback(); }
 	}
+	private function valid_user_identity($name, $username){
+		// UTF-8 code points, including when mbstring is unavailable. Passwords use byte limits separately.
+		return preg_match('/\A.{1,200}\z/us', $name) === 1 && preg_match('/\A.{1,200}\z/us', $username) === 1;
+	}
 	private function user_record($id){
 		$statement = $this->db->prepare('SELECT id FROM users WHERE id = ?');
 		$statement->bind_param('i', $id);
@@ -279,12 +281,13 @@ Class Action {
 		$name = $_POST['name'] ?? '';
 		$username = $_POST['username'] ?? '';
 		$password = $_POST['password'] ?? '';
-		if (!is_string($name) || !is_string($username) || !is_string($password)) {
+		if (!is_string($name) || !is_string($username) || !is_string($password)
+			|| !preg_match('//u', $name) || !preg_match('//u', $username)) {
 			return 3;
 		}
 		$name = trim($name);
 		$username = trim($username);
-		if ($name === '' || $username === '' || strlen($username) > 200 || strlen($password) > 4096) {
+		if (!$this->valid_user_identity($name, $username) || strlen($password) > 4096) {
 			return 3;
 		}
 		try {
