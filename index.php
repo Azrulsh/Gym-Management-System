@@ -156,21 +156,33 @@ if (!is_string($page) || !in_array($page, $pages, true)) {
           end_load()  
 
 }
-  window.uni_modal = function($title = '' , $url='',$size=""){
-    start_load()
+  window.uni_modal = (function(){
+    let latestRequest = 0;
+    let activeRequest = null;
+    let pending = false;
+    return function($title = '' , $url='',$size=""){
+    const requestId = ++latestRequest;
+    const previous = activeRequest;
+    activeRequest = null;
+    // Keep one loading overlay while replacing a pending read request.
+    if (!pending) start_load();
+    pending = true;
+    if (previous && typeof previous.abort === 'function') previous.abort();
     let modalError = '';
-    $.ajax({
+    const request = $.ajax({
         url:$url,
         method:'GET',
         dataType:'html',
         timeout:15000,
         error:(err, status)=>{
+            if (requestId !== latestRequest) return;
             if (err.status === 401 || err.status === 403) return;
             modalError = status === 'timeout'
                 ? 'Loading details took too long. Please try again.'
                 : 'Unable to load details. Please try again.';
         },
         success:function(resp){
+            if (requestId !== latestRequest) return;
             if (typeof resp !== 'string' || !resp.trim()) {
                 modalError = 'No details were returned. Please try again.';
                 return;
@@ -178,6 +190,7 @@ if (!is_string($page) || !in_array($page, $pages, true)) {
             try {
                 $('#uni_modal .modal-title').text($title)
                 $('#uni_modal .modal-body').html(resp)
+                if (requestId !== latestRequest) return;
                 if($size != ''){
                     $('#uni_modal .modal-dialog').addClass($size)
                 }else{
@@ -190,17 +203,24 @@ if (!is_string($page) || !in_array($page, $pages, true)) {
                   focus:true
                 })
             } catch (error) {
+                if (requestId !== latestRequest) return;
                 $('#uni_modal .modal-body').empty();
                 $('#uni_modal').modal('hide');
                 modalError = 'Unable to display details. Please try again.';
             }
         },
         complete:function(){
+            if (requestId !== latestRequest) return;
+            pending = false;
+            activeRequest = null;
             end_load();
             if (modalError) window.alert(modalError);
         }
     })
-}
+    // A synchronous callback or modal script may already have completed/replaced it.
+    if (requestId === latestRequest && pending) activeRequest = request;
+    };
+})();
 window._conf = function($msg='',$func='',$params = []){
      $('#confirm_modal #confirm').attr('onclick',$func+"("+$params.join(',')+")")
      $('#confirm_modal .modal-body').html($msg)

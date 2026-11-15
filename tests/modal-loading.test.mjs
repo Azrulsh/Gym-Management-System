@@ -5,15 +5,19 @@ import vm from 'node:vm';
 
 const page=readFileSync(new URL('../index.php',import.meta.url),'utf8');
 const source=page.slice(page.indexOf('window.uni_modal ='),page.indexOf('window._conf ='));
-function ui() {
+function ui(abortable=true) {
   const state={events:[],requests:[],alerts:[],classes:'modal-dialog modal-md'};
   const elements={
     '#uni_modal .modal-title':{text(value){state.title=value;}},
-    '#uni_modal .modal-body':{html(value){if(state.failRender)throw Error('private render error');state.body=value;},empty(){state.body='';}},
+    '#uni_modal .modal-body':{html(value){if(state.failRender)throw Error('private render error');state.body=value;if(state.onRender)state.onRender();},empty(){state.body='';}},
     '#uni_modal .modal-dialog':{addClass(value){state.classes+=' '+value;return this;},removeAttr(){state.classes='';return this;}},
     '#uni_modal':{modal(value){state.events.push(typeof value==='string'?value:'show');}},
   };
-  const $=selector=>elements[selector];$.ajax=options=>state.requests.push(options);
+  const $=selector=>elements[selector];$.ajax=options=>{
+    state.requests.push(options);
+    if(!abortable)return;
+    return {abort(){state.events.push('abort');options.error({status:0},'abort');options.complete();}};
+  };
   const window={alert(message){state.alerts.push(message);state.events.push('alert');}};
   vm.runInNewContext(source,{$,window,start_load(){state.events.push('start');},end_load(){state.events.push('end');}});
   state.open=(title='Details',url='view_pdetails.php?id=9',size='')=>window.uni_modal(title,url,size);
@@ -60,4 +64,42 @@ test('render failure removes partial content, stops loading and lets another mod
   assert.match(state.alerts[0],/Unable to display/);
   state.failRender=false;state.open();state.requests[1].success('<form>Ready</form>');state.requests[1].complete();
   assert.equal(state.body,'<form>Ready</form>');
+});
+
+test('late success from a replaced request cannot overwrite the latest modal',()=>{
+  const state=ui();state.open('Member A','a');state.open('Member B','b');
+  assert.deepEqual(state.events,['start','abort']);
+  state.requests[1].success('<p>Member B</p>');state.requests[1].complete();
+  state.requests[0].success('<p>Member A</p>');state.requests[0].complete();
+  assert.equal(state.title,'Member B');assert.equal(state.body,'<p>Member B</p>');
+  assert.deepEqual(state.events,['start','abort','show','end']);assert.deepEqual(state.alerts,[]);
+});
+
+test('old completion or timeout cannot stop the latest loading indicator or display an error',()=>{
+  const state=ui();state.open('Member A','a');state.open('Member B','b');
+  state.requests[0].error({status:0},'timeout');state.requests[0].complete();
+  state.requests[0].success('');state.requests[0].complete();
+  assert.deepEqual(state.events,['start','abort']);assert.deepEqual(state.alerts,[]);
+  state.requests[1].error({status:503},'error');state.requests[1].complete();
+  assert.deepEqual(state.events,['start','abort','end','alert']);
+  state.open('Member C','c');state.requests[2].success('<form>Member C</form>');state.requests[2].complete();
+  assert.equal(state.title,'Member C');assert.equal(state.body,'<form>Member C</form>');
+});
+
+test('request generation guard still works when the transport cannot abort',()=>{
+  const state=ui(false);state.open('A','a');state.open('B','b');
+  state.requests[1].success('<p>B</p>');state.requests[1].complete();
+  state.requests[0].success('<p>A</p>');state.requests[0].complete();
+  assert.equal(state.title,'B');assert.equal(state.body,'<p>B</p>');
+  assert.deepEqual(state.events,['start','show','end']);
+});
+
+test('modal scripts that start another load cannot let the older callback show or finish it',()=>{
+  const state=ui();state.open('A','a');
+  state.onRender=()=>{state.onRender=null;state.open('B','b');};
+  state.requests[0].success('<p>A</p>');state.requests[0].complete();
+  assert.deepEqual(state.events,['start','abort']);
+  state.requests[1].success('<p>B</p>');state.requests[1].complete();
+  assert.equal(state.title,'B');assert.equal(state.body,'<p>B</p>');
+  assert.deepEqual(state.events,['start','abort','show','end']);
 });
