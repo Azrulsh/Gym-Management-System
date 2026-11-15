@@ -3,7 +3,7 @@ import test from 'node:test';
 import { literal, run } from './helpers/php.mjs';
 
 const admin = { login_id: 2, login_type: 1, csrf_token: 'trainers-test-token' };
-const profile = { id: '', name: ` O'Neil Trainer `, email: ' trainer@example.com ', contact: ' 0123456789 ', rate: '120.50', csrf_token: admin.csrf_token };
+const profile = { id: '', name: ` O'Neil Trainer `, email: ' trainer@example.com ', contact: ' 0123456789 ', rate: '120.50', version: '1', csrf_token: admin.csrf_token };
 const database = `
   class TrainerResult {
     private $statement;
@@ -41,6 +41,7 @@ const database = `
       $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
       $this->pdo->exec('CREATE TABLE trainers (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, email TEXT NOT NULL, contact TEXT NOT NULL, rate REAL NOT NULL)');
       $this->pdo->exec("INSERT INTO trainers VALUES (1, 'First Trainer', 'first@example.com', '0111111111', 1000), (2, 'Second Trainer', 'second@example.com', '0222222222', 250)");
+      $this->pdo->exec('ALTER TABLE trainers ADD COLUMN version INTEGER NOT NULL DEFAULT 1');
     }
     public function prepare($sql) {
       if ($this->failRead && str_starts_with($sql, 'SELECT')) return false;
@@ -77,20 +78,21 @@ test('adding a trainer accepts apostrophes and preserves leading zeroes in conta
   const data = save(profile);
   assert.equal(data.result, 1);
   assert.deepEqual(data.after.slice(0, 2), data.before);
-  assert.deepEqual(data.after[2], { id: 3, name: "O'Neil Trainer", email: 'trainer@example.com', contact: '0123456789', rate: 120.5 });
+  assert.deepEqual(data.after[2], { id: 3, name: "O'Neil Trainer", email: 'trainer@example.com', contact: '0123456789', rate: 120.5, version: 1 });
 });
 
 test('editing changes only the selected trainer', () => {
   const data = save({ ...profile, id: '2' });
   assert.equal(data.result, 1);
   assert.deepEqual(data.after[0], data.before[0]);
-  assert.deepEqual(data.after[1], { id: 2, name: "O'Neil Trainer", email: 'trainer@example.com', contact: '0123456789', rate: 120.5 });
+  assert.deepEqual(data.after[1], { id: 2, name: "O'Neil Trainer", email: 'trainer@example.com', contact: '0123456789', rate: 120.5, version: 2 });
 });
 
 test('unchanged values succeed even when the database reports no changes', () => {
-  const data = save({ ...profile, id: '2', name: 'Second Trainer', email: 'second@example.com', contact: '0222222222', rate: '250' }, '$db->noOp = true;');
+  const data = save({ ...profile, id: '2', name: 'Second Trainer', email: 'second@example.com', contact: '0222222222', rate: '250' });
   assert.equal(data.result, 1);
-  assert.deepEqual(data.after, data.before);
+  const expected=structuredClone(data.before);expected[1].version=2;
+  assert.deepEqual(data.after, expected);
 });
 
 test('zero rate and a formatted international contact remain valid', () => {
@@ -173,7 +175,7 @@ test('trainer page escapes text and Edit attributes and provides a protected Add
     class TrainerPageResult {
       private $row;
       public function __construct() {
-        $this->row = ['id' => 7, 'name' => ${literal(attackName)}, 'email' => ${literal(attackEmail)}, 'contact' => ${literal(attackContact)}, 'rate' => 10];
+        $this->row = ['id' => 7, 'version' => 1, 'name' => ${literal(attackName)}, 'email' => ${literal(attackEmail)}, 'contact' => ${literal(attackContact)}, 'rate' => 10];
       }
       public function fetch_assoc() { $row = $this->row; $this->row = null; return $row; }
     }

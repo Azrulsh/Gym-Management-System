@@ -3,7 +3,7 @@ import test from 'node:test';
 import { literal, run } from './helpers/php.mjs';
 
 const admin = { login_id: 2, login_type: 1, csrf_token: 'packages-test-token' };
-const profile = { id: '', package: ` O'Neil Package `, description: ` Owner's description `, amount: '120.50', csrf_token: admin.csrf_token };
+const profile = { id: '', package: ` O'Neil Package `, description: ` Owner's description `, amount: '120.50', version: '1', csrf_token: admin.csrf_token };
 const database = `
   class PackageResult {
     private $statement;
@@ -41,6 +41,7 @@ const database = `
       $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
       $this->pdo->exec('CREATE TABLE packages (id INTEGER PRIMARY KEY AUTOINCREMENT, package TEXT NOT NULL, description TEXT NOT NULL, amount REAL NOT NULL)');
       $this->pdo->exec("INSERT INTO packages VALUES (1, 'Premium', 'Premium description', 1000), (2, 'Basic', 'Basic description', 250)");
+      $this->pdo->exec('ALTER TABLE packages ADD COLUMN version INTEGER NOT NULL DEFAULT 1');
     }
     public function prepare($sql) {
       if ($this->failRead && str_starts_with($sql, 'SELECT')) return false;
@@ -77,20 +78,21 @@ test('new packages accept apostrophes in name and description as bound data', ()
   const data = save(profile);
   assert.equal(data.result, 1);
   assert.deepEqual(data.after.slice(0, 2), data.before);
-  assert.deepEqual(data.after[2], { id: 3, package: "O'Neil Package", description: "Owner's description", amount: 120.5 });
+  assert.deepEqual(data.after[2], { id: 3, package: "O'Neil Package", description: "Owner's description", amount: 120.5, version: 1 });
 });
 
 test('editing changes only the selected package and can clear its optional description', () => {
   const data = save({ ...profile, id: '2', description: '' });
   assert.equal(data.result, 1);
   assert.deepEqual(data.after[0], data.before[0]);
-  assert.deepEqual(data.after[1], { id: 2, package: "O'Neil Package", description: '', amount: 120.5 });
+  assert.deepEqual(data.after[1], { id: 2, package: "O'Neil Package", description: '', amount: 120.5, version: 2 });
 });
 
 test('unchanged values and zero price remain valid', () => {
-  const same = save({ ...profile, id: '2', package: 'Basic', description: 'Basic description', amount: '250' }, '$db->noOp = true;');
+  const same = save({ ...profile, id: '2', package: 'Basic', description: 'Basic description', amount: '250' });
   assert.equal(same.result, 1);
-  assert.deepEqual(same.after, same.before);
+  const expected=structuredClone(same.before);expected[1].version=2;
+  assert.deepEqual(same.after, expected);
   const free = save({ ...profile, amount: '0' });
   assert.equal(free.result, 1);
   assert.equal(free.after[2].amount, 0);
@@ -169,7 +171,7 @@ test('package markup escapes quotes and HTML in visible text and Edit attributes
     class PackagePageResult {
       private $row;
       public function __construct() {
-        $this->row = ['id' => 7, 'package' => ${literal(attackName)}, 'description' => ${literal(attackDescription)}, 'amount' => 10];
+        $this->row = ['id' => 7, 'version' => 1, 'package' => ${literal(attackName)}, 'description' => ${literal(attackDescription)}, 'amount' => 10];
       }
       public function fetch_assoc() { $row = $this->row; $this->row = null; return $row; }
     }

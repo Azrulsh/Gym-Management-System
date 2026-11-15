@@ -20,6 +20,7 @@ include 'db_connect.php';
                             <div class="trainer-message" role="alert" aria-live="polite"></div>
                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
 							<input type="hidden" name="id">
+                            <input type="hidden" name="version">
 							<div class="form-group">
 								<label class="control-label" for="trainer-name">Name</label>
 								<input type="text" id="trainer-name" class="form-control" name="name" maxlength="200" required>
@@ -87,7 +88,7 @@ include 'db_connect.php';
 										
 									</td>
 									<td class="text-center">
-										<button class="btn btn-md btn-outline-success edit_trainer" type="button" data-id="<?php echo (int) $row['id'] ?>" data-name="<?php echo htmlspecialchars((string) $row['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>" data-email="<?php echo htmlspecialchars((string) $row['email'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>" data-contact="<?php echo htmlspecialchars((string) $row['contact'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>" data-rate="<?php echo htmlspecialchars((string) $row['rate'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>" >Edit</button>
+										<button class="btn btn-md btn-outline-success edit_trainer" type="button" data-id="<?php echo (int) $row['id'] ?>" data-name="<?php echo htmlspecialchars((string) $row['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>" data-email="<?php echo htmlspecialchars((string) $row['email'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>" data-contact="<?php echo htmlspecialchars((string) $row['contact'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>" data-rate="<?php echo htmlspecialchars((string) $row['rate'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>"  data-version="<?php echo (int)$row['version']; ?>">Edit</button>
 										<button class="btn btn-md btn-outline-danger delete_trainer" type="button" data-id="<?php echo (int) $row['id'] ?>" data-csrf-token="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">Delete</button>
 									</td>
 								</tr>

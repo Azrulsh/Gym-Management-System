@@ -13,6 +13,8 @@ function with_membership_database($test)
         $db->query('INSERT INTO packages (id) VALUES (1)');
         $db->query('CREATE TABLE trainers (id INT PRIMARY KEY, rate DECIMAL(12,2) NOT NULL DEFAULT 10) ENGINE=InnoDB');
         $db->query('INSERT INTO trainers (id) VALUES (2), (200)');
+        $db->multi_query(file_get_contents('database/migrations/012_package_trainer_versions.sql'));
+        do { if ($result = $db->store_result()) $result->free(); } while ($db->more_results() && $db->next_result());
         $db->query("CREATE TABLE registration_info (id INT PRIMARY KEY AUTO_INCREMENT, member_id INT NOT NULL, plan_id INT NOT NULL, package_id INT NOT NULL, trainer_id TINYINT NOT NULL, start_date DATE NOT NULL, end_date DATE NOT NULL, status TINYINT NOT NULL DEFAULT 1, plan_fee DECIMAL(12,2) DEFAULT 100, package_fee DECIMAL(12,2) DEFAULT 20, trainer_fee_snapshot DECIMAL(12,2) DEFAULT 10, price_source VARCHAR(24) NOT NULL DEFAULT 'captured', prices_recorded_at DATETIME DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB");
         $db->query("INSERT INTO registration_info (id,member_id,plan_id,package_id,trainer_id,start_date,end_date,status) VALUES (8, 9, 1, 1, 0, '2025-01-01', '2025-04-01', 0), (9, 10, 1, 1, 2, '2026-01-01', '2026-04-01', 1)");
         $db->query('ALTER TABLE registration_info ADD COLUMN plan_months INT DEFAULT 3');

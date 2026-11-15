@@ -10,10 +10,10 @@ function ui(valid = true) {
   const document = {};
   const handlers = {};
   const form = { dataset: {}, reportValidity: () => valid, reset() {
-    state.fields = { id: '', package: '', description: '', amount: '', csrf_token: 'package-token' };
+    state.fields = { id: '', package: '', description: '', amount: '', version: '', csrf_token: 'package-token' };
   } };
   form.reset();
-  const edit = { attributes: { 'data-id': '2', 'data-package': `O'Neil Package`, 'data-description': 'Quoted description', 'data-amount': '120.50' } };
+  const edit = { attributes: { 'data-id': '2', 'data-version': '7', 'data-package': `O'Neil Package`, 'data-description': 'Quoted description', 'data-amount': '120.50' } };
   const message = {
     addClass() { return this; }, removeClass() { return this; },
     text(value) { state.text = value; return this; }, empty() { state.text = ''; return this; },
@@ -55,12 +55,12 @@ test('Edit fills the selected package and Cancel clears its ID while preserving 
   assert.equal(state.labels['button[type="submit"]'], 'Update');
   assert.equal(state.labels['.reset-package'], 'Cancel Edit');
   assert.equal(state.focused, 'package');
-  assert.deepEqual(state.fields, { id: '2', package: `O'Neil Package`, description: 'Quoted description', amount: '120.50', csrf_token: 'package-token' });
+  assert.deepEqual(state.fields, { id: '2', package: `O'Neil Package`, description: 'Quoted description', amount: '120.50', version: '7', csrf_token: 'package-token' });
   state.cancel();
   assert.equal(state.labels['.package-form-title'], 'Add Package');
   assert.equal(state.labels['button[type="submit"]'], 'Create');
   assert.equal(state.labels['.reset-package'], 'Clear');
-  assert.deepEqual(state.fields, { id: '', package: '', description: '', amount: '', csrf_token: 'package-token' });
+  assert.deepEqual(state.fields, { id: '', package: '', description: '', amount: '', version: '', csrf_token: 'package-token' });
 });
 
 test('save posts selected fields and token once and prevents Edit/Cancel while submitting', () => {
@@ -116,4 +116,15 @@ test('network and unexpected HTML failures restore controls without leaking raw 
 test('invalid browser input never sends a request', () => {
   const state = ui(false); state.submit();
   assert.equal(state.requests.length, 0);
+});
+
+test('stale package conflict keeps the edit values and restores controls', () => {
+  const state=ui();state.edit();state.submit();
+  const fields=new URLSearchParams(state.requests[0].data);
+  assert.equal(fields.get('version'),'7');
+  const before={...state.fields};
+  state.requests[0].error({status:409,responseJSON:{error:'Package has changed. Refresh and review before saving.'}});
+  state.requests[0].complete();
+  assert.match(state.text,/has changed/);assert.deepEqual(state.fields,before);
+  assert.equal(state.disabled,false);assert.equal(state.stopped,1);assert.equal(state.timers.length,0);
 });

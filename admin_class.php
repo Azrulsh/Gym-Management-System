@@ -571,9 +571,11 @@ Class Action {
 		try {
 			if ($id && !$this->package_record($id)) return $this->action_error(404, 'Package no longer exists. Refresh the page.');
 			if ($id) {
-				$save = $this->db->prepare('UPDATE packages SET package = ?, description = ?, amount = ? WHERE id = ?');
+				$version = $this->catalog_edit_version();
+				if ($version === false) return $this->action_error(400, 'Reopen Edit Package before saving.');
+				$save = $this->db->prepare('UPDATE packages SET package = ?, description = ?, amount = ?, version = version + 1 WHERE id = ? AND version = ?');
 				if (!$save) return $this->action_error(500, 'Unable to save package. Please try again.');
-				$save->bind_param('sssi', $package, $description, $amount, $id);
+				$save->bind_param('sssii', $package, $description, $amount, $id, $version);
 			} else {
 				$save = $this->db->prepare('INSERT INTO packages (package, description, amount) VALUES (?, ?, ?)');
 				if (!$save) return $this->action_error(500, 'Unable to save package. Please try again.');
@@ -584,6 +586,7 @@ Class Action {
 			$save->close();
 			if (!$executed) return $this->action_error(500, 'Unable to save package. Please try again.');
 			if ($id && $changed === 0 && !$this->package_record($id)) return $this->action_error(404, 'Package no longer exists. Refresh the page.');
+			if ($id && $changed !== 1) return $this->action_error(409, 'Package has changed. Refresh and review before saving.');
 			return 1;
 		} catch (mysqli_sql_exception | RuntimeException $exception) {
 			error_log('Unable to save package (error code ' . (int) $exception->getCode() . ').');
@@ -634,9 +637,11 @@ Class Action {
 		try {
 			if ($id && !$this->trainer_record($id)) return $this->action_error(404, 'Trainer no longer exists. Refresh the page.');
 			if ($id) {
-				$save = $this->db->prepare('UPDATE trainers SET name = ?, email = ?, contact = ?, rate = ? WHERE id = ?');
+				$version = $this->catalog_edit_version();
+				if ($version === false) return $this->action_error(400, 'Reopen Edit Trainer before saving.');
+				$save = $this->db->prepare('UPDATE trainers SET name = ?, email = ?, contact = ?, rate = ?, version = version + 1 WHERE id = ? AND version = ?');
 				if (!$save) return $this->action_error(500, 'Unable to save trainer. Please try again.');
-				$save->bind_param('ssssi', $name, $email, $contact, $rate, $id);
+				$save->bind_param('ssssii', $name, $email, $contact, $rate, $id, $version);
 			} else {
 				$save = $this->db->prepare('INSERT INTO trainers (name, email, contact, rate) VALUES (?, ?, ?, ?)');
 				if (!$save) return $this->action_error(500, 'Unable to save trainer. Please try again.');
@@ -647,11 +652,17 @@ Class Action {
 			$save->close();
 			if (!$executed) return $this->action_error(500, 'Unable to save trainer. Please try again.');
 			if ($id && $changed === 0 && !$this->trainer_record($id)) return $this->action_error(404, 'Trainer no longer exists. Refresh the page.');
+			if ($id && $changed !== 1) return $this->action_error(409, 'Trainer has changed. Refresh and review before saving.');
 			return 1;
 		} catch (mysqli_sql_exception | RuntimeException $exception) {
 			error_log('Unable to save trainer (error code ' . (int) $exception->getCode() . ').');
 			return $this->action_error(500, 'Unable to save trainer. Please try again.');
 		}
+	}
+	private function catalog_edit_version(){
+		$version = $_POST['version'] ?? null;
+		if (!is_string($version) || !ctype_digit($version)) return false;
+		return filter_var($version, FILTER_VALIDATE_INT, ['options'=>['min_range'=>1,'max_range'=>2147483647]]);
 	}
 	private function trainer_record($id){
 		$statement = $this->db->prepare('SELECT id FROM trainers WHERE id = ?');

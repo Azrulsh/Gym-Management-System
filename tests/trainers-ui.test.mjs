@@ -10,10 +10,10 @@ function ui(valid = true) {
   const document = {};
   const handlers = {};
   const form = { dataset: {}, reportValidity: () => valid, reset() {
-    state.fields = { id: '', name: '', email: '', contact: '', rate: '', csrf_token: 'trainer-token' };
+    state.fields = { id: '', name: '', email: '', contact: '', rate: '', version: '', csrf_token: 'trainer-token' };
   } };
   form.reset();
-  const edit = { attributes: { 'data-id': '2', 'data-name': `O'Neil Trainer`, 'data-email': 'trainer@example.com', 'data-contact': '0123456789', 'data-rate': '120.50' } };
+  const edit = { attributes: { 'data-id': '2', 'data-version': '7', 'data-name': `O'Neil Trainer`, 'data-email': 'trainer@example.com', 'data-contact': '0123456789', 'data-rate': '120.50' } };
   const message = {
     addClass() { return this; }, removeClass() { return this; },
     text(value) { state.text = value; return this; }, empty() { state.text = ''; return this; },
@@ -55,12 +55,12 @@ test('Edit fills the selected trainer and Cancel clears its ID while preserving 
   assert.equal(state.labels['button[type="submit"]'], 'Update');
   assert.equal(state.labels['.reset-trainer'], 'Cancel Edit');
   assert.equal(state.focused, 'name');
-  assert.deepEqual(state.fields, { id: '2', name: `O'Neil Trainer`, email: 'trainer@example.com', contact: '0123456789', rate: '120.50', csrf_token: 'trainer-token' });
+  assert.deepEqual(state.fields, { id: '2', name: `O'Neil Trainer`, email: 'trainer@example.com', contact: '0123456789', rate: '120.50', version: '7', csrf_token: 'trainer-token' });
   state.cancel();
   assert.equal(state.labels['.trainer-form-title'], 'Add Trainer');
   assert.equal(state.labels['button[type="submit"]'], 'Create');
   assert.equal(state.labels['.reset-trainer'], 'Clear');
-  assert.deepEqual(state.fields, { id: '', name: '', email: '', contact: '', rate: '', csrf_token: 'trainer-token' });
+  assert.deepEqual(state.fields, { id: '', name: '', email: '', contact: '', rate: '', version: '', csrf_token: 'trainer-token' });
 });
 
 test('save posts selected fields and token once and prevents Edit/Cancel while submitting', () => {
@@ -117,4 +117,15 @@ test('network and unexpected HTML failures restore controls without leaking raw 
 test('invalid browser input never sends a request', () => {
   const state = ui(false); state.submit();
   assert.equal(state.requests.length, 0);
+});
+
+test('stale trainer conflict keeps the edit values and restores controls', () => {
+  const state=ui();state.edit();state.submit();
+  const fields=new URLSearchParams(state.requests[0].data);
+  assert.equal(fields.get('version'),'7');
+  const before={...state.fields};
+  state.requests[0].error({status:409,responseJSON:{error:'Trainer has changed. Refresh and review before saving.'}});
+  state.requests[0].complete();
+  assert.match(state.text,/has changed/);assert.deepEqual(state.fields,before);
+  assert.equal(state.disabled,false);assert.equal(state.stopped,1);assert.equal(state.timers.length,0);
 });

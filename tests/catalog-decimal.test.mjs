@@ -43,6 +43,7 @@ for(const [kind,table,column,existingId] of [['plan','plans','amount',1],['packa
     const data=isolated(`apply_catalog_decimal($db);$results=[];$historyBefore=membership_snapshot($db);
       foreach(['','${existingId}'] as $id){foreach(['0','0.01','120.50','16777217','9999999999.99','10000000000','9999999999.999','-1','1e3'] as $value){
         $post=['id'=>$id,'csrf_token'=>'catalog-decimal','${column}'=>$value];
+        if($id!=='')$post['version']=(string)$db->query('SELECT version FROM ${table} WHERE id='.(int)$id)->fetch_assoc()['version'];
         ${kind==='plan'?"$post['plan']='1';if($id!=='')$post['version']=(string)$db->query('SELECT version FROM plans WHERE id='.(int)$id)->fetch_assoc()['version'];":kind==='package'?"$post['package']='Test';$post['description']='Demo';":"$post['name']='Test';$post['email']='trainer@example.test';$post['contact']='0123456789';"}
         $before=catalog_prices($db);
         $result=new_membership_for_test($db,$post,'save_${kind}');
