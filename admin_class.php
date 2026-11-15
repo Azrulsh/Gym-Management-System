@@ -1065,7 +1065,7 @@ Class Action {
 			if (!$plan || !$package) {
 				return $this->action_error(404, 'Plan or package no longer exists. Refresh the page.');
 			}
-			if ($trainerId < 0 || $trainerId > 127) return $this->action_error(400, 'Membership has an invalid trainer ID.');
+			if ($trainerId < 0 || $trainerId > 2147483647) return $this->action_error(400, 'Membership has an invalid trainer ID.');
 			$trainer = $trainerId ? $this->membership_lookup('SELECT id, rate FROM trainers WHERE id = ? LOCK IN SHARE MODE', $trainerId) : ['rate'=>'0.00'];
 			if (!$trainer) {
 				return $this->action_error(404, 'Trainer no longer exists. Refresh the page.');
@@ -1146,8 +1146,6 @@ Class Action {
 			if ($value === false) return $this->action_error(400, 'Choose valid member, plan, package and trainer records.');
 			$ids[$field] = $value;
 		}
-		// registration_info.trainer_id is currently a signed TINYINT, not an INT.
-		if ($ids['trainer_id'] > 127) return $this->action_error(400, 'Selected trainer exceeds the supported ID range.');
 		$transaction = false;
 		try {
 			if (!$this->db->begin_transaction()) throw new RuntimeException('Unable to start membership transaction.');

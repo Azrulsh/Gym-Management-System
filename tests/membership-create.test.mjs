@@ -80,7 +80,7 @@ test('dates, status and IDs supplied outside the approved fields cannot override
 for (const [field, value, status] of [
   ['member_id', '999', 404], ['plan_id', '999', 404], ['package_id', '999', 404], ['trainer_id', '99', 404],
   ['member_id', '0', 400], ['plan_id', '-1', 400], ['package_id', '1 OR 1=1', 400],
-  ['member_id', ['9'], 400], ['trainer_id', true, 400], ['trainer_id', '200', 400],
+  ['member_id', ['9'], 400], ['trainer_id', true, 400], ['trainer_id', '2147483648', 400],
   ['plan_id', '2', 400], ['plan_id', '3', 400],
 ]) {
   test(`invalid or unavailable ${field} ${JSON.stringify(value)} leaves all history intact`, () => {

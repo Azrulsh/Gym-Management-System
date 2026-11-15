@@ -1,6 +1,6 @@
 -- DEVELOPMENT RESET: replaces application tables and data in the SELECTED database.
 -- phpMyAdmin: select `gym` (matching db_connect.php), then import this entire file.
--- Includes migrations 001 through 012. Not an upgrade script for existing records.
+-- Includes migrations 001 through 013. Not an upgrade script for existing records.
 -- Local demo accounts: admin / admin (Admin), staff / staff (Staff).
 -- No CREATE DATABASE or USE: the caller chooses the target database.
 SET NAMES utf8mb4;
@@ -61,7 +61,7 @@ CREATE TABLE registration_info (
   package_id INT NOT NULL,
   start_date DATE NOT NULL,
   end_date DATE NOT NULL,
-  trainer_id TINYINT NOT NULL DEFAULT 0 COMMENT '0 = no trainer',
+  trainer_id INT NOT NULL DEFAULT 0 COMMENT '0 = no trainer',
   status TINYINT NOT NULL DEFAULT 1 COMMENT '0=Closed; 1=open (dates determine Active/Expired/Scheduled)',
   date_created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   KEY member_status (member_id, status),
