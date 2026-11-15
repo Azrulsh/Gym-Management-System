@@ -6,6 +6,25 @@ const session={login_id:2,login_type:1,csrf_token:'unique-test'};
 function isolated(code){return JSON.parse(run(session,`require 'tests/helpers/membership-db.php';
   with_throttle_database(function($db,$schema){$GLOBALS['auth_connection']=$db;${code}});`).body);}
 
+function assertSingleUsernameWinner(data){
+  assert.equal(data.results.length,2);
+  const winners=data.results.filter(row=>row.status===200&&row.result===1);
+  const rejected=data.results.filter(row=>
+    (row.status===200&&row.result===2)
+    || (row.status===409&&JSON.parse(row.result).error==='Username already exists.'));
+  assert.equal(winners.length,1,'Exactly one request must succeed');
+  assert.equal(rejected.length,1,'The other request must explicitly reject the duplicate username');
+  assert.equal(data.after.length,data.before.length);
+  const owners=data.after.filter(row=>row.username==='same_username');
+  assert.equal(owners.length,1);
+  const winnerIndex=data.results.findIndex(row=>row.status===200&&row.result===1);
+  assert.equal(owners[0].id,data.before[winnerIndex].id);
+  assert.deepEqual(data.after[1-winnerIndex],data.before[1-winnerIndex]);
+  for(let i=0;i<2;i++){
+    for(const field of ['id','password','auth_version','type'])assert.equal(data.after[i][field],data.before[i][field]);
+  }
+}
+
 test('migration 004 is repeatable and preserves accounts, hashes and session versions',()=>{
   const data=isolated(`$db->query('ALTER TABLE users DROP INDEX users_username_unique');
     $before=$db->query('SELECT * FROM users ORDER BY id')->fetch_all(MYSQLI_ASSOC);
@@ -47,14 +66,30 @@ test('two simultaneous Manage Account saves cannot claim the same username',()=>
     foreach($workers as [$p,$pipes]){$out=stream_get_contents($pipes[1]);$err=stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);if(proc_close($p)!==0||$err!=='')throw new RuntimeException($err);$results[]=json_decode($out,true);}
     $after=$db->query('SELECT * FROM users ORDER BY id')->fetch_all(MYSQLI_ASSOC);
     echo json_encode(compact('before','after','results'));`);
-  assert.deepEqual(data.results.map(result=>result.status).sort(),[200,409]);
-  assert.equal(data.after.filter(row=>row.username==='same_username').length,1);
-  assert.match(JSON.parse(data.results.find(result=>result.status===409).result).error,/Username already exists/);
-  for(let i=0;i<2;i++){
-    assert.equal(data.after[i].password,data.before[i].password);
-    assert.equal(data.after[i].auth_version,data.before[i].auth_version);
-    assert.equal(data.after[i].type,data.before[i].type);
+  assertSingleUsernameWinner(data);
+});
+
+function usernameOutcomeFixture(rejection){
+  const before=[
+    {id:2,name:'Admin',username:'admin',password:'admin-hash',auth_version:1,type:1},
+    {id:3,name:'Staff',username:'staff',password:'staff-hash',auth_version:1,type:2}
+  ];
+  const after=structuredClone(before);after[0].name='Test';after[0].username='same_username';
+  return {before,after,results:[{status:200,result:1},rejection]};
+}
+
+for(const rejection of [{status:200,result:2},{status:409,result:JSON.stringify({error:'Username already exists.'})}]){
+  test(`username race assertions accept the supported ${rejection.status} rejection`,()=>{
+    assertSingleUsernameWinner(usernameOutcomeFixture(rejection));
+  });
+}
+
+test('username race assertions still reject double success, unexpected errors and duplicate records',()=>{
+  for(const result of [{status:200,result:1},{status:200,result:3},{status:500,result:'failure'},{status:409,result:JSON.stringify({error:'Other conflict'})}]){
+    assert.throws(()=>assertSingleUsernameWinner(usernameOutcomeFixture(result)));
   }
+  const duplicate=usernameOutcomeFixture({status:200,result:2});duplicate.after[1].username='same_username';
+  assert.throws(()=>assertSingleUsernameWinner(duplicate));
 });
 test('Admin Add User still rejects an existing username with a clear conflict',()=>{
   const data=isolated(`echo json_encode(new_membership_for_test($db,['id'=>'','name'=>'Duplicate','username'=>'STAFF','password'=>'new','type'=>'2','csrf_token'=>'unique-test'],'save_user'));`);
