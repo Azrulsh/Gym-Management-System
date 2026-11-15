@@ -8,6 +8,7 @@ function with_membership_database($test)
         $db->query('INSERT INTO members VALUES (9), (10), (11)');
         $db->query('CREATE TABLE plans (id INT PRIMARY KEY, plan INT NOT NULL, amount DECIMAL(12,2) NOT NULL DEFAULT 100) ENGINE=InnoDB');
         $db->query('INSERT INTO plans (id,plan) VALUES (1, 3), (2, 0), (3, 2147483647)');
+        $db->query(file_get_contents('database/migrations/011_plan_versions.sql'));
         $db->query('CREATE TABLE packages (id INT PRIMARY KEY, amount DECIMAL(12,2) NOT NULL DEFAULT 20) ENGINE=InnoDB');
         $db->query('INSERT INTO packages (id) VALUES (1)');
         $db->query('CREATE TABLE trainers (id INT PRIMARY KEY, rate DECIMAL(12,2) NOT NULL DEFAULT 10) ENGINE=InnoDB');

@@ -20,6 +20,7 @@ include 'db_connect.php';
 							<div class="plan-message" role="alert" aria-live="polite"></div>
 							<input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
 							<input type="hidden" name="id">
+							<input type="hidden" name="version">
 							<div class="form-group">
 								<label class="control-label" for="plan-months">Plan (months)</label>
 								<input type="number" id="plan-months" class="form-control" min="1" max="2147483647" step="1" name="plan" required>
@@ -86,7 +87,7 @@ include 'db_connect.php';
 										<b><?php echo number_format($row['amount'],2) ?></b>
 									</td>
 									<td class="text-center">
-										<button class="btn btn-md btn-outline-success edit_plan" type="button" data-id="<?php echo (int) $row['id'] ?>" data-plan="<?php echo (int) $row['plan'] ?>" data-amount="<?php echo htmlspecialchars((string) $row['amount'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>">Edit</button>
+										<button class="btn btn-md btn-outline-success edit_plan" type="button" data-id="<?php echo (int) $row['id'] ?>" data-plan="<?php echo (int) $row['plan'] ?>" data-amount="<?php echo htmlspecialchars((string) $row['amount'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>" data-version="<?php echo (int)$row['version']; ?>">Edit</button>
 										<button class="btn btn-md btn-outline-danger delete_plan" type="button" data-id="<?php echo $row['id'] ?>" data-csrf-token="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">Delete</button>
 									</td>
 								</tr>

@@ -3,7 +3,7 @@ import test from 'node:test';
 import { literal, run } from './helpers/php.mjs';
 
 const admin = { login_id: 2, login_type: 1, csrf_token: 'plans-test-token' };
-const profile = { id: '', plan: '6', amount: '120.50', csrf_token: admin.csrf_token };
+const profile = { id: '', plan: '6', amount: '120.50', version: '1', csrf_token: admin.csrf_token };
 const database = `
   class PlanResult {
     private $statement;
@@ -41,6 +41,7 @@ const database = `
       $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
       $this->pdo->exec('CREATE TABLE plans (id INTEGER PRIMARY KEY AUTOINCREMENT, plan INTEGER NOT NULL, amount REAL NOT NULL)');
       $this->pdo->exec('INSERT INTO plans VALUES (1, 12, 1000), (2, 3, 250)');
+      $this->pdo->exec('ALTER TABLE plans ADD COLUMN version INTEGER NOT NULL DEFAULT 1');
     }
     public function prepare($sql) {
       if ($this->failRead && str_starts_with($sql, 'SELECT')) return false;
@@ -77,14 +78,14 @@ test('adding a valid plan stores months and amount without changing existing pla
   const data = save(profile);
   assert.equal(data.result, 1);
   assert.deepEqual(data.after.slice(0, 2), data.before);
-  assert.deepEqual(data.after[2], { id: 3, plan: 6, amount: 120.5 });
+  assert.deepEqual(data.after[2], { id: 3, plan: 6, amount: 120.5, version: 1 });
 });
 
 test('editing changes only the selected plan', () => {
   const data = save({ ...profile, id: '2' });
   assert.equal(data.result, 1);
   assert.deepEqual(data.after[0], data.before[0]);
-  assert.deepEqual(data.after[1], { id: 2, plan: 6, amount: 120.5 });
+  assert.deepEqual(data.after[1], { id: 2, plan: 6, amount: 120.5, version: 2 });
 });
 
 test('zero amount remains valid', () => {
@@ -93,10 +94,11 @@ test('zero amount remains valid', () => {
   assert.equal(data.after[2].amount, 0);
 });
 
-test('saving unchanged values succeeds even with zero affected rows', () => {
-  const data = save({ ...profile, id: '2', plan: '3', amount: '250' }, '$db->noOp = true;');
+test('saving unchanged values succeeds and advances the edit version', () => {
+  const data = save({ ...profile, id: '2', plan: '3', amount: '250' });
   assert.equal(data.result, 1);
-  assert.deepEqual(data.after, data.before);
+  const expected=structuredClone(data.before);expected[1].version=2;
+  assert.deepEqual(data.after, expected);
 });
 
 for (const [label, patch] of [
@@ -165,5 +167,5 @@ test('the rendered plan page has clean Edit attributes and a CSRF-protected vali
   assert.match(response.body, /name="csrf_token" value="plans-test-token"/);
   assert.match(response.body, /min="0" step="0.01" name="amount" max="9999999999\.99" required/);
   assert.match(response.body, /<script src="assets\/js\/plans.js\?v=\d+"><\/script>/);
-  assert.match(response.body, /data-id="\d+" data-plan="\d+" data-amount="[^"]+">Edit/);
+  assert.match(response.body, /data-id="\d+" data-plan="\d+" data-amount="[^"]+" data-version="\d+">Edit/);
 });

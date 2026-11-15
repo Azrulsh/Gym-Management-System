@@ -10,10 +10,10 @@ function ui(valid = true) {
   const document = {};
   const handlers = {};
   const form = { dataset: {}, reportValidity: () => valid, reset() {
-    state.fields = { id: '', plan: '', amount: '', csrf_token: 'plan-token' };
+    state.fields = { id: '', plan: '', amount: '', version: '', csrf_token: 'plan-token' };
   } };
   form.reset();
-  const edit = { attributes: { 'data-id': '2', 'data-plan': '6', 'data-amount': '120.50' } };
+  const edit = { attributes: { 'data-id': '2', 'data-plan': '6', 'data-amount': '120.50', 'data-version': '7' } };
   const message = {
     addClass() { return this; }, removeClass() { return this; },
     text(value) { state.text = value; return this; }, empty() { state.text = ''; return this; },
@@ -55,12 +55,12 @@ test('Edit fills the selected plan and Cancel clears its ID while preserving CSR
   assert.equal(state.labels['button[type="submit"]'], 'Update');
   assert.equal(state.labels['.reset-plan'], 'Cancel Edit');
   assert.equal(state.focused, 'plan');
-  assert.deepEqual(state.fields, { id: '2', plan: '6', amount: '120.50', csrf_token: 'plan-token' });
+  assert.deepEqual(state.fields, { id: '2', plan: '6', amount: '120.50', version: '7', csrf_token: 'plan-token' });
   state.cancel();
   assert.equal(state.labels['.plan-form-title'], 'Add Plan');
   assert.equal(state.labels['button[type="submit"]'], 'Create');
   assert.equal(state.labels['.reset-plan'], 'Clear');
-  assert.deepEqual(state.fields, { id: '', plan: '', amount: '', csrf_token: 'plan-token' });
+  assert.deepEqual(state.fields, { id: '', plan: '', amount: '', version: '', csrf_token: 'plan-token' });
 });
 
 test('save posts selected fields and token once and prevents Edit/Cancel while submitting', () => {
@@ -73,7 +73,7 @@ test('save posts selected fields and token once and prevents Edit/Cancel while s
   const request = state.requests[0];
   assert.equal(request.url, 'ajax.php?action=save_plan');
   assert.equal(request.method, 'POST');
-  assert.match(request.data, /id=2&plan=6&amount=120.50&csrf_token=plan-token/);
+  assert.match(request.data, /id=2&plan=6&amount=120.50&version=7&csrf_token=plan-token/);
   request.success('1'); request.complete();
   assert.equal(state.stopped, 1);
   assert.equal(state.toasts[0], 'Plan successfully saved.');

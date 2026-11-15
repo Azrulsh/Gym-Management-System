@@ -509,9 +509,13 @@ Class Action {
 		try {
 			if ($id && !$this->plan_record($id)) return $this->action_error(404, 'Plan no longer exists. Refresh the page.');
 			if ($id) {
-				$save = $this->db->prepare('UPDATE plans SET plan = ?, amount = ? WHERE id = ?');
+				$version = $_POST['version'] ?? null;
+				if (!is_string($version) || !ctype_digit($version)) return $this->action_error(400, 'Reopen Edit Plan before saving.');
+				$version = filter_var($version, FILTER_VALIDATE_INT, ['options'=>['min_range'=>1,'max_range'=>2147483647]]);
+				if ($version === false) return $this->action_error(400, 'Reopen Edit Plan before saving.');
+				$save = $this->db->prepare('UPDATE plans SET plan = ?, amount = ?, version = version + 1 WHERE id = ? AND version = ?');
 				if (!$save) return $this->action_error(500, 'Unable to save plan. Please try again.');
-				$save->bind_param('isi', $months, $amount, $id);
+				$save->bind_param('isii', $months, $amount, $id, $version);
 			} else {
 				$save = $this->db->prepare('INSERT INTO plans (plan, amount) VALUES (?, ?)');
 				if (!$save) return $this->action_error(500, 'Unable to save plan. Please try again.');
@@ -522,6 +526,7 @@ Class Action {
 			$save->close();
 			if (!$executed) return $this->action_error(500, 'Unable to save plan. Please try again.');
 			if ($id && $changed === 0 && !$this->plan_record($id)) return $this->action_error(404, 'Plan no longer exists. Refresh the page.');
+			if ($id && $changed !== 1) return $this->action_error(409, 'Plan has changed. Refresh and review before saving.');
 			return 1;
 		} catch (mysqli_sql_exception | RuntimeException $exception) {
 			error_log('Unable to save plan (error code ' . (int) $exception->getCode() . ').');

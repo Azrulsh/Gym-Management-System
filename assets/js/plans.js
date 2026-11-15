@@ -18,7 +18,7 @@
         const form = $('#manage-plan').get(0);
         if (!form || form.dataset.submitting === 'true') return;
         form.reset();
-        for (const name of ['id', 'plan', 'amount']) {
+        for (const name of ['id', 'plan', 'amount', 'version']) {
             $(form).find('[name="' + name + '"]').val($(this).attr('data-' + name));
         }
         setMode(form, true);
@@ -31,6 +31,7 @@
         if (!form || form.dataset.submitting === 'true') return;
         form.reset();
         $(form).find('[name="id"]').val('');
+        $(form).find('[name="version"]').val('');
         setMode(form, false);
         clearMessage(form);
     });

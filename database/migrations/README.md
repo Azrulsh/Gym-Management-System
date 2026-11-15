@@ -8,7 +8,7 @@ Fresh installation or development reset:
 4. Log out of any existing browser session, then log in again:
    Admin: `admin` / `admin`; Staff: `staff` / `staff` (local development only).
 
-`gym.sql` replaces the old `gym_db.sql` dump and integrates migrations 001 through 010.
+`gym.sql` replaces the old `gym_db.sql` dump and integrates migrations 001 through 011.
 No separate migration imports are needed after this reset. Passwords use Argon2id.
 There are four profiles: Ali has an Active membership, Siti has an Expired
 membership that can be renewed, Kumar has a Closed membership, and Mei has no
@@ -123,6 +123,15 @@ They show `Original duration not recorded; see start/end dates` and retain norma
 status/payment/renewal eligibility based on their dates and existing validations.
 Re-importing never overwrites a captured duration. Fresh demo rows have known
 durations captured from their seed plans. No existing dates or payments are changed.
+
+Import `011_plan_versions.sql` before editing Plans with version checks. Every
+successful edit increments `plans.version`, including edits with unchanged values.
+The atomic UPDATE requires the version shown when Edit was opened. A stale form
+returns 409 without overwriting newer values; missing/invalid versions return 400.
+Refresh the page and review current values before reapplying an edit. New Plan
+creation does not require a version. Migration re-imports preserve versions and
+existing prices, durations, memberships and payments. Other catalog edit flows
+are outside this migration's scope.
 
 The login handler requires this table and returns a generic 503 if storage fails;
 it never falls back to unlimited login attempts. No schema changes run during login.
