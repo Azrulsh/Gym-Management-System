@@ -13,7 +13,7 @@ if (isset($_GET['id'])) {
 include 'db_connect.php';
 if ($recordId !== null) {
     try {
-        $statement = $conn->prepare('SELECT id, member_id, lastname, firstname, middlename, email, contact, gender, address FROM members WHERE id = ?');
+        $statement = $conn->prepare('SELECT id, version, member_id, lastname, firstname, middlename, email, contact, gender, address FROM members WHERE id = ?');
         $statement->bind_param('i', $recordId);
         $statement->execute();
         $member = $statement->get_result()->fetch_assoc();
@@ -36,6 +36,7 @@ $escapeMember = static function ($value) {
 	<form action="" id="manage-member-profile">
 		<div class="member-message" role="alert" aria-live="polite"></div>
 		<input type="hidden" name="id" value="<?php echo $escapeMember($member['id'] ?? ''); ?>">
+		<input type="hidden" name="version" value="<?php echo $escapeMember($member['version'] ?? ''); ?>">
 		<input type="hidden" name="csrf_token" value="<?php echo $escapeMember(csrf_token()); ?>">
 		<div class="row form-group">
 			<div class="col-md-4">

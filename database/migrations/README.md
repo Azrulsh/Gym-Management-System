@@ -8,7 +8,7 @@ Fresh installation or development reset:
 4. Log out of any existing browser session, then log in again:
    Admin: `admin` / `admin`; Staff: `staff` / `staff` (local development only).
 
-`gym.sql` replaces the old `gym_db.sql` dump and integrates migrations 001 through 013.
+`gym.sql` replaces the old `gym_db.sql` dump and integrates migrations 001 through 014.
 No separate migration imports are needed after this reset. Passwords use Argon2id.
 There are four profiles: Ali has an Active membership, Siti has an Expired
 membership that can be renewed, Kumar has a Closed membership, and Mei has no
@@ -167,3 +167,9 @@ and drop only those test databases afterwards. They do not use application accou
 Test connection defaults to localhost/root with an empty password; override via
 `GYM_TEST_DB_HOST`, `GYM_TEST_DB_USER`, and `GYM_TEST_DB_PASSWORD` if needed.
 HTTP smoke checks against the application do consume its login attempt counters.
+
+Import `014_member_versions.sql` before editing member profiles. Existing profiles
+start at version 1. Each successful edit increments the version, including saves
+with unchanged details. Stale forms return 409; reopen Edit and review current
+details before saving again. Missing/invalid versions return 400. Add Member
+does not need a version. Re-imports preserve versions and all existing data.

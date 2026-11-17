@@ -5,7 +5,8 @@ function with_membership_database($test)
 {
     with_throttle_database(function($db, $schema) use ($test) {
         $db->query('CREATE TABLE members (id INT PRIMARY KEY) ENGINE=InnoDB');
-        $db->query('INSERT INTO members VALUES (9), (10), (11)');
+        $db->query(file_get_contents('database/migrations/014_member_versions.sql'));
+        $db->query('INSERT INTO members (id) VALUES (9), (10), (11)');
         $db->query('CREATE TABLE plans (id INT PRIMARY KEY, plan INT NOT NULL, amount DECIMAL(12,2) NOT NULL DEFAULT 100) ENGINE=InnoDB');
         $db->query('INSERT INTO plans (id,plan) VALUES (1, 3), (2, 0), (3, 2147483647)');
         $db->query(file_get_contents('database/migrations/011_plan_versions.sql'));

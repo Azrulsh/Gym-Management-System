@@ -3,7 +3,7 @@ import test from 'node:test';
 import { literal, run } from './helpers/php.mjs';
 
 const session={login_id:2,login_type:1,csrf_token:'number-test'};
-const profile={id:'',member_id:'',firstname:'Test',lastname:'Member',middlename:'',email:'test@example.test',contact:'0123456789',gender:'Male',address:'Demo',csrf_token:'number-test'};
+const profile={id:'',version:'1',member_id:'',firstname:'Test',lastname:'Member',middlename:'',email:'test@example.test',contact:'0123456789',gender:'Male',address:'Demo',csrf_token:'number-test'};
 function isolated(code){return JSON.parse(run(session,`require 'tests/helpers/membership-read-db.php';
   with_membership_read_database(function($db,$schema){
     $db->query('ALTER TABLE members MODIFY id INT NOT NULL AUTO_INCREMENT');

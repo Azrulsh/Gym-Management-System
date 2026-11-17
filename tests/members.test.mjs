@@ -6,7 +6,7 @@ import { literal, run } from './helpers/php.mjs';
 
 const session = { login_id: 3, login_type: 2, csrf_token: 'members-test-token' };
 const profile = {
-  id: '', member_id: '77889901', firstname: ' Aisyah ', lastname: "O'Neil",
+  id: '', version: '1', member_id: '77889901', firstname: ' Aisyah ', lastname: "O'Neil",
   middlename: '', email: 'test@example.com', contact: '+60 11-12345678', gender: 'Female',
   address: 'Unit 1 <Block A>', csrf_token: session.csrf_token,
 };
@@ -55,6 +55,7 @@ const database = `
       $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
       $this->pdo->exec('CREATE TABLE members (id INTEGER PRIMARY KEY AUTOINCREMENT, member_id INTEGER NOT NULL, firstname TEXT NOT NULL, lastname TEXT NOT NULL, middlename TEXT NOT NULL, email TEXT NOT NULL, contact TEXT NOT NULL, gender TEXT NOT NULL, address TEXT NOT NULL, date_created TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)');
       $this->pdo->exec("INSERT INTO members VALUES (10, 100010, 'Before', 'Edit', 'Old middle', 'before@example.com', '0111111111', 'Male', 'Old address', '2026-01-01'), (11, 100011, 'Other', 'Member', '', 'other@example.com', '0222222222', 'Male', '', '2026-01-02')");
+      $this->pdo->exec('ALTER TABLE members ADD version INTEGER NOT NULL DEFAULT 1');
       $this->pdo->exec('CREATE TABLE registration_info (id INTEGER PRIMARY KEY, member_id INTEGER, status INTEGER)');
       $this->pdo->exec('INSERT INTO registration_info VALUES (9, 10, 0), (12, 11, 1)');
       $this->pdo->exec('CREATE TABLE payments (id INTEGER PRIMARY KEY, registration_id INTEGER, amount INTEGER)');
@@ -163,12 +164,12 @@ for (const id of ['', '10']) {
   });
 }
 
-test('saving an unchanged profile is successful even when MySQL reports zero affected rows', () => {
+test('saving an unchanged profile increments its version', () => {
   const post = { ...profile, id: '10', member_id: '100010', firstname: 'Before', lastname: 'Edit', middlename: 'Old middle', email: 'before@example.com', contact: '0111111111', gender: 'Male', address: 'Old address' };
-  const data = save(post, { setup: '$db->noOp = true;' });
+  const data = save(post);
   assert.equal(data.status, 200);
   assert.equal(data.result, 1);
-  assert.deepEqual(data.after, data.before);
+  assert.deepEqual(data.after, {...data.before, members: data.before.members.map((row,index)=>index===0?{...row,version:2}:row)});
 });
 
 test('missing member records return 404 instead of claiming a successful edit', () => {
