@@ -15,6 +15,7 @@ function isolated(code, options = {}) {
       $db->query('INSERT INTO members (id) VALUES (12), (13)');
       $db->query('CREATE TABLE schedules (id INT PRIMARY KEY AUTO_INCREMENT, member_id INT NOT NULL, dow TEXT NOT NULL, date_from DATE NOT NULL, date_to DATE NOT NULL, time_from TIME NOT NULL, time_to TIME NOT NULL) ENGINE=InnoDB');
       $db->query("INSERT INTO schedules VALUES (1, 12, '1,3', '2026-01-01', '2026-12-31', '09:00', '10:00')");
+      $db->query(file_get_contents('database/migrations/015_schedule_versions.sql'));
       ${code}
     });`, options);
   return JSON.parse(response.body);
@@ -109,7 +110,7 @@ for (const action of ['save_membership', 'save_schedule', 'edit_schedule']) {
     const data = isolated(`
       $post = ${action === 'save_membership'
         ? "['member_id'=>'13','plan_id'=>'1','package_id'=>'1','trainer_id'=>'','csrf_token'=>$_SESSION['csrf_token']]"
-        : "['id'=>'" + (action === 'edit_schedule' ? '1' : '') + "','member_id'=>'13','date_from'=>'2026-01','date_to'=>'2026-12','time_from'=>'09:00','time_to'=>'10:00','dow'=>['1','3'],'csrf_token'=>$_SESSION['csrf_token']]"};
+        : "['id'=>'" + (action === 'edit_schedule' ? '1' : '') + "','version'=>'1','member_id'=>'13','date_from'=>'2026-01','date_to'=>'2026-12','time_from'=>'09:00','time_to'=>'10:00','dow'=>['1','3'],'csrf_token'=>$_SESSION['csrf_token']]"};
       $method = '${action === 'edit_schedule' ? 'save_schedule' : action}';
       $db->begin_transaction();
       $db->query('SELECT id FROM members WHERE id=13 FOR UPDATE');

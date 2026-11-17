@@ -866,6 +866,8 @@ Class Action {
 				return $this->action_error(404, 'Member no longer exists. Refresh the page.');
 			}
 			if ($id && !$this->membership_lookup('SELECT id FROM schedules WHERE id = ? FOR UPDATE', $id)) return $this->action_error(404, 'Schedule no longer exists. Refresh the page.');
+			$version = $id ? $this->catalog_edit_version() : null;
+			if ($id && $version === false) return $this->action_error(400, 'Reopen Edit Schedule before saving.');
 			$check = $this->db->prepare('SELECT id, dow, date_from, date_to, time_from, time_to FROM schedules WHERE member_id = ? AND id <> ? AND date_from <= ? AND date_to >= ? AND time_from < ? AND time_to > ? ORDER BY id');
 			if (!$check) throw new RuntimeException('Unable to check schedule conflicts.');
 			try {
@@ -889,16 +891,18 @@ Class Action {
 				}
 			}
 			if ($id) {
-				$save = $this->db->prepare('UPDATE schedules SET member_id = ?, date_from = ?, date_to = ?, time_from = ?, time_to = ?, dow = ? WHERE id = ?');
+				$save = $this->db->prepare('UPDATE schedules SET member_id = ?, date_from = ?, date_to = ?, time_from = ?, time_to = ?, dow = ?, version = version + 1 WHERE id = ? AND version = ?');
 				if (!$save) throw new RuntimeException('Unable to prepare schedule save.');
-				$save->bind_param('isssssi', $memberId, $dateFrom, $dateTo, $timeFrom, $timeTo, $dow, $id);
+				$save->bind_param('isssssii', $memberId, $dateFrom, $dateTo, $timeFrom, $timeTo, $dow, $id, $version);
 			} else {
 				$save = $this->db->prepare('INSERT INTO schedules (member_id, date_from, date_to, time_from, time_to, dow) VALUES (?, ?, ?, ?, ?, ?)');
 				if (!$save) throw new RuntimeException('Unable to prepare schedule save.');
 				$save->bind_param('isssss', $memberId, $dateFrom, $dateTo, $timeFrom, $timeTo, $dow);
 			}
 			$executed = $save->execute();
+			$changed = $save->affected_rows;
 			$save->close();
+			if ($executed && $id && $changed === 0) return $this->action_error(409, 'Schedule has changed. Reopen Edit and review current details before saving.');
 			if (!$executed || !$this->db->commit()) throw new RuntimeException('Unable to save schedule.');
 			$transaction = false;
 			return 1;

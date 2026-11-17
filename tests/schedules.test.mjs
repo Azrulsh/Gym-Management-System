@@ -3,13 +3,14 @@ import test from 'node:test';
 import { literal, run } from './helpers/php.mjs';
 
 const session = { login_id: 2, login_type: 1, csrf_token: 'schedule-save-test' };
-const valid = { csrf_token: session.csrf_token, member_id: '11', date_from: '2026-02', date_to: '2026-02', time_from: '09:00', time_to: '10:00', dow: ['0', '2'] };
+const valid = { version: '1', csrf_token: session.csrf_token, member_id: '11', date_from: '2026-02', date_to: '2026-02', time_from: '09:00', time_to: '10:00', dow: ['0', '2'] };
 function attempt(post) {
   return JSON.parse(run(session, `require 'tests/helpers/membership-db.php';
     with_membership_database(function($db,$schema) {
       $db->query('CREATE TABLE schedules (id INT PRIMARY KEY AUTO_INCREMENT, member_id INT NOT NULL, dow TEXT NOT NULL,
         date_from DATE NOT NULL, date_to DATE NOT NULL, time_from TIME NOT NULL, time_to TIME NOT NULL) ENGINE=InnoDB');
       $db->query("INSERT INTO schedules VALUES (1,11,'1','2026-01-01','2026-01-31','08:00','09:00')");
+      $db->query(file_get_contents('database/migrations/015_schedule_versions.sql'));
       $before = $db->query('SELECT * FROM schedules ORDER BY id')->fetch_all(MYSQLI_ASSOC);
       $historyBefore = membership_snapshot($db);
       $result = new_membership_for_test($db,json_decode(${literal(JSON.stringify(post))},true),'save_schedule');

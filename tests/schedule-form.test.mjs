@@ -26,6 +26,7 @@ function render(get, setup = '', options = {}) {
       $db->query('CREATE TABLE schedules (id INT PRIMARY KEY, member_id INT NOT NULL, dow TEXT NOT NULL,
         date_from DATE NOT NULL, date_to DATE NOT NULL, time_from TIME NOT NULL, time_to TIME NOT NULL) ENGINE=InnoDB');
       $db->query("INSERT INTO schedules VALUES (1,11,'0,2','2028-02-01','2028-02-29','09:00:15','10:00:30')");
+      $db->query(file_get_contents('database/migrations/015_schedule_versions.sql'));
       ${setup}
       $before = $db->query('SELECT * FROM schedules')->fetch_all(MYSQLI_ASSOC);
       $html = render_membership_read_page($db,'manage_schedule.php',json_decode(${literal(JSON.stringify(get))},true));

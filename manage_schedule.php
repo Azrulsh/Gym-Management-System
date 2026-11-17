@@ -19,7 +19,7 @@ $dow_arr = [];
 try {
     include 'db_connect.php';
     if ($scheduleId !== null) {
-        $statement = $conn->prepare('SELECT id, member_id, dow, date_from, date_to, time_from, time_to FROM schedules WHERE id = ?');
+        $statement = $conn->prepare('SELECT id, version, member_id, dow, date_from, date_to, time_from, time_to FROM schedules WHERE id = ?');
         if (!$statement) throw new RuntimeException('Schedule lookup unavailable.');
         $statement->bind_param('i', $scheduleId);
         try {
@@ -61,6 +61,7 @@ try {
 		<input type="hidden" name="csrf_token" value="<?php echo csrf_token(); ?>">
 		<div class="schedule-message" role="alert" aria-live="polite"></div>
 		<input type="hidden" name="id" value="<?php echo isset($id) ? $id : '' ?>">
+		<input type="hidden" name="version" value="<?php echo isset($schedule['version']) ? (int) $schedule['version'] : ''; ?>">
 		<div class="col-lg-12">
 			<div class="row">
 				<div class="col-md-12">

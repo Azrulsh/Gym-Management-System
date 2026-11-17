@@ -8,7 +8,7 @@ Fresh installation or development reset:
 4. Log out of any existing browser session, then log in again:
    Admin: `admin` / `admin`; Staff: `staff` / `staff` (local development only).
 
-`gym.sql` replaces the old `gym_db.sql` dump and integrates migrations 001 through 014.
+`gym.sql` replaces the old `gym_db.sql` dump and integrates migrations 001 through 015.
 No separate migration imports are needed after this reset. Passwords use Argon2id.
 There are four profiles: Ali has an Active membership, Siti has an Expired
 membership that can be renewed, Kumar has a Closed membership, and Mei has no
@@ -173,3 +173,9 @@ start at version 1. Each successful edit increments the version, including saves
 with unchanged details. Stale forms return 409; reopen Edit and review current
 details before saving again. Missing/invalid versions return 400. Add Member
 does not need a version. Re-imports preserve versions and all existing data.
+
+Import `015_schedule_versions.sql` before editing schedules. Existing schedules
+start at version 1. Each successful edit increments the version, including saves
+with unchanged details. Stale forms return 409; reopen Edit and review current
+details. Missing/invalid versions return 400. Add needs no version; overlap checks
+and Delete remain in place. Re-imports preserve versions and existing records.

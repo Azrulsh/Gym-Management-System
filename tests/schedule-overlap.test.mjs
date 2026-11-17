@@ -3,12 +3,13 @@ import test from 'node:test';
 import { literal, run } from './helpers/php.mjs';
 
 const session={login_id:2,login_type:1,csrf_token:'overlap-test'};
-const valid={id:'',member_id:'11',date_from:'2026-11',date_to:'2026-11',time_from:'09:30',time_to:'10:30',dow:['1'],csrf_token:session.csrf_token};
+const valid={version:'1',id:'',member_id:'11',date_from:'2026-11',date_to:'2026-11',time_from:'09:30',time_to:'10:30',dow:['1'],csrf_token:session.csrf_token};
 function isolated(code) {
   return JSON.parse(run(session,`require 'tests/helpers/membership-db.php';
     with_membership_database(function($db,$schema){
       $db->query('CREATE TABLE schedules (id INT PRIMARY KEY AUTO_INCREMENT, member_id INT NOT NULL, dow TEXT NOT NULL, date_from DATE NOT NULL, date_to DATE NOT NULL, time_from TIME NOT NULL, time_to TIME NOT NULL, KEY member_id(member_id)) ENGINE=InnoDB');
       $db->query("INSERT INTO schedules VALUES (1,11,'1','2026-11-01','2026-11-30','09:00','10:00'),(2,10,'2','2026-11-01','2026-11-30','11:00','12:00')");
+      $db->query(file_get_contents('database/migrations/015_schedule_versions.sql'));
       ${code}
     });`).body);
 }
@@ -71,7 +72,7 @@ for(const edit of [false,true]) {
       $workers=[];
       $posts=[
         ['id'=>'','member_id'=>'9','date_from'=>'2026-11','date_to'=>'2026-11','dow'=>['1'],'time_from'=>'09:00','time_to'=>'10:00','csrf_token'=>'overlap-test'],
-        ['id'=>'${edit?'2':''}','member_id'=>'9','date_from'=>'2026-11','date_to'=>'2026-11','dow'=>['1'],'time_from'=>'09:30','time_to'=>'10:30','csrf_token'=>'overlap-test']];
+        ['id'=>'${edit?'2':''}','version'=>'1','member_id'=>'9','date_from'=>'2026-11','date_to'=>'2026-11','dow'=>['1'],'time_from'=>'09:30','time_to'=>'10:30','csrf_token'=>'overlap-test']];
       foreach($posts as $post){
         $source='session_set_save_handler(function(){return true;},function(){return true;},function(){return "";},function(){return true;},function(){return true;},function(){return 0;}); session_start(); '
           . 'require "tests/helpers/membership-db.php";require "admin_class.php"; '
