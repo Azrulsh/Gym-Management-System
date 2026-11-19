@@ -26,7 +26,7 @@ test('migration 003 can be applied twice without changing existing accounts or h
     $db->query(file_get_contents('database/migrations/003_user_auth_version.sql'));
     $db->query('UPDATE users SET auth_version=7 WHERE id=2');
     $db->query(file_get_contents('database/migrations/003_user_auth_version.sql'));
-    $after=$db->query('SELECT id,name,username,password,type FROM users ORDER BY id')->fetch_all(MYSQLI_ASSOC);
+    $after=$db->query('SELECT id,name,username,password,type,version FROM users ORDER BY id')->fetch_all(MYSQLI_ASSOC);
     $versions=$db->query('SELECT auth_version FROM users')->fetch_all(MYSQLI_ASSOC);
     echo json_encode(compact('before','after','versions'));`);
   assert.deepEqual(data.before,data.after);
@@ -35,7 +35,7 @@ test('migration 003 can be applied twice without changing existing accounts or h
 test('Admin reset rejects both old staff sessions but permits fresh login with the new password',()=>{
   const data=isolated(`throttle_test_login($db,'staff','staff');$old=$_SESSION;
     throttle_test_login($db,'admin','admin');$_SESSION['csrf_token']='version-test';
-    $result=new_membership_for_test($db,['id'=>'3','name'=>'Staff','username'=>'staff','password'=>'new-staff','type'=>'2','csrf_token'=>'version-test'],'save_user');
+    $result=new_membership_for_test($db,['version'=>'1','id'=>'3','name'=>'Staff','username'=>'staff','password'=>'new-staff','type'=>'2','csrf_token'=>'version-test'],'save_user');
     $first=session_guard_worker($schema,$old);$second=session_guard_worker($schema,$old,false);
     $oldLogin=throttle_test_login($db,'staff','staff');
     $newLogin=throttle_test_login($db,'staff','new-staff');$fresh=$_SESSION;
@@ -50,7 +50,7 @@ test('Admin reset rejects both old staff sessions but permits fresh login with t
 test('Manage Account password change rotates current session and rejects other sessions',()=>{
   const data=isolated(`throttle_test_login($db,'staff','staff');$_SESSION['csrf_token']='version-test';
     $old=$_SESSION;$beforeId=session_id();
-    $result=new_membership_for_test($db,['id'=>'3','name'=>'Staff','username'=>'staff','password'=>'new-own','current_password'=>'staff','csrf_token'=>'version-test'],'save_account');
+    $result=new_membership_for_test($db,['version'=>'1','id'=>'3','name'=>'Staff','username'=>'staff','password'=>'new-own','current_password'=>'staff','csrf_token'=>'version-test'],'save_account');
     $current=$_SESSION;$rotated=session_id()!==$beforeId;
     $oldGuard=session_guard_worker($schema,$old);$currentGuard=session_guard_worker($schema,$current);
     echo json_encode(compact('result','oldGuard','currentGuard','current','rotated'));`);
@@ -60,7 +60,7 @@ test('Manage Account password change rotates current session and rejects other s
 });
 test('profile-only edit and automatic hash upgrade preserve existing sessions',()=>{
   const data=isolated(`throttle_test_login($db,'admin','admin');$_SESSION['csrf_token']='version-test';$old=$_SESSION;
-    $profile=new_membership_for_test($db,['id'=>'2','name'=>'Renamed','username'=>'admin','password'=>'','csrf_token'=>'version-test'],'save_account');
+    $profile=new_membership_for_test($db,['version'=>'1','id'=>'2','name'=>'Renamed','username'=>'admin','password'=>'','csrf_token'=>'version-test'],'save_account');
     $after=auth_session_account(2);$guard=session_guard_worker($schema,$old);
     echo json_encode(compact('profile','after','guard'));`);
   assert.equal(data.profile.result,1);assert.equal(Number(data.after.auth_version),1);
@@ -74,7 +74,7 @@ test('a legacy session without a version must authenticate again',()=>{
 test('failed password reset rolls back the hash and version, preserving valid sessions',()=>{
   const data=isolated(`$db->query("CREATE TRIGGER fail_password BEFORE UPDATE ON users FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Forced failure'");
     ini_set('error_log','');$before=$db->query('SELECT * FROM users ORDER BY id')->fetch_all(MYSQLI_ASSOC);
-    $result=new_membership_for_test($db,['id'=>'3','name'=>'Staff','username'=>'staff','password'=>'new','type'=>'2','csrf_token'=>'version-test'],'save_user');
+    $result=new_membership_for_test($db,['version'=>'1','id'=>'3','name'=>'Staff','username'=>'staff','password'=>'new','type'=>'2','csrf_token'=>'version-test'],'save_user');
     $after=$db->query('SELECT * FROM users ORDER BY id')->fetch_all(MYSQLI_ASSOC);
     echo json_encode(compact('result','before','after'));`,{expectedStderr:/^Unable to save user \(database code 1644\)\.\r?\n$/});
   assert.equal(data.result.status,500);assert.deepEqual(data.before,data.after);
@@ -93,7 +93,7 @@ test('a concurrent reset cannot let Manage Account adopt the new version with a 
         return $this->db->prepare($sql);
       }
     };
-    $result=new_membership_for_test($proxy,['id'=>'3','name'=>'Staff','username'=>'staff','password'=>'stale-change','current_password'=>'staff','csrf_token'=>'version-test'],'save_account');
+    $result=new_membership_for_test($proxy,['version'=>'1','id'=>'3','name'=>'Staff','username'=>'staff','password'=>'stale-change','current_password'=>'staff','csrf_token'=>'version-test'],'save_account');
     $guard=session_guard_worker($schema,$_SESSION);
     $hash=$db->query('SELECT password FROM users WHERE id=3')->fetch_assoc()['password'];
     $correct=gym_password_verify('admin-reset',$hash);echo json_encode(compact('result','guard','correct'));`);

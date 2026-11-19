@@ -11,7 +11,7 @@ for(const [label,password] of [['missing',null],['empty',''],['wrong','wrong'],[
   test(`${label} current password cannot change password, profile, version or session`,()=>{
     const data=isolated(`$before=$db->query('SELECT * FROM users ORDER BY id')->fetch_all(MYSQLI_ASSOC);
       $sessionBefore=$_SESSION;
-      $post=['id'=>'2','name'=>'Changed','username'=>'changed','password'=>'new-password','csrf_token'=>'current-test'];
+      $post=['version'=>'1','id'=>'2','name'=>'Changed','username'=>'changed','password'=>'new-password','csrf_token'=>'current-test'];
       ${label==='missing'?'':`$post['current_password']=json_decode(${literal(JSON.stringify(password))},true);`}
       $result=new_membership_for_test($db,$post,'save_account');
       $after=$db->query('SELECT * FROM users ORDER BY id')->fetch_all(MYSQLI_ASSOC);
@@ -22,14 +22,14 @@ for(const [label,password] of [['missing',null],['empty',''],['wrong','wrong'],[
   });
 }
 test('oversized current password is rejected before verification',()=>{
-  const data=isolated(`echo json_encode(new_membership_for_test($db,['id'=>'2','name'=>'Admin','username'=>'admin','password'=>'new','current_password'=>str_repeat('a',4097),'csrf_token'=>'current-test'],'save_account'));`);
+  const data=isolated(`echo json_encode(new_membership_for_test($db,['version'=>'1','id'=>'2','name'=>'Admin','username'=>'admin','password'=>'new','current_password'=>str_repeat('a',4097),'csrf_token'=>'current-test'],'save_account'));`);
   assert.equal(data.status,400);
 });
 for(const modern of [false,true]) {
   test(`correct ${modern?'Argon2id':'legacy MD5'} current password permits change and increments version once`,()=>{
     const data=isolated(`
       ${modern?`$hash=gym_password_hash('admin');$s=$db->prepare('UPDATE users SET password=? WHERE id=2');$s->bind_param('s',$hash);$s->execute();$s->close();`:''}
-      $result=new_membership_for_test($db,['id'=>'2','name'=>'Admin','username'=>'admin','password'=>'new-password','current_password'=>'admin','csrf_token'=>'current-test'],'save_account');
+      $result=new_membership_for_test($db,['version'=>'1','id'=>'2','name'=>'Admin','username'=>'admin','password'=>'new-password','current_password'=>'admin','csrf_token'=>'current-test'],'save_account');
       $row=$db->query('SELECT password,auth_version FROM users WHERE id=2')->fetch_assoc();
       $correct=gym_password_verify('new-password',$row['password']);$version=$_SESSION['login_auth_version'];
       echo json_encode(compact('result','row','correct','version'));`);
@@ -39,7 +39,7 @@ for(const modern of [false,true]) {
 }
 test('profile-only edits do not require current password or increment the version',()=>{
   const data=isolated(`$before=$db->query('SELECT password,auth_version FROM users WHERE id=2')->fetch_assoc();
-    $result=new_membership_for_test($db,['id'=>'2','name'=>'Renamed','username'=>'admin','password'=>'','csrf_token'=>'current-test'],'save_account');
+    $result=new_membership_for_test($db,['version'=>'1','id'=>'2','name'=>'Renamed','username'=>'admin','password'=>'','csrf_token'=>'current-test'],'save_account');
     $after=$db->query('SELECT password,auth_version FROM users WHERE id=2')->fetch_assoc();echo json_encode(compact('result','before','after'));`);
   assert.equal(data.result.result,1);assert.deepEqual(data.before,data.after);
 });
@@ -51,8 +51,8 @@ test('Manage Account displays an empty current-password field; Admin user reset 
       $source=str_replace('__DIR__',var_export(getcwd(),true),$source);
       ob_start();eval('?>'.$source);return ob_get_clean();
     }
-    $own=password_test_form($db,['id'=>'2','mtype'=>'own']);
-    $admin=password_test_form($db,['id'=>'3']);$self=password_test_form($db,['id'=>'2']);echo json_encode(compact('own','admin','self'));`);
+    $own=password_test_form($db,['version'=>'1','id'=>'2','mtype'=>'own']);
+    $admin=password_test_form($db,['version'=>'1','id'=>'3']);$self=password_test_form($db,['version'=>'1','id'=>'2']);echo json_encode(compact('own','admin','self'));`);
   assert.match(data.own,/name="current_password"[^>]*autocomplete="current-password"/);
   assert.match(data.own,/New Password/);
   assert.doesNotMatch(data.own,/name="current_password"[^>]*value="[^"]+"/);
@@ -63,7 +63,7 @@ test('Manage Account displays an empty current-password field; Admin user reset 
 for(const correct of [false,true]) {
   test(`Admin editing their own account through Users ${correct?'accepts':'requires'} current password`,()=>{
     const data=isolated(`$before=$db->query('SELECT * FROM users ORDER BY id')->fetch_all(MYSQLI_ASSOC);
-      $result=new_membership_for_test($db,['id'=>'2','name'=>'Admin','username'=>'admin','type'=>'1','password'=>'new-self','current_password'=>'${correct?'admin':'wrong'}','csrf_token'=>'current-test'],'save_user');
+      $result=new_membership_for_test($db,['version'=>'1','id'=>'2','name'=>'Admin','username'=>'admin','type'=>'1','password'=>'new-self','current_password'=>'${correct?'admin':'wrong'}','csrf_token'=>'current-test'],'save_user');
       $after=$db->query('SELECT * FROM users ORDER BY id')->fetch_all(MYSQLI_ASSOC);echo json_encode(compact('result','before','after'));`);
     if(correct){assert.equal(data.result.result,1);assert.equal(Number(data.after[0].auth_version),2);}
     else {assert.equal(data.result.status,400);assert.deepEqual(data.before,data.after);}

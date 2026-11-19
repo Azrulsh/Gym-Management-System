@@ -194,6 +194,8 @@ Class Action {
 			if ($id && !$this->user_record($id)) {
 				return $this->action_error(404, 'User no longer exists. Refresh the page.');
 			}
+			$editVersion = $id ? $this->catalog_edit_version() : null;
+			if ($id && $editVersion === false) return $this->action_error(400, 'Reopen Edit User before saving.');
 			if ($id === (int)$_SESSION['login_id'] && $password !== '') {
 				$verification = $this->verify_current_password($id);
 				if ($verification !== null) return $verification;
@@ -211,12 +213,12 @@ Class Action {
 				$save = $this->db->prepare('INSERT INTO users (name, username, password, type) VALUES (?, ?, ?, ?)');
 				$save->bind_param('sssi', $name, $username, $hash, $type);
 			} elseif ($password === '') {
-				$save = $this->db->prepare('UPDATE users SET name = ?, username = ?, type = ? WHERE id = ?');
-				$save->bind_param('ssii', $name, $username, $type, $id);
+				$save = $this->db->prepare('UPDATE users SET name = ?, username = ?, type = ?, version = version + 1 WHERE id = ? AND version = ?');
+				$save->bind_param('ssiii', $name, $username, $type, $id, $editVersion);
 			} else {
 				$hash = gym_password_hash($password);
-				$save = $this->db->prepare('UPDATE users SET name = ?, username = ?, password = ?, type = ?, auth_version = auth_version + 1 WHERE id = ?');
-				$save->bind_param('sssii', $name, $username, $hash, $type, $id);
+				$save = $this->db->prepare('UPDATE users SET name = ?, username = ?, password = ?, type = ?, auth_version = auth_version + 1, version = version + 1 WHERE id = ? AND version = ?');
+				$save->bind_param('sssiii', $name, $username, $hash, $type, $id, $editVersion);
 			}
 			$executed = $save->execute();
 			$changed = $save->affected_rows;
@@ -227,6 +229,7 @@ Class Action {
 			if ($id && $changed === 0 && !$this->user_record($id)) {
 				return $this->action_error(404, 'User no longer exists. Refresh the page.');
 			}
+			if ($id && $changed === 0) return $this->action_error(409, 'User has changed. Reopen Edit and review current details before saving.');
 			if (!$this->db->commit()) throw new RuntimeException('Unable to commit user save.');
 			$transaction = false;
 			if ($id === (int) $_SESSION['login_id']) {
@@ -293,6 +296,8 @@ Class Action {
 		try {
 			// The target comes from the session; role is never included in this update.
 			$id = (int) $_SESSION['login_id'];
+			$editVersion = $this->catalog_edit_version();
+			if ($editVersion === false) return $this->action_error(400, 'Reopen Manage Account before saving.');
 			if ($password !== '') {
 				$verification = $this->verify_current_password($id);
 				if ($verification !== null) return $verification;
@@ -308,23 +313,23 @@ Class Action {
 			$check->close();
 			if ($duplicate) return 2;
 			if ($password === '') {
-				$save = $this->db->prepare('UPDATE users SET name = ?, username = ? WHERE id = ?');
+				$save = $this->db->prepare('UPDATE users SET name = ?, username = ?, version = version + 1 WHERE id = ? AND version = ?');
 				if (!$save) return 3;
-				$save->bind_param('ssi', $name, $username, $id);
+				$save->bind_param('ssii', $name, $username, $id, $editVersion);
 			} else {
 				$hash = gym_password_hash($password);
 				$version = (int) $_SESSION['login_auth_version'];
-				$save = $this->db->prepare('UPDATE users SET name = ?, username = ?, password = ?, auth_version = auth_version + 1 WHERE id = ? AND auth_version = ?');
+				$save = $this->db->prepare('UPDATE users SET name = ?, username = ?, password = ?, auth_version = auth_version + 1, version = version + 1 WHERE id = ? AND auth_version = ? AND version = ?');
 				if (!$save) return 3;
-				$save->bind_param('sssii', $name, $username, $hash, $id, $version);
+				$save->bind_param('sssiii', $name, $username, $hash, $id, $version, $editVersion);
 			}
 			$saved = $save->execute();
 			$changed = $save->affected_rows;
 			$save->close();
 			if (!$saved) return 3;
+			if ($changed !== 1) return $this->action_error(409, 'Your account changed. Reopen Manage Account and review current details before saving.');
 			if ($password !== '') {
 				// Do not adopt the version of a concurrent password reset.
-				if ($changed !== 1) return $this->action_error(409, 'Your account changed. Sign in again before changing your password.');
 				if (!session_regenerate_id(true)) { clear_login_session(); return 3; }
 				$_SESSION['login_auth_version'] = $version + 1;
 			}

@@ -6,7 +6,7 @@ import { literal, run } from './helpers/php.mjs';
 import { allowLoginThrottle } from './helpers/throttle.mjs';
 
 const session = { login_id: 2, login_type: 1, login_name: 'Admin', login_username: 'admin', csrf_token: 'users-test-token' };
-const profile = { id: '', name: " Test O'Neil ", username: 'staff_test', password: 'staff_test', type: '2', csrf_token: session.csrf_token };
+const profile = { version: '1', id: '', name: " Test O'Neil ", username: 'staff_test', password: 'staff_test', type: '2', csrf_token: session.csrf_token };
 function assertPassword(hash, password) {
   assert.match(hash, /^\$argon2id\$/);
   const response = run({}, `echo json_encode(password_verify(${literal(password)}, ${literal(hash)}));`);
@@ -53,7 +53,7 @@ const database = `
     public function __construct() {
       $this->pdo = new PDO('sqlite::memory:');
       $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-      $this->pdo->exec('CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, username TEXT COLLATE NOCASE NOT NULL, password TEXT NOT NULL, type INTEGER NOT NULL, auth_version INTEGER NOT NULL DEFAULT 1)');
+      $this->pdo->exec('CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, username TEXT COLLATE NOCASE NOT NULL, password TEXT NOT NULL, type INTEGER NOT NULL, auth_version INTEGER NOT NULL DEFAULT 1, version INTEGER NOT NULL DEFAULT 1)');
       $insert = $this->pdo->prepare('INSERT INTO users (id,name,username,password,type) VALUES (?, ?, ?, ?, ?)');
       $insert->execute([2, 'Admin', 'admin', md5('admin'), 1]);
       $insert->execute([3, 'Staff', 'staff', md5('staff'), 2]);
@@ -144,7 +144,7 @@ for (const password of ['', 'new-account-password']) {
       $seed = $db->pdo->prepare('UPDATE users SET password = ? WHERE id = 2');
       $seed->execute([gym_password_hash('admin')]);
       $before = $db->snapshot();
-      $_POST = ['id' => '2', 'name' => 'Admin Updated', 'username' => 'admin',
+      $_POST = ['version'=>'1','id'=> '2', 'name' => 'Admin Updated', 'username' => 'admin',
         'password' => ${literal(password)}, 'current_password'=>'admin', 'csrf_token' => 'users-test-token'];
       $saved = $action->save_account();
       $after = $db->snapshot();
@@ -190,11 +190,11 @@ for (const id of ['', '3']) {
   });
 }
 
-test('keeping the same username on edit succeeds even when zero rows are changed', () => {
-  const data = save({ ...profile, id: '3', name: 'Staff', username: 'staff', password: '' }, '$db->noOp = true;');
+test('keeping the same username on edit succeeds and increments the edit version', () => {
+  const data = save({ ...profile, id: '3', name: 'Staff', username: 'staff', password: '' });
   assert.equal(data.status, 200);
   assert.equal(data.result, 1);
-  assert.deepEqual(data.after, data.before);
+  assert.deepEqual(data.after, data.before.map(row=>row.id===3?{...row,version:2}:row));
 });
 
 test('unknown user ID returns 404 without modifying any account', () => {
@@ -222,8 +222,8 @@ for (const [label, patch] of [
   ['missing role', { type: null }],
   ['array role', { type: ['1'] }],
   ['malformed role', { type: '1 OR 1=1' }],
-  ['malformed ID', { id: '3 OR 1=1' }],
-  ['zero ID', { id: '0' }],
+  ['malformed ID', { version: '1', id: '3 OR 1=1' }],
+  ['zero ID', { version: '1', id: '0' }],
 ]) {
   test(`${label} is rejected before changing accounts`, () => {
     const data = save({ ...profile, ...patch });

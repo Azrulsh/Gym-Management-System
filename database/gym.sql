@@ -1,6 +1,6 @@
 -- DEVELOPMENT RESET: replaces application tables and data in the SELECTED database.
 -- phpMyAdmin: select `gym` (matching db_connect.php), then import this entire file.
--- Includes migrations 001 through 015. Not an upgrade script for existing records.
+-- Includes migrations 001 through 016. Not an upgrade script for existing records.
 -- Local demo accounts: admin / admin (Admin), staff / staff (Staff).
 -- No CREATE DATABASE or USE: the caller chooses the target database.
 SET NAMES utf8mb4;
@@ -104,6 +104,7 @@ CREATE TABLE schedules (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE users (
+  version INT UNSIGNED NOT NULL DEFAULT 1,
   id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
   name TEXT NOT NULL,
   username VARCHAR(200) NOT NULL,

@@ -19,6 +19,7 @@ function render_membership_read_page($db, $file, $get = [])
 {
     $_GET = $get;
     $page = str_replace("include 'db_connect.php';", '$conn = $db;', file_get_contents($file));
+    $page = str_replace("include('db_connect.php');", '$conn = $db;', $page);
     $page = str_replace('__DIR__', var_export(dirname(__DIR__, 2), true), $page);
     ob_start();
     eval('?>' . $page);

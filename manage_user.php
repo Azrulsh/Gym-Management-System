@@ -16,7 +16,7 @@ if(isset($_GET['id'])){
         exit('Invalid user ID.');
     }
     try {
-        $user = $conn->prepare('SELECT id, name, username, type FROM users WHERE id = ?');
+        $user = $conn->prepare('SELECT id, version, name, username, type FROM users WHERE id = ?');
         $user->bind_param('i', $userId);
         $user->execute();
         $meta = $user->get_result()->fetch_assoc();
@@ -37,6 +37,7 @@ if(isset($_GET['id'])){
 	<form action="ajax.php?action=<?php echo $ownAccount ? 'save_account' : 'save_user'; ?>" method="post" id="manage-user">
 		<div class="user-message" role="alert" aria-live="polite"></div>
 		<input type="hidden" name="id" value="<?php echo isset($meta['id']) ? $meta['id']: '' ?>">
+		<input type="hidden" name="version" value="<?php echo isset($meta['version']) ? (int) $meta['version'] : ''; ?>">
 		<input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
 		<div class="form-group">
 			<label for="name">Name</label>

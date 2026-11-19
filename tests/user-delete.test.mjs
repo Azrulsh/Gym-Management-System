@@ -11,7 +11,7 @@ function isolated(code, options = {}) {
     });`, options);
   return JSON.parse(result.body);
 }
-const post = "['id'=>'2','csrf_token'=>'delete-test','password'=>'admin']";
+const post = "['version'=>'1','id'=>'2','csrf_token'=>'delete-test','password'=>'admin']";
 
 test('last Admin cannot delete their account and their login remains valid', () => {
   const data = isolated(`$before=$db->query('SELECT * FROM users ORDER BY id')->fetch_all(MYSQLI_ASSOC);
@@ -26,7 +26,7 @@ test('last Admin cannot delete their account and their login remains valid', () 
 
 test('last Admin cannot be demoted through Edit User', () => {
   const data = isolated(`$result=new_membership_for_test($db,
-    ['id'=>'2','name'=>'Admin','username'=>'admin','password'=>'','type'=>'2','csrf_token'=>'delete-test'],'save_user');
+    ['version'=>'1','id'=>'2','name'=>'Admin','username'=>'admin','password'=>'','type'=>'2','csrf_token'=>'delete-test'],'save_user');
     $user=auth_session_account(2); echo json_encode(compact('result','user'));`);
   assert.equal(data.result.status, 409);
   assert.equal(Number(data.user.type), 1);
@@ -35,7 +35,7 @@ test('last Admin cannot be demoted through Edit User', () => {
 for (const password of ['', 'wrong', ['admin']]) {
   test(`self deletion requires a correct password: ${JSON.stringify(password)}`, () => {
     const data = isolated(`$db->query('UPDATE users SET type=1 WHERE id=3');
-      $result=new_membership_for_test($db,['id'=>'2','csrf_token'=>'delete-test','password'=>json_decode(${literal(JSON.stringify(password))},true)],'delete_user');
+      $result=new_membership_for_test($db,['version'=>'1','id'=>'2','csrf_token'=>'delete-test','password'=>json_decode(${literal(JSON.stringify(password))},true)],'delete_user');
       $user=auth_session_account(2); echo json_encode(compact('result','user'));`);
     assert.equal(data.result.status, 400);
     assert.ok(data.user);
@@ -56,7 +56,7 @@ test('self deletion succeeds with another Admin, destroys session and preserves 
 });
 
 test('Admin can delete a Staff account without deleting their own session', () => {
-  const data = isolated(`$result=new_membership_for_test($db,['id'=>'3','csrf_token'=>'delete-test'],'delete_user');
+  const data = isolated(`$result=new_membership_for_test($db,['version'=>'1','id'=>'3','csrf_token'=>'delete-test'],'delete_user');
     $user=auth_session_account(3); $session=$_SESSION; echo json_encode(compact('result','user','session'));`);
   assert.equal(data.result.result, 1);
   assert.equal(data.user, null);
@@ -65,7 +65,7 @@ test('Admin can delete a Staff account without deleting their own session', () =
 
 for (const id of ['abc', '0', '-1', '2 OR 1=1', ['2'], null]) {
   test(`invalid delete ID ${JSON.stringify(id)} preserves both users`, () => {
-    const data = isolated(`$result=new_membership_for_test($db,['id'=>json_decode(${literal(JSON.stringify(id))},true),'csrf_token'=>'delete-test'],'delete_user');
+    const data = isolated(`$result=new_membership_for_test($db,['version'=>'1','id'=>json_decode(${literal(JSON.stringify(id))},true),'csrf_token'=>'delete-test'],'delete_user');
       $count=$db->query('SELECT COUNT(*) AS n FROM users')->fetch_assoc()['n']; echo json_encode(compact('result','count'));`);
     assert.equal(data.result.status, 400);
     assert.equal(Number(data.count), 2);
@@ -73,7 +73,7 @@ for (const id of ['abc', '0', '-1', '2 OR 1=1', ['2'], null]) {
 }
 
 test('missing account returns 404', () => {
-  assert.equal(isolated("echo json_encode(new_membership_for_test($db,['id'=>'999','csrf_token'=>'delete-test'],'delete_user')); ").status, 404);
+  assert.equal(isolated("echo json_encode(new_membership_for_test($db,['version'=>'1','id'=>'999','csrf_token'=>'delete-test'],'delete_user')); ").status, 404);
 });
 
 for (const token of [null, '', 'wrong', ['delete-test']]) {
@@ -120,7 +120,7 @@ test('existing session refreshes its role from the DB after demotion', () => {
 test('failed delete rolls back and keeps both accounts', () => {
   const data = isolated(`$db->query("CREATE TRIGGER fail_delete BEFORE DELETE ON users FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='test failure'");
     ini_set('error_log','');
-    $result=new_membership_for_test($db,['id'=>'3','csrf_token'=>'delete-test'],'delete_user');
+    $result=new_membership_for_test($db,['version'=>'1','id'=>'3','csrf_token'=>'delete-test'],'delete_user');
     $count=$db->query('SELECT COUNT(*) n FROM users')->fetch_assoc()['n'];
     echo json_encode(compact('result','count'));`, { expectedStderr: /^Unable to delete user\.\r?\n$/ });
   assert.equal(data.result.status, 500);
@@ -135,7 +135,7 @@ test(`simultaneous self deletion and ${competingAction} preserve one Admin`, () 
     $workers=[];
     foreach ([2=>'admin',3=>'staff'] as $id=>$password) {
       $method=$id===3 ? '${competingAction}' : 'delete_user';
-      $post=['id'=>(string)$id,'csrf_token'=>'delete-test','password'=>$password];
+      $post=['version'=>'1','id'=>(string)$id,'csrf_token'=>'delete-test','password'=>$password];
       if($method==='save_user') $post+=['name'=>'Staff','username'=>'staff','type'=>'2','current_password'=>$password];
       $source='session_set_save_handler(function(){return true;},function(){return true;},function(){return "";},function(){return true;},function(){return true;},function(){return 0;}); session_start(); '
         . 'require "tests/helpers/membership-db.php"; require "admin_class.php"; '

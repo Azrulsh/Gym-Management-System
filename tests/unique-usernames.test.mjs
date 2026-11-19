@@ -57,7 +57,7 @@ test('two simultaneous Manage Account saves cannot claim the same username',()=>
         .'require "tests/helpers/membership-db.php";require "admin_class.php"; '
         .'$db=throttle_test_connection('.var_export($schema,true).');$GLOBALS["auth_connection"]=$db; '
         .'$_SESSION=["login_id"=>'.$id.',"login_type"=>'.$role.',"login_auth_version"=>1,"csrf_token"=>"unique-test"]; '
-        .'echo json_encode(new_membership_for_test($db,["id"=>"'.$id.'","name"=>"Test","username"=>"same_username","password"=>"","csrf_token"=>"unique-test"],"save_account"));';
+        .'echo json_encode(new_membership_for_test($db,["version"=>"1","id"=>"'.$id.'","name"=>"Test","username"=>"same_username","password"=>"","csrf_token"=>"unique-test"],"save_account"));';
       $pipes=[];$p=proc_open([PHP_BINARY,'-r',$source],[['pipe','r'],['pipe','w'],['pipe','w']],$pipes);
       if(!is_resource($p))throw new RuntimeException('Worker unavailable');
       fclose($pipes[0]);$workers[]=[$p,$pipes];
@@ -92,6 +92,6 @@ test('username race assertions still reject double success, unexpected errors an
   assert.throws(()=>assertSingleUsernameWinner(duplicate));
 });
 test('Admin Add User still rejects an existing username with a clear conflict',()=>{
-  const data=isolated(`echo json_encode(new_membership_for_test($db,['id'=>'','name'=>'Duplicate','username'=>'STAFF','password'=>'new','type'=>'2','csrf_token'=>'unique-test'],'save_user'));`);
+  const data=isolated(`echo json_encode(new_membership_for_test($db,['version'=>'1','id'=>'','name'=>'Duplicate','username'=>'STAFF','password'=>'new','type'=>'2','csrf_token'=>'unique-test'],'save_user'));`);
   assert.equal(data.status,409);assert.match(JSON.parse(data.result).error,/Username already exists/);
 });

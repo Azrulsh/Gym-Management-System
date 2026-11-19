@@ -7,7 +7,7 @@ function save(method,setup){
     require 'tests/helpers/membership-db.php';
     with_throttle_database(function($db,$schema){
       $GLOBALS['auth_connection']=$db;
-      $post=['id'=>'${method==='save_account'?2:3}','name'=>'Updated','username'=>'new_username','password'=>'','type'=>'${method==='save_account'?1:2}','csrf_token'=>'identity'];
+      $post=['version'=>'1','id'=>'${method==='save_account'?2:3}','name'=>'Updated','username'=>'new_username','password'=>'','type'=>'${method==='save_account'?1:2}','csrf_token'=>'identity'];
       ${setup}
       $before=$db->query('SELECT * FROM users ORDER BY id')->fetch_all(MYSQLI_ASSOC);
       $result=new_membership_for_test($db,$post,'${method}');
@@ -46,9 +46,9 @@ test('Unicode username accepted by Admin can subsequently be kept during an own-
     require 'tests/helpers/membership-db.php';
     with_throttle_database(function($db,$schema){
       $GLOBALS['auth_connection']=$db;$username=str_repeat(hex2bin('c3a9'),150);
-      $admin=new_membership_for_test($db,['id'=>'3','name'=>'Staff','username'=>$username,'password'=>'','type'=>'2','csrf_token'=>'identity'],'save_user');
+      $admin=new_membership_for_test($db,['version'=>'1','id'=>'3','name'=>'Staff','username'=>$username,'password'=>'','type'=>'2','csrf_token'=>'identity'],'save_user');
       $_SESSION['login_id']=3;$_SESSION['login_type']=2;$_SESSION['login_auth_version']=1;
-      $own=new_membership_for_test($db,['id'=>'3','name'=>'Updated Staff','username'=>$username,'password'=>'','csrf_token'=>'identity'],'save_account');
+      $own=new_membership_for_test($db,['version'=>'2','id'=>'3','name'=>'Updated Staff','username'=>$username,'password'=>'','csrf_token'=>'identity'],'save_account');
       $row=$db->query('SELECT name,username FROM users WHERE id=3')->fetch_assoc();echo json_encode(compact('admin','own','row'));
     });`).body);
   assert.equal(data.admin.result,1);assert.equal(data.own.result,1);

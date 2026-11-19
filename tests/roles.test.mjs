@@ -60,7 +60,7 @@ for (const page of ['plans', 'packages', 'trainer', 'users', 'events']) {
 }
 
 test('Staff cannot open user-management forms, including a forged own-account request', () => {
-  for (const query of [{}, { id: '2' }, { id: '2', mtype: 'own' }, { id: '9999 OR 1=1', mtype: 'own' }]) {
+  for (const query of [{}, { version: '1', id: '2' }, { version: '1', id: '2', mtype: 'own' }, { version: '1', id: '9999 OR 1=1', mtype: 'own' }]) {
     const result = run(staff, `$_GET = json_decode(${literal(JSON.stringify(query))}, true); include 'manage_user.php';`);
     assert.equal(result.status, 403);
     assert.doesNotMatch(result.body, /<form\b|Fatal error|Warning/);
@@ -69,14 +69,14 @@ test('Staff cannot open user-management forms, including a forged own-account re
 
 test('own-account action accepts only the session owner and cannot change role', () => {
   for (const [post, expectedStatus] of [
-    [{ id: '9999' }, 200],
-    [{ id: '9999', type: '2' }, 200],
-    [{ id: '2' }, 403],
-    [{ id: '9999', type: '1' }, 403],
-    [{ id: '9999', type: ['1'] }, 403],
-    [{ id: '9999 OR 1=1' }, 403],
-    [{ id: '9999', csrf_token: 'incorrect' }, 403],
-    [{ id: '9999', csrf_token: null }, 403],
+    [{ version: '1', id: '9999' }, 200],
+    [{ version: '1', id: '9999', type: '2' }, 200],
+    [{ version: '1', id: '2' }, 403],
+    [{ version: '1', id: '9999', type: '1' }, 403],
+    [{ version: '1', id: '9999', type: ['1'] }, 403],
+    [{ version: '1', id: '9999 OR 1=1' }, 403],
+    [{ version: '1', id: '9999', csrf_token: 'incorrect' }, 403],
+    [{ version: '1', id: '9999', csrf_token: null }, 403],
     [{}, 403],
   ]) {
     const result = run(staff, `
@@ -119,7 +119,7 @@ const recordingDatabase = `
         return new class($this->db->role) {
           private $role;
           public function __construct($role) { $this->role = $role; }
-          public function fetch_assoc() { return ['id' => 9999, 'type' => $this->role, 'name' => 'Test User', 'username' => 'test', 'password' => gym_password_hash('test'), 'auth_version'=>1]; }
+          public function fetch_assoc() { return ['version'=>'1','id'=> 9999, 'type' => $this->role, 'name' => 'Test User', 'username' => 'test', 'password' => gym_password_hash('test'), 'auth_version'=>1]; }
         };
       }
       return (object) ['num_rows' => 0];
@@ -173,7 +173,7 @@ test('own-account update binds profile values, targets the session ID, and never
   for (const password of ['', 'new test password']) {
     const name = "O'Neil <test>";
     const result = run(staff, `${recordingDatabase}
-      $_POST = json_decode(${literal(JSON.stringify({ id: '9999', name, username: 'test_staff', password, current_password: 'test', csrf_token: 'test-csrf-token' }))}, true);
+      $_POST = json_decode(${literal(JSON.stringify({ version: '1', id: '9999', name, username: 'test_staff', password, current_password: 'test', csrf_token: 'test-csrf-token' }))}, true);
       $result = $action->save_account();
       unset($action);
       echo json_encode(['result' => $result, 'statements' => $db->statements, 'session' => $_SESSION]);
@@ -184,7 +184,7 @@ test('own-account update binds profile values, targets the session ID, and never
     assert.match(update.sql, /WHERE id = \?/);
     assert.doesNotMatch(update.sql, /\btype\b|establishment_id|O'Neil/);
     assert.equal(update.values[0], name);
-    assert.equal(update.values.at(password ? -2 : -1), 9999);
+    assert.equal(update.values.at(password ? -3 : -2), 9999);
     assert.equal(data.session.login_type, 2);
     assert.equal(data.session.login_name, name);
   }

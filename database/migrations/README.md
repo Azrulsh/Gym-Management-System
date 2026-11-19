@@ -8,7 +8,7 @@ Fresh installation or development reset:
 4. Log out of any existing browser session, then log in again:
    Admin: `admin` / `admin`; Staff: `staff` / `staff` (local development only).
 
-`gym.sql` replaces the old `gym_db.sql` dump and integrates migrations 001 through 015.
+`gym.sql` replaces the old `gym_db.sql` dump and integrates migrations 001 through 016.
 No separate migration imports are needed after this reset. Passwords use Argon2id.
 There are four profiles: Ali has an Active membership, Siti has an Expired
 membership that can be renewed, Kumar has a Closed membership, and Mei has no
@@ -179,3 +179,11 @@ start at version 1. Each successful edit increments the version, including saves
 with unchanged details. Stale forms return 409; reopen Edit and review current
 details. Missing/invalid versions return 400. Add needs no version; overlap checks
 and Delete remain in place. Re-imports preserve versions and existing records.
+
+Import `016_user_versions.sql` before using Edit User or Manage Account. The new
+`users.version` detects stale forms across both flows. It is separate from
+`auth_version`, which continues to invalidate sessions after password changes.
+Successful profile/password edits increment the edit version. Stale forms return
+409; reopen the form and review current details. Missing/invalid versions return
+400. Add User needs no version. Last-Admin and current-password checks remain.
+Re-imports preserve versions, credentials, roles and application history.
