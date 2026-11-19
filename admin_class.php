@@ -507,6 +507,8 @@ Class Action {
 		if (!is_scalar($months) || is_bool($months)) return $this->action_error(400, 'Plan months must be a positive whole number.');
 		$months = filter_var($months, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 2147483647]]);
 		if ($months === false) return $this->action_error(400, 'Plan months must be a positive whole number.');
+		$maxMonths = membership_max_months(new DateTimeImmutable('today'));
+		if ($months > $maxMonths) return $this->action_error(400, 'Plan duration must not exceed ' . $maxMonths . ' months so its end date stays within year 9999.');
 		$amount = $_POST['amount'] ?? '';
 		if (!is_string($amount) || !preg_match('/\A[0-9]{1,10}(?:\.[0-9]{1,2})?\z/', $amount)) {
 			return $this->action_error(400, 'Amount must be zero or greater, with up to two decimal places (maximum 9999999999.99).');
@@ -1087,7 +1089,7 @@ Class Action {
 			$fees = $this->membership_price_snapshot($plan, $package, $trainer);
 			if ($fees === false) return $this->action_error(400, 'Selected plan, package or trainer has an invalid price.');
 			$months = filter_var($plan['plan'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
-			$maxMonths = (9999 - (int) $start->format('Y')) * 12 + 12 - (int) $start->format('n');
+			$maxMonths = membership_max_months($start);
 			if ($months === false || $months > $maxMonths) return $this->action_error(400, 'Selected plan has an invalid duration.');
 			$endDate = membership_end_date($start, $months);
 			if (strlen($endDate) !== 10) return $this->action_error(400, 'Selected plan has an invalid duration.');
@@ -1180,7 +1182,7 @@ Class Action {
 			if ($fees === false) return $this->action_error(400, 'Selected plan, package or trainer has an invalid price.');
 			$start = new DateTimeImmutable('today');
 			$months = filter_var($plan['plan'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
-			$maxMonths = (9999 - (int) $start->format('Y')) * 12 + 12 - (int) $start->format('n');
+			$maxMonths = membership_max_months($start);
 			if ($months === false || $months > $maxMonths) return $this->action_error(400, 'Selected plan has an invalid duration.');
 			$startDate = $start->format('Y-m-d');
 			$endDate = membership_end_date($start, $months);

@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/auth.php';
 require_admin();
+require_once __DIR__ . '/membership_dates.php';
 include 'db_connect.php';
 ?>
 
@@ -23,7 +24,7 @@ include 'db_connect.php';
 							<input type="hidden" name="version">
 							<div class="form-group">
 								<label class="control-label" for="plan-months">Plan (months)</label>
-								<input type="number" id="plan-months" class="form-control" min="1" max="2147483647" step="1" name="plan" required>
+								<input type="number" id="plan-months" class="form-control" min="1" max="<?php echo membership_max_months(new DateTimeImmutable('today')); ?>" step="1" name="plan" required>
 							</div>
 							<div class="form-group">
 								<label class="control-label" for="plan-amount">Amount</label>
