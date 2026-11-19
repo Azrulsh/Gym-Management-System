@@ -31,6 +31,7 @@
         $.ajax({
             url: $(form).attr('action'),
             method: 'POST',
+            timeout: 15000,
             data: $(form).serialize(),
             success: function (response) {
                 if (String(response).trim() !== '1') {
@@ -41,7 +42,11 @@
                 window.alert_toast('Schedule successfully saved.', 'success');
                 window.setTimeout(function () { window.location.reload(); }, 750);
             },
-            error: function (xhr) {
+            error: function (xhr, status) {
+                if (status === 'timeout') {
+                    message.addClass('alert alert-danger').text('Save status could not be confirmed because the request timed out. Refresh the calendar and check the schedule before trying again.');
+                    return;
+                }
                 const error = xhr.responseJSON && xhr.responseJSON.error;
                 message.addClass('alert alert-danger').text(typeof error === 'string' ? error : 'Unable to save schedule. Please try again.');
             },
@@ -76,6 +81,7 @@
         window.start_load();
         $.ajax({
             url: 'ajax.php?action=delete_schedule', method: 'POST',
+            timeout: 15000,
             data: { id: id, csrf_token: token },
             success: function (response) {
                 if (String(response).trim() !== '1') {
@@ -86,7 +92,11 @@
                 window.alert_toast('Schedule successfully deleted.', 'success');
                 window.setTimeout(function () { window.location.reload(); }, 750);
             },
-            error: function (xhr) {
+            error: function (xhr, status) {
+                if (status === 'timeout') {
+                    message.addClass('alert alert-danger').text('Delete status could not be confirmed because the request timed out. Refresh the calendar and check whether the schedule still exists before trying again.');
+                    return;
+                }
                 const error = xhr.responseJSON && xhr.responseJSON.error;
                 message.addClass('alert alert-danger').text(typeof error === 'string' ? error : 'Unable to delete schedule. Please try again.');
             },

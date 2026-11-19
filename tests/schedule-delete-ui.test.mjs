@@ -45,6 +45,18 @@ test('Confirm Delete sends ID and CSRF once even with invalid unsaved form field
 test('Delete cannot race an ongoing Save from the same form',()=>{
   const state=ui();state.saving(true);state.confirm();assert.equal(state.requests.length,0);
 });
+
+test('Delete timeout restores controls and asks user to verify the calendar without automatic retry',()=>{
+  const state=ui();state.open();state.confirm();
+  const request=state.requests[0];assert.equal(request.timeout,15000);
+  request.error({responseText:'<b>Internal error</b>'},'timeout');request.complete();
+  assert.equal(state.disabled,false);
+  assert.match(state.text,/Delete status could not be confirmed/);
+  assert.match(state.text,/check whether the schedule still exists/);
+  assert.doesNotMatch(state.text,/<b>|Internal error/);
+  assert.deepEqual(state.events,['start','end']);assert.equal(state.requests.length,1);
+  state.confirm();assert.equal(state.requests.length,2);
+});
 for(const failure of ['missing','network','unexpected']) {
   test(`${failure} rejection restores controls, displays a safe message and allows retry`,()=>{
     const state=ui();state.open();state.confirm();

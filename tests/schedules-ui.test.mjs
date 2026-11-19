@@ -56,6 +56,20 @@ test('schedule submits once and reloads on success', () => {
   assert.deepEqual(state.events, ['start', 'toast', 'reload', 'end']);
 });
 
+test('Save timeout stops loading and explains uncertain status without automatic retry', () => {
+  const state = ui(); state.submit();
+  const request = state.requests[0];
+  assert.equal(request.timeout, 15000);
+  request.error({responseText: '<b>Internal error</b>'}, 'timeout'); request.complete();
+  assert.equal(state.disabled, false);
+  assert.match(state.text, /Save status could not be confirmed/);
+  assert.match(state.text, /Refresh the calendar/);
+  assert.doesNotMatch(state.text, /<b>|Internal error/);
+  assert.deepEqual(state.events, ['start', 'end']);
+  assert.equal(state.requests.length, 1);
+  state.submit(); assert.equal(state.requests.length, 2);
+});
+
 for (const type of ['validation', 'network', 'unexpected']) {
   test(`${type} failure stops loading, restores save and permits retry`, () => {
     const state = ui(); state.submit();
