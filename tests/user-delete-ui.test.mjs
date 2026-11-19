@@ -65,3 +65,27 @@ for (const failure of ['last admin', 'network', 'unexpected']) {
     state.confirm(); assert.equal(state.requests.length, 2);
   });
 }
+
+test("user-delete ui(false) state.click(); state.confirm() timeout restores controls and explains uncertain status", () => {
+  const state=ui(false); state.click(); state.confirm();
+  const request=state.requests[0]; assert.equal(request.timeout,15000);
+  request.error({responseText:'<b>Internal error</b>'},'timeout'); request.complete();
+  assert.equal(state.disabled,false);
+  assert.match(state.text,/status could not be confirmed/);
+  assert.match(state.text,/Refresh/);
+  assert.doesNotMatch(state.text,/<b>|Internal error/);
+  assert.equal(state.requests.length,1);
+  state.confirm(); assert.equal(state.requests.length,2);
+});
+
+test("user-delete ui(true) state.click(); state.password='secret'; state.confirm() timeout restores controls and explains uncertain status", () => {
+  const state=ui(true); state.click(); state.password='secret'; state.confirm();
+  const request=state.requests[0]; assert.equal(request.timeout,15000);
+  request.error({responseText:'<b>Internal error</b>'},'timeout'); request.complete();
+  assert.equal(state.disabled,false);
+  assert.match(state.text,/status could not be confirmed/);
+  assert.match(state.text,/Refresh/);
+  assert.doesNotMatch(state.text,/<b>|Internal error/);
+  assert.equal(state.requests.length,1);
+  state.password='secret'; state.confirm(); assert.equal(state.requests.length,2);
+});

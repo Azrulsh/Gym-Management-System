@@ -29,6 +29,7 @@
         $.ajax({
             url: 'ajax.php?action=end_membership',
             method: 'POST',
+            timeout: 15000,
             data: { rid: registrationId, csrf_token: pendingRequest.csrfToken },
             success: function (response) {
                 if (String(response).trim() !== '1') {
@@ -40,7 +41,11 @@
                 window.alert_toast('Membership successfully ended.', 'success');
                 window.setTimeout(function () { window.location.reload(); }, 750);
             },
-            error: function (xhr) {
+            error: function (xhr, status) {
+                if (status === 'timeout') {
+                    window.alert_toast('End status could not be confirmed because the request timed out. Refresh Membership Validity and check the membership status before trying again.', 'danger');
+                    return;
+                }
                 // Shared AJAX handling displays permission errors and redirects expired sessions.
                 if (xhr.status === 401 || xhr.status === 403) return;
                 const message = xhr.status === 409

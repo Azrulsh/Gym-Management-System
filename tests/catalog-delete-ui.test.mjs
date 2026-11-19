@@ -112,3 +112,51 @@ test('member confirmation uses member wording and shows schedule conflicts in th
   assert.equal(state.hidden, false);
   assert.equal(state.stopped, 1);
 });
+
+test("catalog-delete ui() state.open('plan'); state.confirm('plan') timeout restores controls and explains uncertain status", () => {
+  const state=ui(); state.open('plan'); state.confirm('plan');
+  const request=state.requests[0]; assert.equal(request.timeout,15000);
+  request.error({responseText:'<b>Internal error</b>'},'timeout'); request.complete();
+  assert.equal(state.disabled,false);
+  assert.match(state.text,/status could not be confirmed/);
+  assert.match(state.text,/Refresh/);
+  assert.doesNotMatch(state.text,/<b>|Internal error/);
+  assert.equal(state.requests.length,1);
+  state.confirm('plan'); assert.equal(state.requests.length,2);
+});
+
+test("catalog-delete ui() state.open('package'); state.confirm('package') timeout restores controls and explains uncertain status", () => {
+  const state=ui(); state.open('package'); state.confirm('package');
+  const request=state.requests[0]; assert.equal(request.timeout,15000);
+  request.error({responseText:'<b>Internal error</b>'},'timeout'); request.complete();
+  assert.equal(state.disabled,false);
+  assert.match(state.text,/status could not be confirmed/);
+  assert.match(state.text,/Refresh/);
+  assert.doesNotMatch(state.text,/<b>|Internal error/);
+  assert.equal(state.requests.length,1);
+  state.confirm('package'); assert.equal(state.requests.length,2);
+});
+
+test("catalog-delete ui() state.open('trainer'); state.confirm('trainer') timeout restores controls and explains uncertain status", () => {
+  const state=ui(); state.open('trainer'); state.confirm('trainer');
+  const request=state.requests[0]; assert.equal(request.timeout,15000);
+  request.error({responseText:'<b>Internal error</b>'},'timeout'); request.complete();
+  assert.equal(state.disabled,false);
+  assert.match(state.text,/status could not be confirmed/);
+  assert.match(state.text,/Refresh/);
+  assert.doesNotMatch(state.text,/<b>|Internal error/);
+  assert.equal(state.requests.length,1);
+  state.confirm('trainer'); assert.equal(state.requests.length,2);
+});
+
+test("catalog-delete ui() state.open('member'); state.confirm('member') timeout restores controls and explains uncertain status", () => {
+  const state=ui(); state.open('member'); state.confirm('member');
+  const request=state.requests[0]; assert.equal(request.timeout,15000);
+  request.error({responseText:'<b>Internal error</b>'},'timeout'); request.complete();
+  assert.equal(state.disabled,false);
+  assert.match(state.text,/status could not be confirmed/);
+  assert.match(state.text,/Refresh/);
+  assert.doesNotMatch(state.text,/<b>|Internal error/);
+  assert.equal(state.requests.length,1);
+  state.confirm('member'); assert.equal(state.requests.length,2);
+});

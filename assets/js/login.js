@@ -19,6 +19,7 @@
         $.ajax({
             url: 'ajax.php?action=login',
             method: 'POST',
+            timeout: 15000,
             data: $(form).serialize(),
             success: function (response) {
                 const result = String(response).trim();
@@ -31,7 +32,11 @@
                     showError('Unable to log in right now. Please try again.');
                 }
             },
-            error: function (xhr) {
+            error: function (xhr, status) {
+                if (status === 'timeout') {
+                    showError('Login status could not be confirmed because the request timed out. Refresh the page to check whether you are signed in before trying again.');
+                    return;
+                }
                 if (xhr.status === 429) {
                     const seconds = Number(xhr.responseJSON && xhr.responseJSON.retry_after);
                     showError(Number.isInteger(seconds) && seconds > 0 && seconds <= 900

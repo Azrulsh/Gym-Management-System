@@ -28,6 +28,7 @@
         window.start_load();
         $.ajax({
             url: 'ajax.php?action=delete_user', method: 'POST',
+            timeout: 15000,
             data: { id: id, csrf_token: request.token, password: password },
             success: function (response) {
                 if (response && response.deleted === true && response.self_deleted === true) {
@@ -40,7 +41,11 @@
                     window.setTimeout(function () { window.location.reload(); }, 750);
                 } else message.addClass('alert alert-danger mt-3').text('Unable to delete user. Please try again.');
             },
-            error: function (xhr) {
+            error: function (xhr, status) {
+                if (status === 'timeout') {
+                    message.addClass('alert alert-danger').text('Delete status could not be confirmed because the request timed out. Refresh Users and check whether the account still exists before trying again. If deleting your own account, refresh the page to check your sign-in status.');
+                    return;
+                }
                 const error = xhr.responseJSON && xhr.responseJSON.error;
                 message.addClass('alert alert-danger mt-3').text(typeof error === 'string' ? error : 'Unable to delete user. Please try again.');
             },

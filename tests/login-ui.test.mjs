@@ -117,3 +117,15 @@ test('browser validation stops empty submissions', () => {
   assert.equal(state.requests.length, 0);
   assert.equal(state.disabled, false);
 });
+
+test("login ui() state.submit() timeout restores controls and explains uncertain status", () => {
+  const state=ui(); state.submit();
+  const request=state.requests[0]; assert.equal(request.timeout,15000);
+  request.error({responseText:'<b>Internal error</b>'},'timeout'); request.complete();
+  assert.equal(state.disabled,false);
+  assert.match(state.text,/status could not be confirmed/);
+  assert.match(state.text,/Refresh/);
+  assert.doesNotMatch(state.text,/<b>|Internal error/);
+  assert.equal(state.requests.length,1);
+  state.submit(); assert.equal(state.requests.length,2);
+});

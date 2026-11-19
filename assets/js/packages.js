@@ -53,6 +53,7 @@
         $.ajax({
             url: $(form).attr('action'),
             method: 'POST',
+            timeout: 15000,
             data: $(form).serialize(),
             success: function (response) {
                 if (String(response).trim() !== '1') {
@@ -63,7 +64,11 @@
                 window.alert_toast('Package successfully saved.', 'success');
                 window.setTimeout(function () { window.location.reload(); }, 750);
             },
-            error: function (xhr) {
+            error: function (xhr, status) {
+                if (status === 'timeout') {
+                    showError('Save status could not be confirmed because the request timed out. Refresh Packages and check the record before trying again.');
+                    return;
+                }
                 const error = xhr.responseJSON && xhr.responseJSON.error;
                 showError(typeof error === 'string' ? error : 'Unable to save package. Please try again.');
             },

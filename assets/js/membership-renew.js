@@ -16,6 +16,7 @@
         $.ajax({
             url: 'ajax.php?action=renew_membership',
             method: 'POST',
+            timeout: 15000,
             data: { rid: rid, csrf_token: token },
             success: function (response) {
                 const value = String(response).trim();
@@ -26,7 +27,11 @@
                 }
                 newId = id;
             },
-            error: function (xhr) {
+            error: function (xhr, status) {
+                if (status === 'timeout') {
+                    message.addClass('alert alert-danger').text('Renewal status could not be confirmed because the request timed out. Refresh Membership Validity and check for the renewed membership before trying again.');
+                    return;
+                }
                 const error = xhr.responseJSON && xhr.responseJSON.error;
                 message.addClass('alert alert-danger').text(typeof error === 'string' ? error : 'Unable to renew membership. Please try again.');
             },

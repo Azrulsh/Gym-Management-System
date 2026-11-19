@@ -84,3 +84,15 @@ test('invalid IDs and missing tokens cannot open a confirmation or submit', () =
   assert.equal(state.confirmations.length, 0);
   assert.equal(state.requests.length, 0);
 });
+
+test("membership ui() state.click('9'); state.confirm(9) timeout restores controls and explains uncertain status", () => {
+  const state=ui(); state.click('9'); state.confirm(9);
+  const request=state.requests[0]; assert.equal(request.timeout,15000);
+  request.error({responseText:'<b>Internal error</b>'},'timeout'); request.complete();
+  assert.equal(state.disabled,false);
+  assert.match(state.messages.at(-1).message,/status could not be confirmed/);
+  assert.match(state.messages.at(-1).message,/Refresh/);
+  assert.doesNotMatch(state.messages.at(-1).message,/<b>|Internal error/);
+  assert.equal(state.requests.length,1);
+  state.confirm(9); assert.equal(state.requests.length,2);
+});

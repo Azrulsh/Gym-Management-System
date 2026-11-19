@@ -35,6 +35,7 @@
             $.ajax({
                 url: 'ajax.php?action=delete_' + kind,
                 method: 'POST',
+                timeout: 15000,
                 data: { id: id, csrf_token: request.token },
                 success: function (response) {
                     if (String(response).trim() !== '1') {
@@ -47,7 +48,11 @@
                     window.alert_toast('Record successfully deleted.', 'success');
                     window.setTimeout(function () { window.location.reload(); }, 750);
                 },
-                error: function (xhr) {
+                error: function (xhr, status) {
+                    if (status === 'timeout') {
+                        showError('Delete status could not be confirmed because the request timed out. Refresh the list and check whether the record still exists before trying again.');
+                        return;
+                    }
                     const error = xhr.responseJSON && xhr.responseJSON.error;
                     showError(typeof error === 'string' ? error : 'Unable to delete ' + kind + '. Please try again.');
                 },

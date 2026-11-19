@@ -128,3 +128,15 @@ test('stale package conflict keeps the edit values and restores controls', () =>
   assert.match(state.text,/has changed/);assert.deepEqual(state.fields,before);
   assert.equal(state.disabled,false);assert.equal(state.stopped,1);assert.equal(state.timers.length,0);
 });
+
+test("packages ui() state.submit() timeout restores controls and explains uncertain status", () => {
+  const state=ui(); state.submit();
+  const request=state.requests[0]; assert.equal(request.timeout,15000);
+  request.error({responseText:'<b>Internal error</b>'},'timeout'); request.complete();
+  assert.equal(state.disabled,false);
+  assert.match(state.text,/status could not be confirmed/);
+  assert.match(state.text,/Refresh/);
+  assert.doesNotMatch(state.text,/<b>|Internal error/);
+  assert.equal(state.requests.length,1);
+  state.submit(); assert.equal(state.requests.length,2);
+});
