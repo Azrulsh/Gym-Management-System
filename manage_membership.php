@@ -16,10 +16,24 @@ try {
 	$eligibleResult = $conn->query("SELECT m.*, CONCAT_WS(', ', m.lastname, CONCAT_WS(' ', m.firstname, m.middlename)) AS name FROM members m WHERE NOT EXISTS (SELECT 1 FROM registration_info r WHERE r.member_id = m.id AND r.status = 1) ORDER BY m.lastname, m.firstname, m.middlename");
 	if (!$eligibleResult) throw new RuntimeException('Member lookup unavailable.');
 	$eligibleMembers = $eligibleResult->fetch_all(MYSQLI_ASSOC);
+	$eligibleResult->free();
+	$planResult = $conn->query('SELECT * FROM plans order by plan asc');
+	if (!$planResult) throw new RuntimeException('Plan lookup unavailable.');
+	$plans = $planResult->fetch_all(MYSQLI_ASSOC);
+	$planResult->free();
+	$packageResult = $conn->query('SELECT * FROM packages order by package asc');
+	if (!$packageResult) throw new RuntimeException('Package lookup unavailable.');
+	$packages = $packageResult->fetch_all(MYSQLI_ASSOC);
+	$packageResult->free();
+	$trainerResult = $conn->query('SELECT * FROM trainers order by name asc');
+	if (!$trainerResult) throw new RuntimeException('Trainer lookup unavailable.');
+	$trainers = $trainerResult->fetch_all(MYSQLI_ASSOC);
+	$trainerResult->free();
 } catch (mysqli_sql_exception | RuntimeException $exception) {
 	error_log('Unable to load membership choices.');
 	http_response_code(503);
-	exit('<div class="alert alert-danger">Unable to load members. Please try again.</div>');
+	echo '<div class="alert alert-danger" role="alert">Unable to load membership choices. Please try again.</div>';
+	return;
 }
 ?>
 <div class="container-fluid">
@@ -49,11 +63,10 @@ try {
 				<select name="plan_id" required="required" class="custom-select select2" id="">
 					<option value=""></option>
 					<?php
-						$qry = $conn->query("SELECT * FROM plans order by plan asc");
-						while($row= $qry->fetch_assoc()):
+						foreach ($plans as $row):
 					?>
 					<option value="<?php echo $row['id'] ?>" <?php echo isset($plan_id) && $plan_id == $row['id'] ? 'selected' : '' ?>><?php echo ucwords($row['plan']) ?></option>
-					<?php endwhile; ?>
+					<?php endforeach; ?>
 				</select>
 			</div>
 			<div class="form-group">
@@ -61,11 +74,10 @@ try {
 				<select name="package_id" required="required" class="custom-select select2" id="">
 					<option value=""></option>
 					<?php
-						$qry = $conn->query("SELECT * FROM packages order by package asc");
-						while($row= $qry->fetch_assoc()):
+						foreach ($packages as $row):
 					?>
 					<option value="<?php echo $row['id'] ?>" <?php echo isset($package_id) && $package_id == $row['id'] ? 'selected' : '' ?>><?php echo htmlspecialchars(ucwords($row['package']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?></option>
-					<?php endwhile; ?>
+					<?php endforeach; ?>
 				</select>
 			</div>
 			<div class="form-group">
@@ -73,11 +85,10 @@ try {
 				<select name="trainer_id" class="custom-select select2" id="">
 					<option value=""></option>
 					<?php
-						$qry = $conn->query("SELECT * FROM trainers order by name asc");
-						while($row= $qry->fetch_assoc()):
+						foreach ($trainers as $row):
 					?>
 					<option value="<?php echo $row['id'] ?>" <?php echo isset($trainer_id) && $trainer_id == $row['id'] ? 'selected' : '' ?>><?php echo htmlspecialchars(ucwords($row['name']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?></option>
-					<?php endwhile; ?>
+					<?php endforeach; ?>
 				</select>
 			</div>
 	</form>
