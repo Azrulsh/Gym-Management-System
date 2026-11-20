@@ -10,7 +10,7 @@ function ui(abortable=true) {
   const elements={
     '#uni_modal .modal-title':{text(value){state.title=value;}},
     '#uni_modal .modal-body':{html(value){if(state.failRender)throw Error('private render error');state.body=value;if(state.onRender)state.onRender();},empty(){state.body='';}},
-    '#uni_modal .modal-dialog':{addClass(value){state.classes+=' '+value;return this;},removeAttr(){state.classes='';return this;}},
+    '#uni_modal .modal-dialog':{addClass(value){state.classes=[...new Set((state.classes+' '+value).trim().split(/\s+/))].join(' ');return this;},removeAttr(){state.classes='';return this;}},
     '#uni_modal':{modal(value){state.events.push(typeof value==='string'?value:'show');}},
   };
   const $=selector=>elements[selector];$.ajax=options=>{
@@ -33,6 +33,23 @@ test('normal HTML opens the modal and stops loading without changing form conten
   assert.equal(state.title,'New Member');assert.equal(state.body,html);assert.match(state.classes,/large/);
   assert.deepEqual(state.events,['start','show','end']);assert.deepEqual(state.alerts,[]);
 });
+
+for (const sizes of [['mid-large', 'large'], ['large', 'mid-large'], ['large', ''], ['mid-large', 'mid-large'], ['', 'large', 'mid-large', '']]) {
+  test(`each modal replaces its previous size: ${JSON.stringify(sizes)}`, () => {
+    const state = ui();
+    for (const size of sizes) {
+      state.open('Details', 'details.php', size);
+      state.requests.at(-1).success('<p>Details</p>');
+      state.requests.at(-1).complete();
+      const actual = state.classes.trim().split(/\s+/);
+      const expected = ['modal-dialog', 'modal-md', ...(size ? [size] : [])];
+      assert.deepEqual(actual, expected);
+    }
+    assert.equal(state.events.filter(event => event === 'start').length, sizes.length);
+    assert.equal(state.events.filter(event => event === 'end').length, sizes.length);
+    assert.deepEqual(state.alerts, []);
+  });
+}
 
 for(const value of ['', '   \r\n', null, undefined]){
   test(`empty/unexpected response ${JSON.stringify(value)} stops loading and allows retry`,()=>{

@@ -207,10 +207,10 @@ ob_start();
                 $('#uni_modal .modal-title').text($title)
                 $('#uni_modal .modal-body').html(resp)
                 if (requestId !== latestRequest) return;
+                // Each response owns its size; discard classes from the previous modal.
+                $('#uni_modal .modal-dialog').removeAttr("class").addClass("modal-dialog modal-md")
                 if($size != ''){
                     $('#uni_modal .modal-dialog').addClass($size)
-                }else{
-                    $('#uni_modal .modal-dialog').removeAttr("class").addClass("modal-dialog modal-md")
                 }
                 $('#uni_modal').modal({
                   show:true,
