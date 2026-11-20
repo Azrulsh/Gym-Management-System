@@ -63,6 +63,23 @@ test('unknown legacy duration does not prevent renewal at the current catalog du
   assert.deepEqual(data.after.payments,data.before.payments);
 });
 
+for(const [label,setup,expected] of [
+  ['unknown legacy duration','UPDATE registration_info SET plan_months=NULL WHERE id=9','Original duration not recorded; see start/end dates'],
+  ['recorded duration despite catalog edits','UPDATE plans SET plan=12 WHERE id=1','3 month(s)'],
+  ['missing plan','DELETE FROM plans WHERE id=1','Plan missing (ID 1)'],
+]){
+  test(`member history consistently labels ${label} without changing membership or payments`,()=>{
+    const data=isolated(`$db->query('${setup}');$before=membership_snapshot($db);
+      $view=render_membership_read_page($db,'view_member.php',['id'=>'10']);
+      $details=render_membership_read_page($db,'view_pdetails.php',['id'=>'9']);
+      $list=render_membership_read_page($db,'registered_members.php');
+      $after=membership_snapshot($db);echo json_encode(compact('view','details','list','before','after'));`);
+    for(const html of [data.view,data.details,data.list])assert.ok(html.includes(expected));
+    assert.doesNotMatch(data.view,/0 month\(s\)|Warning|Fatal error/);
+    assert.deepEqual(data.after,data.before);
+  });
+}
+
 test('invalid current catalog duration cannot change existing membership state or enable a new registration',()=>{
   const data=isolated(`$before=membership_read_records($db,null,9)[0];$db->query('UPDATE plans SET plan=0 WHERE id=1');
     $after=membership_read_records($db,null,9)[0];$state=membership_read_state($after);

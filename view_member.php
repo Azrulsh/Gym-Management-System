@@ -35,7 +35,7 @@ try {
                 <?php foreach ($history as $row): $state=membership_read_state($row); ?>
                     <tr>
                         <td>#<?php echo (int) $row['registration_id']; ?></td>
-                        <td><?php echo $row['existing_plan_id'] !== null ? (int) $row['plan'] . ' month(s)' : 'Plan missing (ID ' . (int) $row['plan_id'] . ')'; ?></td>
+                        <td><?php echo membership_read_escape(membership_plan_label($row)); ?></td>
                         <td><?php echo $row['existing_package_id'] !== null ? membership_read_escape($row['package']) : 'Package missing (ID ' . (int) $row['package_id'] . ')'; ?></td>
                         <td><?php echo membership_read_escape($row['start_date']); ?></td>
                         <td><?php echo membership_read_escape($row['end_date']); ?></td>
