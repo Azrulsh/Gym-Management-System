@@ -132,6 +132,46 @@ test('a correct username with a wrong password is rejected', () => {
   assert.equal(data.session.login_id, undefined);
 });
 
+test('matching the dummy hash can never authenticate a nonexistent account',()=>{
+  const data=login({username:'missing-user',password:'gym-login-dummy-verification-not-an-account'});
+  assert.equal(data.status,200);assert.equal(data.result,3);
+  assert.deepEqual(data.session,{csrf_token:'keep-token'});assert.deepEqual(data.after,data.before);
+});
+
+for(const [username,blocked] of [['missing-user',false],['admin',false],['missing-user',true]]){
+  test(`${username}: ${blocked?'throttle rejection skips':'admitted attempt performs'} password verification`,()=>{
+    // Observe calls while executing the real helper body, without timing assertions.
+    const tracedDatabase=database.replace("require 'admin_class.php';",`
+      $source=file_get_contents('passwords.php');
+      $source=str_replace('function gym_password_verify($password, $hash){',
+        'function gym_password_verify($password, $hash){ $GLOBALS["verification_hashes"][]=$hash;', $source);
+      eval('?>'.$source);
+      $actionSource=str_replace("require_once __DIR__ . '/passwords.php';",'',file_get_contents('admin_class.php'));
+      eval('?>'.$actionSource);
+    `);
+    const data=JSON.parse(run({csrf_token:'verify-test'},`${tracedDatabase}
+      $db->pdo->prepare('UPDATE users SET password=? WHERE id=2')->execute([gym_password_hash('admin')]);
+      $GLOBALS['verification_hashes']=[];$GLOBALS['throttle_events']=[];
+      $throttleProperty->setValue($action,new class {
+        public function begin($account,$ip){$GLOBALS['throttle_events'][]='begin';return ${blocked?900:0};}
+        public function finish($success){$GLOBALS['throttle_events'][]=$success?'success':'failure';}
+        public function cancel(){}
+      });
+      $_POST=['username'=>'${username}','password'=>'incorrect','csrf_token'=>'verify-test'];
+      $before=$db->snapshot();$result=$action->login();$after=$db->snapshot();unset($action);
+      echo json_encode(['result'=>$result,'status'=>http_response_code()?:200,
+       'hashes'=>$GLOBALS['verification_hashes'],'events'=>$GLOBALS['throttle_events'],
+       'dummy'=>gym_password_dummy_hash(),'session'=>$_SESSION,'before'=>$before,'after'=>$after]);`).body);
+    assert.deepEqual(data.after,data.before);assert.deepEqual(data.session,{csrf_token:'verify-test'});
+    if(blocked){assert.equal(data.status,429);assert.deepEqual(data.hashes,[]);assert.deepEqual(data.events,['begin']);}
+    else{
+      assert.equal(data.result,3);assert.equal(data.hashes.length,1);assert.match(data.hashes[0],/^\$argon2id\$/);
+      assert.equal(data.hashes[0],username==='missing-user'?data.dummy:data.before[0].password);
+      assert.deepEqual(data.events,['begin','failure']);
+    }
+  });
+}
+
 test('unsupported roles are rejected without creating an authenticated session', () => {
   const data = login({ username: 'legacy', password: 'legacy' });
   assert.equal(data.result, 2);

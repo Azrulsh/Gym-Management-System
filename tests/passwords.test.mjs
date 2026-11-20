@@ -2,6 +2,14 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { run } from './helpers/php.mjs';
 
+test('dummy verification hash uses the current Argon2id policy without generating a new hash per request',()=>{
+  const d=JSON.parse(run({},`require 'passwords.php';$hash=gym_password_dummy_hash();
+   echo json_encode(['info'=>password_get_info($hash),'same'=>$hash===gym_password_dummy_hash(),
+    'rehash'=>gym_password_needs_rehash($hash),'matches'=>gym_password_verify('gym-login-dummy-verification-not-an-account',$hash)]);`).body);
+  assert.equal(d.info.algoName,'argon2id');assert.deepEqual(d.info.options,{memory_cost:19456,time_cost:2,threads:1});
+  assert.equal(d.same,true);assert.equal(d.rehash,false);assert.equal(d.matches,true);
+});
+
 test('Argon2id uses independent salts and verifies passwords without trimming or 72-byte truncation', () => {
   const response = run({}, `
     require 'passwords.php';

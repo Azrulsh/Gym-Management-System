@@ -57,7 +57,10 @@ Class Action {
 				header('Content-Type: application/json; charset=utf-8');
 				return json_encode(['error' => 'Too many login attempts. Retry in ' . (int) ceil($retryAfter / 60) . ' min.', 'retry_after' => $retryAfter]);
 			}
-			if (!$user || !gym_password_verify($password, (string) $user['password'])) {
+			// Missing users still incur password verification cost after throttle admission.
+			$hashToVerify = $user ? (string) $user['password'] : gym_password_dummy_hash();
+			$passwordValid = gym_password_verify($password, $hashToVerify);
+			if (!$user || !$passwordValid) {
 				$throttle->finish(false);
 				return 3;
 			}
