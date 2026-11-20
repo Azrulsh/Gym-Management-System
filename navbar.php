@@ -1,6 +1,13 @@
 <?php
 require_once __DIR__ . '/auth.php';
 require_login();
+$navigationPages = ['home', 'members', 'registered_members', 'schedule'];
+if (is_admin()) {
+	$navigationPages = array_merge($navigationPages, ['plans', 'packages', 'trainer', 'users']);
+}
+$requestedPage = $_GET['page'] ?? 'home';
+$activeNavigationPage = is_string($requestedPage) && in_array($requestedPage, $navigationPages, true)
+	? $requestedPage : 'home';
 // Legacy Settings cover reference: $_SESSION['system']['cover_img'].
 // Keep disabled until Settings and validated image loading are implemented.
 ?>
@@ -34,5 +41,5 @@ require_login();
 		console.log($(this).attr('href'))
 		$($(this).attr('href')).collapse()
 	})
-	$('.nav-<?php echo isset($_GET['page']) ? $_GET['page'] : '' ?>').addClass('active')
+	$(<?php echo json_encode('.nav-' . $activeNavigationPage, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>).addClass('active')
 </script>
