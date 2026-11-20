@@ -8,3 +8,5 @@ export const allowLoginThrottle = `
     public function cancel() {}
   });
 `;
+
+export const allowCurrentPasswordThrottle = allowLoginThrottle.replaceAll('loginThrottle', 'currentPasswordThrottle');

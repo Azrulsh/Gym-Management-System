@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { literal, run } from './helpers/php.mjs';
-import { allowLoginThrottle } from './helpers/throttle.mjs';
+import { allowLoginThrottle, allowCurrentPasswordThrottle } from './helpers/throttle.mjs';
 
 const session = { login_id: 2, login_type: 1, login_name: 'Admin', login_username: 'admin', csrf_token: 'users-test-token' };
 const profile = { version: '1', id: '', name: " Test O'Neil ", username: 'staff_test', password: 'staff_test', type: '2', csrf_token: session.csrf_token };
@@ -74,6 +74,7 @@ const database = `
   $property->setAccessible(true);
   $property->setValue($action, $db);
   ${allowLoginThrottle}
+  ${allowCurrentPasswordThrottle}
   $_SERVER['REQUEST_METHOD'] = 'POST';
 `;
 

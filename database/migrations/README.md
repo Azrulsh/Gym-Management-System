@@ -10,6 +10,12 @@ Fresh installation or development reset:
 
 `gym.sql` replaces the old `gym_db.sql` dump and integrates migrations 001 through 016.
 No separate migration imports are needed after this reset. Passwords use Argon2id.
+Current-password verification reuses the `login_throttle` table from migration 001;
+no additional migration is required. Manage Account, editing your own user and
+self deletion share a limit of five failed verifications per account in a fixed
+15-minute window. Successful verification resets the account failure count.
+A separate IP bucket allows 30 admitted verifications per window, including
+successful ones. These verification buckets are separate from normal login.
 There are four profiles: Ali has an Active membership, Siti has an Expired
 membership that can be renewed, Kumar has a Closed membership, and Mei has no
 membership yet. Kumar and Mei appear in the Add Membership Validity dropdown.

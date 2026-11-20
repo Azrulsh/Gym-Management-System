@@ -84,6 +84,7 @@ test('a concurrent reset cannot let Manage Account adopt the new version with a 
   const data=isolated(`throttle_test_login($db,'staff','staff');$_SESSION['csrf_token']='version-test';
     $proxy=new class($db) {
       private $db;public function __construct($db){$this->db=$db;}
+      public function __call($method,$arguments){return $this->db->$method(...$arguments);}
       public function prepare($sql){
         if(strpos($sql,'auth_version = auth_version + 1')!==false){
           $hash=gym_password_hash('admin-reset');

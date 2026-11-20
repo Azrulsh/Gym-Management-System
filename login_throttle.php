@@ -10,10 +10,12 @@ final class LoginThrottle
     private $db;
     private $active = false;
     private $accountBucket;
+    private $scope;
 
-    public function __construct($db)
+    public function __construct($db, $scope = '')
     {
         $this->db = $db;
+        $this->scope = $scope;
     }
 
     private function execute($sql, $types = '', ...$values)
@@ -33,10 +35,10 @@ final class LoginThrottle
         // Use the server-observed address. Forwarded headers are not trusted.
         $packedIp = @inet_pton($ip);
         $ip = $packedIp === false ? 'unknown' : bin2hex($packedIp);
-        $this->accountBucket = hash('sha256', 'account:' . $account);
+        $this->accountBucket = hash('sha256', $this->scope . 'account:' . $account);
         $limits = [
             $this->accountBucket => self::ACCOUNT_LIMIT,
-            hash('sha256', 'ip:' . $ip) => self::IP_LIMIT,
+            hash('sha256', $this->scope . 'ip:' . $ip) => self::IP_LIMIT,
         ];
         ksort($limits);
         $clock = $this->execute('SELECT UNIX_TIMESTAMP() AS current_time_seconds');

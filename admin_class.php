@@ -6,6 +6,7 @@ require_once __DIR__ . '/membership_dates.php';
 Class Action {
 	private $db;
 	private $loginThrottle;
+	private $currentPasswordThrottle;
 
 	public function __construct() {
 		ob_start();
@@ -187,6 +188,11 @@ Class Action {
 		$type = (int) $type;
 		$transaction = false;
 		try {
+			// Commit authentication attempts before the account-write transaction starts.
+			if ($id === (int)$_SESSION['login_id'] && $password !== '') {
+				$verification = $this->verify_current_password($id);
+				if ($verification !== null) return $verification;
+			}
 			if (!$this->db->begin_transaction()) throw new RuntimeException('Unable to start user save.');
 			$transaction = true;
 			$accounts = $this->db->query('SELECT id, type FROM users ORDER BY id FOR UPDATE')->fetch_all(MYSQLI_ASSOC);
@@ -203,10 +209,6 @@ Class Action {
 			}
 			$editVersion = $id ? $this->catalog_edit_version() : null;
 			if ($id && $editVersion === false) return $this->action_error(400, 'Reopen Edit User before saving.');
-			if ($id === (int)$_SESSION['login_id'] && $password !== '') {
-				$verification = $this->verify_current_password($id);
-				if ($verification !== null) return $verification;
-			}
 			$check = $this->db->prepare('SELECT id FROM users WHERE username = ? AND id <> ? LIMIT 1');
 			$check->bind_param('si', $username, $id);
 			$check->execute();
@@ -268,10 +270,10 @@ Class Action {
 		$statement->close();
 		return $record;
 	}
-	private function verify_current_password($id){
-		$currentPassword = $_POST['current_password'] ?? null;
+	private function verify_current_password($id, $field = 'current_password'){
+		$currentPassword = $_POST[$field] ?? null;
 		if (!is_string($currentPassword) || $currentPassword === '' || strlen($currentPassword) > 4096) {
-			return $this->action_error(400, 'Enter your current password to change your password.');
+			return $this->action_error(400, $field === 'password' ? 'Enter your current password to delete your account.' : 'Enter your current password to change your password.');
 		}
 		$verify = $this->db->prepare('SELECT password, auth_version FROM users WHERE id = ?');
 		if (!$verify) throw new RuntimeException('Unable to verify current password.');
@@ -281,9 +283,22 @@ Class Action {
 			$account = $verify->get_result()->fetch_assoc();
 		} finally { $verify->close(); }
 		if (!$account || (int)$account['auth_version'] !== (int)$_SESSION['login_auth_version']) {
-			return $this->action_error(409, 'Your account changed. Sign in again before changing your password.');
+			return $this->action_error(409, 'Your account changed. Sign in again before continuing.');
 		}
-		if (!gym_password_verify($currentPassword, $account['password'])) return $this->action_error(400, 'Current password is incorrect.');
+		// Keep these buckets separate from Login, but shared across self-service actions.
+		$throttle = $this->currentPasswordThrottle ?? new LoginThrottle($this->db, 'reauth:');
+		try {
+			$retryAfter = $throttle->begin('id:' . $id, $_SERVER['REMOTE_ADDR'] ?? 'unknown');
+			if ($retryAfter > 0) {
+				header('Retry-After: ' . $retryAfter);
+				http_response_code(429);
+				header('Content-Type: application/json; charset=utf-8');
+				return json_encode(['error' => 'Too many password verification attempts. Retry in ' . (int)ceil($retryAfter / 60) . ' min.', 'retry_after' => $retryAfter]);
+			}
+			$valid = gym_password_verify($currentPassword, $account['password']);
+			$throttle->finish($valid);
+			if (!$valid) return $this->action_error(400, 'Current password is incorrect.');
+		} finally { $throttle->cancel(); }
 		return null;
 	}
 	function save_account(){
@@ -357,12 +372,17 @@ Class Action {
 		$id = $_POST['id'] ?? null;
 		$id = is_string($id) || is_int($id) ? filter_var($id, FILTER_VALIDATE_INT, ['options'=>['min_range'=>1,'max_range'=>2147483647]]) : false;
 		if ($id === false) return $this->action_error(400, 'Invalid user ID.');
+		$self = $id === (int)$_SESSION['login_id'];
 		$transaction = false;
 		try {
+			if ($self) {
+				$verification = $this->verify_current_password($id, 'password');
+				if ($verification !== null) return $verification;
+			}
 			if (!$this->db->begin_transaction()) throw new RuntimeException('Unable to start user deletion.');
 			$transaction = true;
 			// All role changes/deletions lock users in the same order to preserve the final Admin.
-			$users = $this->db->query('SELECT id, type FROM users ORDER BY id FOR UPDATE')->fetch_all(MYSQLI_ASSOC);
+			$users = $this->db->query('SELECT id, type, auth_version FROM users ORDER BY id FOR UPDATE')->fetch_all(MYSQLI_ASSOC);
 			$target = null; $admins = 0; $actorIsAdmin = false;
 			foreach ($users as $user) {
 				if ((int)$user['type'] === 1) $admins++;
@@ -372,13 +392,8 @@ Class Action {
 			if (!$actorIsAdmin) return $this->action_error(403, 'Your account no longer has Admin access.');
 			if (!$target) return $this->action_error(404, 'User no longer exists. Refresh the page.');
 			if ((int)$target['type'] === 1 && $admins <= 1) return $this->action_error(409, 'Cannot delete the last Admin. Create or appoint another Admin first.');
-			$self = $id === (int)$_SESSION['login_id'];
 			if ($self) {
-				$password = $_POST['password'] ?? null;
-				$statement = $this->db->prepare('SELECT password FROM users WHERE id = ?');
-				$statement->bind_param('i', $id); $statement->execute();
-				$hash = $statement->get_result()->fetch_assoc()['password']; $statement->close();
-				if (!is_string($password) || strlen($password) > 4096 || !gym_password_verify($password, $hash)) return $this->action_error(400, 'Enter your correct current password to delete your account.');
+				if ((int)$target['auth_version'] !== (int)$_SESSION['login_auth_version']) return $this->action_error(409, 'Your account changed. Sign in again before deleting your account.');
 			}
 			$statement = $this->db->prepare('DELETE FROM users WHERE id = ?');
 			$statement->bind_param('i', $id); $statement->execute();

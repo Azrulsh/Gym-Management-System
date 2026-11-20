@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { literal, run } from './helpers/php.mjs';
-import { allowLoginThrottle } from './helpers/throttle.mjs';
+import { allowLoginThrottle, allowCurrentPasswordThrottle } from './helpers/throttle.mjs';
 
 const staff = { login_id: 9999, login_type: 2, login_name: 'Test Staff', csrf_token: 'test-csrf-token' };
 const admin = { login_id: 2, login_type: 1, login_name: 'Test Admin' };
@@ -146,6 +146,7 @@ const recordingDatabase = `
   $property->setAccessible(true);
   $property->setValue($action, $db);
   ${allowLoginThrottle}
+  ${allowCurrentPasswordThrottle}
   $_SERVER['REQUEST_METHOD'] = 'POST';
 `;
 
