@@ -33,7 +33,7 @@ $escapeMember = static function ($value) {
 };
 ?>
 <div class="container-fluid">
-	<form action="" id="manage-member-profile">
+	<form action="ajax.php?action=save_member" method="post" id="manage-member-profile">
 		<div class="member-message" role="alert" aria-live="polite"></div>
 		<input type="hidden" name="id" value="<?php echo $escapeMember($member['id'] ?? ''); ?>">
 		<input type="hidden" name="version" value="<?php echo $escapeMember($member['version'] ?? ''); ?>">
