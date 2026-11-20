@@ -26,7 +26,7 @@ function ui(valid = true) {
     } };
     return {
       find: selector => selector === '.login-message' ? message : button,
-      serialize: () => 'username=admin&password=test',
+      serialize: () => 'username=admin&password=test&csrf_token=login-test',
     };
   }
   $.ajax = options => state.requests.push(options);
@@ -43,6 +43,7 @@ test('login submits once, disables the actual submit button and navigates on suc
   assert.equal(state.requests.length, 1);
   const request = state.requests[0];
   assert.equal(request.url, 'ajax.php?action=login');
+  assert.match(request.data,/csrf_token=login-test/);
   assert.equal(request.method, 'POST');
   assert.equal(state.disabled, true);
   assert.equal(state.label, 'Logging in...');
@@ -116,6 +117,15 @@ test('browser validation stops empty submissions', () => {
   state.submit();
   assert.equal(state.requests.length, 0);
   assert.equal(state.disabled, false);
+});
+
+test('expired login form shows a safe refresh message and restores Login without automatic retry',()=>{
+  const state=ui();state.submit();
+  state.requests[0].error({status:419,responseJSON:{error:'<script>private</script>'}});
+  state.requests[0].complete();
+  assert.equal(state.text,'Login form has expired. Refresh the page and try again.');
+  assert.equal(state.disabled,false);assert.equal(state.label,'Login');
+  assert.equal(state.requests.length,1);assert.deepEqual(state.destinations,[]);
 });
 
 test("login ui() state.submit() timeout restores controls and explains uncertain status", () => {

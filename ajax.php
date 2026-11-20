@@ -5,7 +5,7 @@ $action = $_GET['action'] ?? '';
 if ($action !== 'login') {
     require_action_access($action);
 } else {
-    require_post_request('Use POST to log in.');
+    require_login_request();
 }
 ob_start();
 include 'admin_class.php';

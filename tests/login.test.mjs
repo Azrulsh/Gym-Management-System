@@ -75,6 +75,7 @@ const database = `
 function login(post, { session = { csrf_token: 'keep-token' }, mode = '', setup = '' } = {}) {
   const result = run(session, `${database}
     $_POST = json_decode(${literal(JSON.stringify(post))}, true);
+    $_POST += ['csrf_token' => csrf_token()];
     $db->mode = ${literal(mode)};
     ini_set('error_log', '');
     ${setup}
@@ -208,7 +209,7 @@ for (const [label, expression, upgrades] of [
 
 test('a migrated account can log in again without rewriting its hash', () => {
   const data = login({ username: 'admin', password: 'admin' }, {
-    setup: `$_POST = ['username' => 'admin', 'password' => 'admin'];
+    setup: `$_POST = ['username' => 'admin', 'password' => 'admin', 'csrf_token' => csrf_token()];
       if ($action->login() !== 1) throw new RuntimeException('First login failed');`,
   });
   assert.equal(data.result, 1);

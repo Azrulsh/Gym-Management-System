@@ -99,6 +99,7 @@ for (const type of ['1', '2']) {
       $saved = $action->save_user();
       $after = $db->snapshot();
       $_POST = ['username' => 'staff_test', 'password' => 'staff_test'];
+      $_POST['csrf_token'] = csrf_token();
       $login = $action->login();
       unset($action);
       echo json_encode(['saved' => $saved, 'login' => $login, 'before' => $before, 'after' => $after, 'session' => $_SESSION]);
@@ -149,6 +150,7 @@ for (const password of ['', 'new-account-password']) {
       $saved = $action->save_account();
       $after = $db->snapshot();
       $_POST = ['username' => 'admin', 'password' => ${literal(password || 'admin')}];
+      $_POST['csrf_token'] = csrf_token();
       $login = $action->login();
       $afterLogin = $db->snapshot();
       unset($action);

@@ -154,6 +154,7 @@ for (const [role, expected] of [[1, 1], [2, 1], [3, 2]]) {
     const result = run({}, `${recordingDatabase}
       $db->role = ${role};
       $_POST = ['username' => 'test', 'password' => 'test'];
+      $_POST['csrf_token'] = csrf_token();
       $result = $action->login();
       unset($action);
       echo json_encode(['result' => $result, 'session' => $_SESSION]);
@@ -164,7 +165,8 @@ for (const [role, expected] of [[1, 1], [2, 1], [3, 2]]) {
       assert.equal(data.session.login_type, role);
       assert.equal(data.session.login_password, undefined);
     } else {
-      assert.deepEqual(data.session, []);
+      assert.deepEqual(Object.keys(data.session), ['csrf_token']);
+      assert.match(data.session.csrf_token, /^[a-f0-9]{64}$/);
     }
   });
 }

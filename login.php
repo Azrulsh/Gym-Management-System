@@ -99,6 +99,7 @@ div#login-right::before {
   				<div class="card-body">
   						
 					<form id="login-form" action="ajax.php?action=login" method="post">
+                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
                             <div class="login-message" role="alert" aria-live="polite"></div>
   						<div class="form-group">
   							<label for="username" class="control-label">Username</label>

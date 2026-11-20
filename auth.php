@@ -206,6 +206,20 @@ function require_post_request($message)
     }
 }
 
+function require_login_request()
+{
+    require_post_request('Use POST to log in.');
+    $token = $_POST['csrf_token'] ?? null;
+    $expected = $_SESSION['csrf_token'] ?? null;
+    if (!is_string($token) || !is_string($expected) || !hash_equals($expected, $token)) {
+        http_response_code(419);
+        header('Cache-Control: no-store');
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['error' => 'Login form has expired. Refresh the page and try again.']);
+        exit;
+    }
+}
+
 function require_csrf_token()
 {
     $token = $_POST['csrf_token'] ?? null;

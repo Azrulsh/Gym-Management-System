@@ -20,7 +20,7 @@ Class Action {
 	}
 
 	function login(){
-		require_post_request('Use POST to log in.');
+		require_login_request();
 		// A failed attempt must not retain authentication from a previous login.
 		foreach (array_keys($_SESSION) as $key) {
 			if (strpos((string) $key, 'login_') === 0) unset($_SESSION[$key]);

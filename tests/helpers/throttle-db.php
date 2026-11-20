@@ -44,7 +44,7 @@ function throttle_test_login($db, $username, $password, $ip = '192.0.2.1')
     $property->setValue($action, $db);
     $_SERVER['REQUEST_METHOD'] = 'POST';
     $_SERVER['REMOTE_ADDR'] = $ip;
-    $_POST = compact('username', 'password');
+    $_POST = compact('username', 'password') + ['csrf_token' => csrf_token()];
     http_response_code(200);
     $result = $action->login();
     // The caller owns the connection, so avoid closing it in Action's destructor.

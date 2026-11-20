@@ -29,6 +29,13 @@ async function request(path, options = {}, cookies) {
   return response;
 }
 
+async function loginToken(cookies) {
+  const response = await request('login.php', {}, cookies);
+  assert.equal(response.status, 200);
+  const match = (await response.text()).match(/name="csrf_token" value="([a-f0-9]{64})"/);
+  assert.ok(match); return match[1];
+}
+
 for (const page of protectedPages) {
   test(`anonymous ${page} redirects before rendering`, async () => {
     const response = await request(page);
@@ -72,7 +79,7 @@ test('incorrect credentials do not grant access', async () => {
   const cookies = new Map();
   const response = await request('ajax.php?action=login', {
     method: 'POST',
-    body: new URLSearchParams({ username: '__auth_smoke_missing_user__', password: 'incorrect' }),
+    body: new URLSearchParams({ csrf_token: await loginToken(cookies), username: '__auth_smoke_missing_user__', password: 'incorrect' }),
   }, cookies);
   assert.ok([200, 429].includes(response.status));
   if (response.status === 429) {
@@ -91,7 +98,7 @@ test('login rejects GET, handles apostrophes safely and validates array input wi
   assert.deepEqual(await get.json(), { error: 'Use POST to log in.' });
   const cookies = new Map();
   const quote = await request('ajax.php?action=login', {
-    method: 'POST', body: new URLSearchParams({ username: "'", password: 'test' }),
+    method: 'POST', body: new URLSearchParams({ csrf_token: await loginToken(cookies), username: "'", password: 'test' }),
   }, cookies);
   assert.ok([200, 429].includes(quote.status));
   if (quote.status === 429) {
@@ -100,7 +107,7 @@ test('login rejects GET, handles apostrophes safely and validates array input wi
     assert.equal(blocked.error, `Too many login attempts. Retry in ${Math.ceil(blocked.retry_after / 60)} min.`);
   } else assert.equal((await quote.text()).trim(), '3');
   const array = await request('ajax.php?action=login', {
-    method: 'POST', body: new URLSearchParams([['username[]', 'admin'], ['password', 'test']]),
+    method: 'POST', body: new URLSearchParams([['csrf_token', await loginToken(cookies)], ['username[]', 'admin'], ['password', 'test']]),
   }, cookies);
   assert.equal(array.status, 400);
   assert.deepEqual(await array.json(), { error: 'Enter a valid username and password.' });
@@ -117,6 +124,7 @@ test('valid login rotates session, preserves pages and modals, and logout revoke
   const response = await request('ajax.php?action=login', {
     method: 'POST',
     body: new URLSearchParams({
+      csrf_token: await loginToken(cookies),
       username: process.env.GYM_TEST_USERNAME,
       password: process.env.GYM_TEST_PASSWORD,
     }),

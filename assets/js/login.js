@@ -33,6 +33,10 @@
                 }
             },
             error: function (xhr, status) {
+                if (xhr.status === 419) {
+                    showError('Login form has expired. Refresh the page and try again.');
+                    return;
+                }
                 if (status === 'timeout') {
                     showError('Login status could not be confirmed because the request timed out. Refresh the page to check whether you are signed in before trying again.');
                     return;
