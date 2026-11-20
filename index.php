@@ -128,14 +128,27 @@ if (!is_string($page) || !in_array($page, $pages, true)) {
   </div>
 </body>
 <script>
-	 window.start_load = function(){
-    $('body').prepend('<di id="preloader2"></di>')
-  }
-  window.end_load = function(){
-    $('#preloader2').fadeOut('fast', function() {
-        $(this).remove();
-      })
-  }
+  (function () {
+    let pendingLoads = 0;
+    let generation = 0;
+    window.start_load = function () {
+      pendingLoads++;
+      generation++;
+      const overlay = $('#preloader2');
+      if (overlay.length) overlay.stop(true, false).show();
+      else $('body').prepend('<div id="preloader2"></div>');
+    };
+    window.end_load = function () {
+      if (pendingLoads === 0) return;
+      pendingLoads--;
+      if (pendingLoads > 0) return;
+      const completedGeneration = generation;
+      $('#preloader2').stop(true, false).fadeOut('fast', function () {
+        // A new request may have restarted the overlay during this animation.
+        if (pendingLoads === 0 && generation === completedGeneration) $(this).remove();
+      });
+    };
+  })();
  window.viewer_modal = function($src = ''){
     start_load()
     var t = $src.split('.')
