@@ -3,7 +3,6 @@ require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/passwords.php';
 require_once __DIR__ . '/login_throttle.php';
 require_once __DIR__ . '/membership_dates.php';
-ini_set('display_errors', 1);
 Class Action {
 	private $db;
 	private $loginThrottle;
