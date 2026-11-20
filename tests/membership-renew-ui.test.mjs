@@ -6,7 +6,12 @@ import { run } from './helpers/php.mjs';
 
 const source = readFileSync(new URL('../assets/js/membership-renew.js', import.meta.url), 'utf8');
 function ui({ rid = '9', token = 'renew-token' } = {}) {
-  const state = { requests: [], events: [], disabled: false, text: '' };
+  const state = { requests: [], events: [], disabled: false, text: '', reloads: 0 };
+  const closeHandlers = new Map();
+  const modal = {
+    off(event) { closeHandlers.delete(event); return this; },
+    one(event, handler) { closeHandlers.set(event, handler); return this; },
+  };
   const document = {};
   const button = { dataset: {} };
   let click;
@@ -15,6 +20,7 @@ function ui({ rid = '9', token = 'renew-token' } = {}) {
     text(value) { state.text = value; return this; }, empty() { state.text = ''; return this; },
   };
   function $(target) {
+    if (target === '#uni_modal') return modal;
     if (target === document) return { on(event, selector, handler) { assert.equal(selector, '.renew-membership'); click = handler; } };
     if (target === button) return {
       attr: name => name === 'data-registration-id' ? rid : token,
@@ -24,12 +30,20 @@ function ui({ rid = '9', token = 'renew-token' } = {}) {
   }
   $.ajax = request => state.requests.push(request);
   const window = {
+    location: { reload() { state.reloads++; } },
     start_load() { state.events.push('start'); }, end_load() { state.events.push('end'); },
     alert_toast() { state.events.push('toast'); },
     uni_modal(title, url, size) { state.events.push('modal'); state.modal = { title, url, size }; },
   };
   vm.runInNewContext(source, { document, jQuery: $, window });
   state.click = () => click.call(button);
+  state.close = () => {
+    for (const [event, handler] of closeHandlers) {
+      closeHandlers.delete(event);
+      handler();
+    }
+  };
+  state.openPayment = () => window.uni_modal('Payments', 'payment.php?rid=12', 'large');
   return state;
 }
 
@@ -58,6 +72,27 @@ test('stale renewal conflict explains rejection and restores controls', () => {
   assert.deepEqual(state.events, ['start', 'end']);
   state.click();
   assert.equal(state.requests.length, 2);
+});
+
+for (const payment of [false, true]) {
+  test(`successful renewal refreshes exactly once on close${payment ? ' after visiting Payment' : ''}`, () => {
+    const state = ui(); state.click();
+    state.requests[0].success('12'); state.requests[0].complete();
+    assert.equal(state.reloads, 0);
+    if (payment) state.openPayment();
+    assert.equal(state.reloads, 0);
+    state.close();
+    assert.equal(state.reloads, 1);
+    state.close();
+    assert.equal(state.reloads, 1);
+  });
+}
+
+test('failed renewal does not refresh when the modal is closed', () => {
+  const state = ui(); state.click();
+  state.requests[0].error({status:409}); state.requests[0].complete();
+  state.close();
+  assert.equal(state.reloads, 0);
 });
 
 for (const response of ['<b>SQL failure</b>', '0', '-1', '1e3', '2147483648', '']) {

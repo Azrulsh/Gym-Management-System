@@ -38,6 +38,12 @@
             complete: function () {
                 window.end_load();
                 if (newId !== null) {
+                    // The shared modal survives detail/payment content replacements.
+                    // Refresh only after it closes so the new agreement can be reviewed first.
+                    $('#uni_modal').off('hidden.bs.modal.membershipRenew')
+                        .one('hidden.bs.modal.membershipRenew', function () {
+                            window.location.reload();
+                        });
                     window.alert_toast('Membership successfully renewed.', 'success');
                     window.uni_modal('Member Plan Details', 'view_pdetails.php?id=' + newId, '');
                 } else {
