@@ -11,6 +11,9 @@ if (!is_string($page) || !in_array($page, $pages, true)) {
     http_response_code(404);
     exit('Page not found.');
 }
+// Included pages may report a read failure after the shell starts rendering.
+// Keep headers pending so their HTTP status is sent with the final response.
+ob_start();
 ?>
 <!DOCTYPE html>
 <html lang="en">

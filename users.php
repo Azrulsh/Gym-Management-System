@@ -1,6 +1,18 @@
 <?php 
 require_once __DIR__ . '/auth.php';
 require_admin();
+try {
+    include 'db_connect.php';
+    $result = $conn->query("SELECT * FROM users order by name asc");
+    if (!$result) throw new RuntimeException('List lookup unavailable.');
+    $userRows = $result->fetch_all(MYSQLI_ASSOC);
+    $result->free();
+} catch (mysqli_sql_exception | RuntimeException $exception) {
+    error_log('Unable to load users (error code ' . (int)$exception->getCode() . ').');
+    http_response_code(503);
+    echo '<div class="alert alert-danger" role="alert">Unable to load users. Please try again.</div>';
+    return;
+}
 ?>
 
 <div class="container-fluid">
@@ -26,11 +38,9 @@ require_admin();
 			</thead>
 			<tbody>
 				<?php
- 					include 'db_connect.php';
  					$type = array("","Admin","Staff","Alumnus/Alumna");
- 					$users = $conn->query("SELECT * FROM users order by name asc");
  					$i = 1;
- 					while($row= $users->fetch_assoc()):
+					foreach ($userRows as $row):
 				 ?>
 				 <tr>
 				 	<td class="text-center">
@@ -62,7 +72,7 @@ require_admin();
 								</center>
 				 	</td>
 				 </tr>
-				<?php endwhile; ?>
+				<?php endforeach; ?>
 			</tbody>
 		</table>
 			</div>

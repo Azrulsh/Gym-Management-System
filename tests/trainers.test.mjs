@@ -178,6 +178,8 @@ test('trainer page escapes text and Edit attributes and provides a protected Add
         $this->row = ['id' => 7, 'version' => 1, 'name' => ${literal(attackName)}, 'email' => ${literal(attackEmail)}, 'contact' => ${literal(attackContact)}, 'rate' => 10];
       }
       public function fetch_assoc() { $row = $this->row; $this->row = null; return $row; }
+      public function fetch_all($mode) { $row = $this->fetch_assoc(); return $row === null ? [] : [$row]; }
+      public function free() { $this->row = null; }
     }
     class TrainerPageDatabase { public function query($sql) { return new TrainerPageResult(); } }
     $page = str_replace("include 'db_connect.php';", '$conn = new TrainerPageDatabase();', file_get_contents('trainer.php'));

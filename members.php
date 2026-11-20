@@ -1,7 +1,18 @@
 <?php
 require_once __DIR__ . '/auth.php';
 require_login();
-include 'db_connect.php';
+try {
+    include 'db_connect.php';
+    $result = $conn->query("SELECT *,concat(lastname,', ',firstname,' ',middlename) as name from members order by concat(lastname,', ',firstname,' ',middlename) asc");
+    if (!$result) throw new RuntimeException('List lookup unavailable.');
+    $memberRows = $result->fetch_all(MYSQLI_ASSOC);
+    $result->free();
+} catch (mysqli_sql_exception | RuntimeException $exception) {
+    error_log('Unable to load members (error code ' . (int)$exception->getCode() . ').');
+    http_response_code(503);
+    echo '<div class="alert alert-danger" role="alert">Unable to load members. Please try again.</div>';
+    return;
+}
 ?>
 
 <div class="container-fluid">
@@ -61,8 +72,7 @@ include 'db_connect.php';
 							<tbody>
 								<?php 
 								$i = 1;
-								$member =  $conn->query("SELECT *,concat(lastname,', ',firstname,' ',middlename) as name from members order by concat(lastname,', ',firstname,' ',middlename) asc");
-								while($row=$member->fetch_assoc()):
+								foreach ($memberRows as $row):
 								?>
 								<tr>
 									
@@ -88,7 +98,7 @@ include 'db_connect.php';
 										<button class="btn btn-sm btn-outline-danger delete_member" type="button" data-id="<?php echo (int) $row['id']; ?>" data-csrf-token="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">Delete</button>
 									</td>
 								</tr>
-								<?php endwhile; ?>
+								<?php endforeach; ?>
 							</tbody>
 						</table>
 					</div>

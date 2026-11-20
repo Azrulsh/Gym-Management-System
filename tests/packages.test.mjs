@@ -174,6 +174,8 @@ test('package markup escapes quotes and HTML in visible text and Edit attributes
         $this->row = ['id' => 7, 'version' => 1, 'package' => ${literal(attackName)}, 'description' => ${literal(attackDescription)}, 'amount' => 10];
       }
       public function fetch_assoc() { $row = $this->row; $this->row = null; return $row; }
+      public function fetch_all($mode) { $row = $this->fetch_assoc(); return $row === null ? [] : [$row]; }
+      public function free() { $this->row = null; }
     }
     class PackagePageDatabase { public function query($sql) { return new PackagePageResult(); } }
     // Substitute the DB connection in memory; never modify or seed application records.

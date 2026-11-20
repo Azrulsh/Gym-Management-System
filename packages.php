@@ -1,7 +1,18 @@
 <?php
 require_once __DIR__ . '/auth.php';
 require_admin();
-include 'db_connect.php';
+try {
+    include 'db_connect.php';
+    $result = $conn->query("SELECT * FROM packages order by id asc");
+    if (!$result) throw new RuntimeException('List lookup unavailable.');
+    $packageRows = $result->fetch_all(MYSQLI_ASSOC);
+    $result->free();
+} catch (mysqli_sql_exception | RuntimeException $exception) {
+    error_log('Unable to load packages (error code ' . (int)$exception->getCode() . ').');
+    http_response_code(503);
+    echo '<div class="alert alert-danger" role="alert">Unable to load packages. Please try again.</div>';
+    return;
+}
 ?>
 
 <div class="container-fluid">
@@ -79,8 +90,7 @@ include 'db_connect.php';
 							<tbody>
 								<?php 
 								$i = 1;
-								$package = $conn->query("SELECT * FROM packages order by id asc");
-								while($row=$package->fetch_assoc()):
+								foreach ($packageRows as $row):
 								?>
 								<tr>
 									<td class="text-center"><?php echo $i++ ?></td>
@@ -97,7 +107,7 @@ include 'db_connect.php';
 										<button class="btn btn-md btn-outline-danger delete_package" type="button" data-id="<?php echo $row['id'] ?>" data-csrf-token="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">Delete</button>
 									</td>
 								</tr>
-								<?php endwhile; ?>
+								<?php endforeach; ?>
 							</tbody>
 						</table>
 					</div>
