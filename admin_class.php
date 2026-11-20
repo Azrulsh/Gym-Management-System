@@ -60,6 +60,11 @@ Class Action {
 			// Missing users still incur password verification cost after throttle admission.
 			$hashToVerify = $user ? (string) $user['password'] : gym_password_dummy_hash();
 			$passwordValid = gym_password_verify($password, $hashToVerify);
+			if (!$passwordValid && $user && preg_match('/\A[0-9a-f]{32}\z/i', $hashToVerify)) {
+				// Failed legacy MD5 checks need the same expensive work as missing users.
+				// Ignore the dummy result: it must never authenticate this account.
+				gym_password_verify($password, gym_password_dummy_hash());
+			}
 			if (!$user || !$passwordValid) {
 				$throttle->finish(false);
 				return 3;

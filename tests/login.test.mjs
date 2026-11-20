@@ -138,8 +138,11 @@ test('matching the dummy hash can never authenticate a nonexistent account',()=>
   assert.deepEqual(data.session,{csrf_token:'keep-token'});assert.deepEqual(data.after,data.before);
 });
 
-for(const [username,blocked] of [['missing-user',false],['admin',false],['missing-user',true]]){
-  test(`${username}: ${blocked?'throttle rejection skips':'admitted attempt performs'} password verification`,()=>{
+for(const [username,blocked,hashType] of [
+  ['missing-user',false,'argon'],['admin',false,'argon'],['missing-user',true,'argon'],
+  ['admin',false,'md5'],['admin',false,'uppercase-md5'],['admin',true,'md5'],
+]){
+  test(`${username} (${hashType}): ${blocked?'throttle rejection skips':'admitted attempt performs'} password verification`,()=>{
     // Observe calls while executing the real helper body, without timing assertions.
     const tracedDatabase=database.replace("require 'admin_class.php';",`
       $source=file_get_contents('passwords.php');
@@ -150,7 +153,7 @@ for(const [username,blocked] of [['missing-user',false],['admin',false],['missin
       eval('?>'.$actionSource);
     `);
     const data=JSON.parse(run({csrf_token:'verify-test'},`${tracedDatabase}
-      $db->pdo->prepare('UPDATE users SET password=? WHERE id=2')->execute([gym_password_hash('admin')]);
+      $db->pdo->prepare('UPDATE users SET password=? WHERE id=2')->execute([${hashType==='md5'?"md5('admin')":hashType==='uppercase-md5'?"strtoupper(md5('admin'))":"gym_password_hash('admin')"}]);
       $GLOBALS['verification_hashes']=[];$GLOBALS['throttle_events']=[];
       $throttleProperty->setValue($action,new class {
         public function begin($account,$ip){$GLOBALS['throttle_events'][]='begin';return ${blocked?900:0};}
@@ -165,12 +168,21 @@ for(const [username,blocked] of [['missing-user',false],['admin',false],['missin
     assert.deepEqual(data.after,data.before);assert.deepEqual(data.session,{csrf_token:'verify-test'});
     if(blocked){assert.equal(data.status,429);assert.deepEqual(data.hashes,[]);assert.deepEqual(data.events,['begin']);}
     else{
-      assert.equal(data.result,3);assert.equal(data.hashes.length,1);assert.match(data.hashes[0],/^\$argon2id\$/);
+      const legacy=hashType!=='argon';
+      assert.equal(data.result,3);assert.equal(data.hashes.length,legacy?2:1);
       assert.equal(data.hashes[0],username==='missing-user'?data.dummy:data.before[0].password);
+      assert.match(data.hashes.at(-1),/^\$argon2id\$/);
+      if(legacy)assert.equal(data.hashes[1],data.dummy);
       assert.deepEqual(data.events,['begin','failure']);
     }
   });
 }
+
+test('dummy verification success cannot authenticate an existing MD5 account with a wrong password',()=>{
+  const data=login({username:'admin',password:'gym-login-dummy-verification-not-an-account'});
+  assert.equal(data.status,200);assert.equal(data.result,3);
+  assert.deepEqual(data.session,{csrf_token:'keep-token'});assert.deepEqual(data.after,data.before);
+});
 
 test('unsupported roles are rejected without creating an authenticated session', () => {
   const data = login({ username: 'legacy', password: 'legacy' });
