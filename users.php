@@ -75,7 +75,7 @@ require_admin();
 $('#new_user').click(function(){
 	uni_modal('New User','manage_user.php')
 })
-$('.edit_user').click(function(){
+$(document).on('click', '.edit_user', function(){
 	uni_modal('Edit User','manage_user.php?id='+$(this).attr('data-id'))
 })
 </script>
