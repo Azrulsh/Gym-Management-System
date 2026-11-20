@@ -93,11 +93,23 @@ try {
 				</div>
 				<div class="form-group">
 					<label for="payment-amount" class="control-label">Amount</label>
-					<input type="number" id="payment-amount" class="form-control" name="amount" min="0.01" max="9999999999.99" step="0.01" required>
+					<div class="input-group money-input">
+						<input type="number" id="payment-amount" class="form-control" name="amount" min="0.01" max="9999999999.99" step="0.01" required>
+						<div class="input-group-append"><div class="btn-group-vertical">
+							<button class="btn btn-outline-secondary money-arrow" type="button" data-direction="1" aria-label="Increase Payment amount by RM1">&#9650;</button>
+							<button class="btn btn-outline-secondary money-arrow" type="button" data-direction="-1" aria-label="Decrease Payment amount by RM1">&#9660;</button>
+						</div></div>
+					</div>
 				</div>
 				<div class="form-group">
 					<label for="payment-plan-amount">Of this payment, amount for Plan fee</label>
-					<input type="number" id="payment-plan-amount" class="form-control" name="plan_amount" min="0" max="<?php echo payment_decimal($planRemaining); ?>" step="0.01" value="0.00" required>
+					<div class="input-group money-input">
+						<input type="number" id="payment-plan-amount" class="form-control" name="plan_amount" min="0" max="<?php echo payment_decimal($planRemaining); ?>" step="0.01" value="0.00" required>
+						<div class="input-group-append"><div class="btn-group-vertical">
+							<button class="btn btn-outline-secondary money-arrow" type="button" data-direction="1" aria-label="Increase Plan allocation by RM1">&#9650;</button>
+							<button class="btn btn-outline-secondary money-arrow" type="button" data-direction="-1" aria-label="Decrease Plan allocation by RM1">&#9660;</button>
+						</div></div>
+					</div>
 					<small class="text-muted">Included in Amount above. Enter 0 for Package/Trainer only; the rest of this payment is for Package/Trainer.</small>
 				</div>
 				<div class="form-group">

@@ -1,16 +1,23 @@
 (function () {
     'use strict';
 
+    function cents(value, fallback) {
+        if (typeof value !== 'string' || !/^\d{1,10}(?:\.\d{1,2})?$/.test(value)) return fallback;
+        const parts = value.split('.');
+        return Number(parts[0]) * 100 + Number((parts[1] || '').padEnd(2, '0'));
+    }
+
     function adjust(input, direction) {
-        if (!input || input.disabled || input.readOnly) return;
+        if (!input || input.disabled || input.readOnly || ![1, -1].includes(direction)) return;
         // Do not silently round invalid manually entered prices.
         if (input.validity.badInput || (input.value !== '' && !/^\d{1,10}(?:\.\d{1,2})?$/.test(input.value))) {
             input.reportValidity();
             return;
         }
-        const parts = (input.value || '0').split('.');
-        const cents = Number(parts[0]) * 100 + Number((parts[1] || '').padEnd(2, '0'));
-        const next = Math.max(0, Math.min(999999999999, cents + direction * 100));
+        const minimum = cents(input.min, 0);
+        const maximum = cents(input.max, 999999999999);
+        if (minimum > maximum) { input.reportValidity(); return; }
+        const next = Math.max(minimum, Math.min(maximum, cents(input.value, 0) + direction * 100));
         input.value = Math.floor(next / 100) + '.' + String(next % 100).padStart(2, '0');
         input.dispatchEvent(new Event('input', { bubbles: true }));
         input.dispatchEvent(new Event('change', { bubbles: true }));
