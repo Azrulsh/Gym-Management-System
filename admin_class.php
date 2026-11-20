@@ -943,7 +943,10 @@ Class Action {
 	function get_schecdule(){
 		require_action_access('get_schecdule');
 		try {
-			$qry = $this->db->query("SELECT s.*,concat(m.lastname,',',m.firstname,' ', m.middlename) as name FROM schedules s inner join members m on m.id = s.member_id");
+			$qry = $this->db->query("SELECT s.*, CASE WHEN m.id IS NULL
+				THEN CONCAT('Member profile missing (ID ', s.member_id, ')')
+				ELSE CONCAT(m.lastname, ',', m.firstname, ' ', m.middlename) END AS name
+				FROM schedules s LEFT JOIN members m ON m.id = s.member_id");
 			if (!$qry) throw new RuntimeException('Schedule lookup unavailable.');
 			$data = $qry->fetch_all(MYSQLI_ASSOC);
 			$qry->free();

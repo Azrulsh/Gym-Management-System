@@ -33,6 +33,12 @@ function calendar(row) {
   return options.events[0];
 }
 
+test('missing-profile label remains visible with the original schedule ID and recurrence',()=>{
+  const event=calendar({id:'8',name:'Member profile missing (ID 999)',dow:'1',date_from:'2026-11-01',date_to:'2026-11-30',time_from:'09:00:00',time_to:'10:00:00'});
+  assert.equal(event.title,'Member profile missing (ID 999)');assert.equal(event.data_id,'8');
+  assert.deepEqual(dates(event),['2026-11-02','2026-11-09','2026-11-16','2026-11-23','2026-11-30']);
+});
+
 for (const [name, from, to, day, expectedEnd, expectedDates] of [
   ['November Mondays', '2026-11-01', '2026-11-30', '1', '2026-12-01', ['2026-11-02','2026-11-09','2026-11-16','2026-11-23','2026-11-30']],
   ['leap February Tuesdays', '2028-02-01', '2028-02-29', '2', '2028-03-01', ['2028-02-01','2028-02-08','2028-02-15','2028-02-22','2028-02-29']],
