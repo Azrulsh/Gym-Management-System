@@ -153,15 +153,5 @@ if($action == "save_membership"){
 	if($save)
 		echo $save;
 }	
-if($action == "save_art_fs"){
-	$save = $crud->save_art_fs();
-	if($save)
-		echo $save;
-}
-if($action == "delete_art_fs"){
-	$save = $crud->delete_art_fs();
-	if($save)
-		echo $save;
-}
 ob_end_flush();
 ?>
