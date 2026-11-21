@@ -11855,7 +11855,9 @@ var FullCalendar = (function (exports) {
                 for (var col = seg.firstCol; col <= seg.lastCol; col++) {
                     var hiddenCnt = ++hiddenCnts[col];
                     if (moreLinkConsumesLevel && hiddenCnt === 1) {
-                        var doomedLevel = currentLevel - 1;
+                        // Local fix: the first event can exceed the available row height.
+                        // No preceding placement exists at level -1 to replace with a more link.
+                        var doomedLevel = Math.max(0, currentLevel - 1);
                         while (visibleColPlacements[col].length > doomedLevel) {
                             recordHidden(visibleColPlacements[col].pop(), // removes
                             visibleColPlacements[col].length, // will execute after the pop. will be the index of the removed placement
