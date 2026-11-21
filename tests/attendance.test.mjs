@@ -64,5 +64,5 @@ test('audit insert failure rolls back the new visit and its open slot',()=>{
  assert.equal(d.open,null);assert.equal(Number(d.count),5);assert.equal(Number(d.transaction),0);
 });
 test('reimport additive schema preserves visits, audit and membership records',()=>{
- const d=isolated(`$before=$repository->rows('SELECT * FROM attendance_visits ORDER BY id');$db->multi_query(file_get_contents('database/add_attendance.sql'));do{if($r=$db->store_result())$r->free();}while($db->more_results()&&$db->next_result());echo json_encode(['before'=>$before,'after'=>$repository->rows('SELECT * FROM attendance_visits ORDER BY id')]);`);assert.deepEqual(d.before,d.after);
+ const d=isolated(`$before=$repository->rows('SELECT * FROM attendance_visits ORDER BY id');$db->multi_query(file_get_contents('tests/fixtures/legacy-schema/add_attendance.sql'));do{if($r=$db->store_result())$r->free();}while($db->more_results()&&$db->next_result());echo json_encode(['before'=>$before,'after'=>$repository->rows('SELECT * FROM attendance_visits ORDER BY id')]);`);assert.deepEqual(d.before,d.after);
 });

@@ -74,7 +74,7 @@ test('failed activation rolls back user, portal link, token consumption and audi
  assert.equal(d.users,3);assert.equal(d.links,0);assert.equal(d.token,null);
 });
 test('Member profile foreign keys protect existing records and additive import is repeatable',()=>{
- const d=isolated(`$a=$activate(1,'member_a');$before=$repository->account($a['user_id']);$db->multi_query(file_get_contents('database/add_member_portal.sql'));do{if($r=$db->store_result())$r->free();}while($db->more_results()&&$db->next_result());$blocked=false;try{$db->query('DELETE FROM members WHERE id=1');}catch(mysqli_sql_exception $e){$blocked=$e->getCode()===1451;}echo json_encode(['before'=>$before,'after'=>$repository->account($a['user_id']),'blocked'=>$blocked]);`);
+ const d=isolated(`$a=$activate(1,'member_a');$before=$repository->account($a['user_id']);$db->multi_query(file_get_contents('tests/fixtures/legacy-schema/add_member_portal.sql'));do{if($r=$db->store_result())$r->free();}while($db->more_results()&&$db->next_result());$blocked=false;try{$db->query('DELETE FROM members WHERE id=1');}catch(mysqli_sql_exception $e){$blocked=$e->getCode()===1451;}echo json_encode(['before'=>$before,'after'=>$repository->account($a['user_id']),'blocked'=>$blocked]);`);
  assert.deepEqual(d.before,d.after);assert.equal(d.blocked,true);
 });
 

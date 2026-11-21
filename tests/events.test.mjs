@@ -75,6 +75,6 @@ test('participant insert failure rolls back both participant and event version',
  assert.deepEqual(d.before,d.after);assert.equal(Number(d.counts.history),0);assert.equal(Number(d.transaction),0);
 });
 test('additive install is repeatable and preserves all existing events and memberships',()=>{
- const d=isolated(`$before=$repository->listing();$db->multi_query(file_get_contents('database/add_events.sql'));do{if($r=$db->store_result())$r->free();}while($db->more_results()&&$db->next_result());echo json_encode(['before'=>$before,'after'=>$repository->listing(),'memberships'=>$db->query('SELECT COUNT(*) AS n FROM registration_info')->fetch_assoc()['n']]);`);
+ const d=isolated(`$before=$repository->listing();$db->multi_query(file_get_contents('tests/fixtures/legacy-schema/add_events.sql'));do{if($r=$db->store_result())$r->free();}while($db->more_results()&&$db->next_result());echo json_encode(['before'=>$before,'after'=>$repository->listing(),'memberships'=>$db->query('SELECT COUNT(*) AS n FROM registration_info')->fetch_assoc()['n']]);`);
  assert.deepEqual(d.before,d.after);assert.equal(Number(d.memberships),13);
 });

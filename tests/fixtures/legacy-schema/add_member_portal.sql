@@ -1,4 +1,4 @@
--- Additive install. Existing users, profiles, agreements and payments are preserved.
+-- Historical upgrade fixture for isolated tests only. Install the application with database/gym.sql.
 CREATE TABLE IF NOT EXISTS member_portal_accounts (
   user_id INT NOT NULL PRIMARY KEY,
   member_id INT NOT NULL UNIQUE,

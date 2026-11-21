@@ -7,6 +7,7 @@ test('fresh demo has usable role logins, complete modern data and every document
  require 'tests/helpers/throttle-db.php';require 'passwords.php';require 'membership_read.php';
  with_throttle_database(function($db){
   $db->multi_query(file_get_contents('database/gym.sql'));do{if($r=$db->store_result())$r->free();}while($db->more_results()&&$db->next_result());
+  $tables=array_column($db->query('SHOW TABLES')->fetch_all(MYSQLI_NUM),0);
   $logins=[];foreach(['admin','staff','member','member_disabled'] as $name)$logins[$name]=throttle_test_login($db,$name,$name);
   $accounts=$db->query('SELECT u.username,p.member_id,p.enabled FROM users u JOIN member_portal_accounts p ON p.user_id=u.id ORDER BY u.id')->fetch_all(MYSQLI_ASSOC);
   $issues=[];foreach(membership_read_records($db) as $row)$issues=array_merge($issues,membership_read_state($row)['issues']);
@@ -23,9 +24,11 @@ test('fresh demo has usable role logins, complete modern data and every document
   $participants=$db->query('SELECT DISTINCT status FROM event_registrations ORDER BY status')->fetch_all(MYSQLI_ASSOC);
   $visits=$db->query('SELECT COUNT(*) AS total,SUM(open_member_id IS NOT NULL) AS inside,SUM(voided_at IS NOT NULL) AS voided FROM attendance_visits')->fetch_assoc();
   $own=$db->query('SELECT (SELECT COUNT(*) FROM payments p JOIN registration_info r ON r.id=p.registration_id WHERE r.member_id=7) AS payments,(SELECT COUNT(*) FROM schedules WHERE member_id=7) AS schedules,(SELECT COUNT(*) FROM attendance_visits WHERE member_id=7) AS visits,(SELECT COUNT(*) FROM event_registrations WHERE member_id=7) AS events')->fetch_assoc();
-  echo json_encode(compact('logins','accounts','issues','invalid','unallocated','badHashes','eventConditions','full','participants','visits','own'));
+  echo json_encode(compact('tables','logins','accounts','issues','invalid','unallocated','badHashes','eventConditions','full','participants','visits','own'));
  });`);
  const d=JSON.parse(result.body);
+ assert.equal(d.tables.length,17);
+ for(const table of ['system_settings','events','event_registrations','member_portal_accounts','member_portal_tokens','member_portal_audit','attendance_visits','attendance_audit'])assert.ok(d.tables.includes(table),'Single SQL import includes '+table);
  assert.equal(d.logins.admin.result,1);assert.equal(d.logins.staff.result,1);assert.equal(d.logins.member.result,4);assert.equal(d.logins.member_disabled.authenticated,false);
  assert.deepEqual(d.accounts.map(a=>[a.username,Number(a.member_id),Number(a.enabled)]),[['member',7,1],['member_disabled',11,0]]);
  assert.deepEqual(d.issues,[]);assert.equal(Number(d.invalid),0);assert.equal(Number(d.unallocated),0);assert.equal(d.badHashes,0);

@@ -1,4 +1,4 @@
--- Additive installation: preserves existing application data. Run in the selected gym database.
+-- Historical upgrade fixture for isolated tests only. Install the application with database/gym.sql.
 CREATE TABLE IF NOT EXISTS events (
   id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
   title VARCHAR(150) NOT NULL,

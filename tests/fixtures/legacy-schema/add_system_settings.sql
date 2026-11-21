@@ -1,4 +1,4 @@
--- Additive installation for an existing database. Does not reset application records.
+-- Historical upgrade fixture for isolated tests only. Install the application with database/gym.sql.
 CREATE TABLE IF NOT EXISTS system_settings (
   id TINYINT UNSIGNED NOT NULL PRIMARY KEY,
   gym_name VARCHAR(100) NOT NULL DEFAULT 'Gym Management System',

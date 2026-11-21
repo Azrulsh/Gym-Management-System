@@ -1,4 +1,4 @@
--- Additive installation: preserves all existing application records.
+-- Historical upgrade fixture for isolated tests only. Install the application with database/gym.sql.
 CREATE TABLE IF NOT EXISTS attendance_visits (
   id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
   member_id INT NOT NULL,

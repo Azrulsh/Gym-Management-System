@@ -1,4 +1,9 @@
-Fresh installation or development reset:
+Single-file installation or development reset:
+
+`database/gym.sql` includes core tables, System Settings, Events, Member Portal
+and Attendance with their constraints and complete demo records. Import only this
+file. Historical `add_*.sql` files are retained under `tests/fixtures/legacy-schema`
+solely for automated regression tests; they are not installation steps.
 
 1. Start Apache and MySQL in XAMPP. Open phpMyAdmin.
 2. Create/select `gym`, matching `db_connect.php`.
@@ -68,12 +73,9 @@ in `tests/fixtures/legacy-schema` for isolated regression fixtures; it is not an
 installation or upgrade workflow. Existing installations that must keep their
 records should not import this development reset dump.
 
-System Settings on an existing installation:
+System Settings (included in gym.sql):
 
-1. Import `database/add_system_settings.sql` once into the existing application
-   database. It adds one table and a default record; re-importing preserves the
-   saved Settings and all other application records. Fresh `gym.sql` already
-   includes this table, so no additional import is needed after a reset.
+1. Import `database/gym.sql` as described above; Settings needs no extra SQL.
 2. Enable PHP GD and Fileinfo for the PHP installation used by Apache. On XAMPP,
    enable `extension=gd` in `php.ini` and restart Apache. Keep PHP's upload and
    POST limits above the application's 2 MB per-image / 5 MB request limits.
@@ -98,11 +100,9 @@ are not returned to users. The old commented `save_settings()` in
 `admin_class.php` remains reference code; the active endpoint uses the separate
 Settings service and does not call that handler.
 
-Events on an existing installation:
+Events (included in gym.sql):
 
-1. Import `database/add_events.sql` into the existing application database.
-   It only adds the two Events tables; repeat imports preserve their records.
-   Fresh `gym.sql` includes the schema and four fictional events already.
+1. Import `database/gym.sql` as described above; the nine demo events are included.
 2. Open **Events** as Admin or Staff. Admins create/edit/cancel/complete events;
    both roles register members, cancel registrations and record attendance.
    A member must have an open membership covering the event start date when
@@ -134,11 +134,9 @@ Optional posters, event fees, public registration and automated notifications
 are outside the current Events scope. Back up both Events tables with the rest
 of the application database.
 
-Member Portal on an existing installation:
+Member Portal (included in gym.sql):
 
-1. Import `database/add_member_portal.sql` once into the selected application
-   database. Re-importing preserves existing accounts and data. Fresh `gym.sql`
-   already contains these three tables; no reset is needed to add portal access.
+1. Import `database/gym.sql` as described above. `member/member` is ready to log in.
 2. Admin opens **Member Portal Accounts**, verifies the member's identity and
    chooses **Invite Member**. Deliver the private link securely to that member.
    Use an incognito window or log out before opening the link. Choose a username
@@ -204,11 +202,10 @@ Optional Chromium smoke: set `GYM_PORTAL_BROWSER_AUDIT=1` and run
 `node --test tests/member-portal-http.test.mjs`; `GYM_TEST_BROWSER` can specify
 a Chromium executable. The browser uses its own temporary profile.
 
-Gym Attendance on an existing installation:
+Gym Attendance (included in gym.sql):
 
-Import `database/add_attendance.sql` once into the existing database. It only
-creates the two Attendance tables; it does not reset profiles, memberships or
-payments. Fresh imports of `gym.sql` already include these tables and demo visits.
+Both Attendance tables and their demo records are included in the single reset.
+No separate SQL import is required.
 
 Admin and Staff use Dashboard or Attendance to search an exact member number,
 verify identity and check in. The server requires an Active membership and permits

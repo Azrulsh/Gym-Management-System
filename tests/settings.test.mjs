@@ -7,7 +7,7 @@ function isolated(code,options={}){
  return JSON.parse(run({login_id:2,login_type:1,csrf_token:'settings-test'},`
   require 'tests/helpers/throttle-db.php';require 'settings_service.php';
   with_throttle_database(function($db){
-   $db->multi_query(file_get_contents('database/add_system_settings.sql'));
+   $db->multi_query(file_get_contents('tests/fixtures/legacy-schema/add_system_settings.sql'));
    do {if($r=$db->store_result())$r->free();}while($db->more_results()&&$db->next_result());
    $service=new SettingsService($db,new SettingsImages());
    $post=json_decode(${literal(JSON.stringify(details))},true);
@@ -27,7 +27,7 @@ test('stale Settings cannot overwrite a newer save',()=>{
 });
 test('unmodified saves increment version and additive install preserves Settings',()=>{
  const d=isolated(`$post=system_settings_read($db);$post['version']=(string)$post['version'];$first=$service->save($post,[],2);
- $db->multi_query(file_get_contents('database/add_system_settings.sql'));do{if($r=$db->store_result())$r->free();}while($db->more_results()&&$db->next_result());echo json_encode(['first'=>$first,'after'=>system_settings_read($db)]);`);
+ $db->multi_query(file_get_contents('tests/fixtures/legacy-schema/add_system_settings.sql'));do{if($r=$db->store_result())$r->free();}while($db->more_results()&&$db->next_result());echo json_encode(['first'=>$first,'after'=>system_settings_read($db)]);`);
  assert.equal(Number(d.first.version),2);assert.deepEqual(d.first,d.after);
 });
 for(const [name,value] of [['gym_name',''],['gym_name','x'.repeat(101)],['gym_name',['array']],['gym_name','bad\nname'],['email','bad@'],['contact','javascript:bad'],['address','a'.repeat(1001)],['about','a'.repeat(3001)],['version','0'],['version',[]],['remove_logo',true]]){

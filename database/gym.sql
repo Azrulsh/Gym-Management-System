@@ -1,6 +1,8 @@
 -- DEVELOPMENT RESET: replaces application tables and data in the SELECTED database.
 -- phpMyAdmin: select `gym` (matching db_connect.php), then import this entire file.
--- Includes migrations 001 through 016. Not an upgrade script for existing records.
+-- SINGLE-FILE INSTALL: core schema + System Settings + Events + Member Portal + Attendance.
+-- All module tables, constraints and demo data are included below; no add_*.sql imports.
+-- Includes historical migrations 001 through 016. Not an upgrade script for existing records.
 -- Local demo accounts: admin / admin, admin2 / admin2 (Admins); staff / staff (Staff).
 -- Member Portal: member / member (Arun); member_disabled / member_disabled is disabled.
 -- No CREATE DATABASE or USE: the caller chooses the target database.
