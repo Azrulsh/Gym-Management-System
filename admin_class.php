@@ -70,7 +70,13 @@ Class Action {
 				return 3;
 			}
 			$role = (int) $user['type'];
-			if (!in_array($role, [1, 2], true)) {
+			$portalAccount = null;
+			if ($role === 3) {
+				$portal = $this->db->prepare('SELECT p.member_id FROM member_portal_accounts p JOIN members m ON m.id=p.member_id WHERE p.user_id=? AND p.enabled=1');
+				$portal->bind_param('i', $user['id']); $portal->execute();
+				$portalAccount=$portal->get_result()->fetch_assoc(); $portal->close();
+			}
+			if (!in_array($role, [1, 2, 3], true) || ($role === 3 && !$portalAccount)) {
 				$throttle->finish(false);
 				return 2;
 			}
@@ -103,7 +109,7 @@ Class Action {
 			$_SESSION['login_username'] = (string) $user['username'];
 			$_SESSION['login_type'] = $role;
 			$_SESSION['login_auth_version'] = (int) $user['auth_version'];
-			return 1;
+			return $role === 3 ? 4 : 1;
 		} catch (mysqli_sql_exception $exception) {
 			error_log('Login database error (code ' . (int) $exception->getCode() . ').');
 			return $this->action_error(503, 'Unable to log in right now. Please try again.');
@@ -114,51 +120,11 @@ Class Action {
 			$throttle->cancel();
 		}
 	}
-	function login2(){
-		
-			extract($_POST);
-			if(isset($email))
-				$username = $email;
-		$qry = $this->db->query("SELECT * FROM users where username = '".$username."' and password = '".md5($password)."' ");
-		if($qry->num_rows > 0){
-			foreach ($qry->fetch_array() as $key => $value) {
-				if($key != 'passwors' && !is_numeric($key))
-					$_SESSION['login_'.$key] = $value;
-			}
-			if($_SESSION['login_alumnus_id'] > 0){
-				$bio = $this->db->query("SELECT * FROM alumnus_bio where id = ".$_SESSION['login_alumnus_id']);
-				if($bio->num_rows > 0){
-					foreach ($bio->fetch_array() as $key => $value) {
-						if($key != 'passwors' && !is_numeric($key))
-							$_SESSION['bio'][$key] = $value;
-					}
-				}
-			}
-			if($_SESSION['bio']['status'] != 1){
-					foreach ($_SESSION as $key => $value) {
-						unset($_SESSION[$key]);
-					}
-					return 2 ;
-					exit;
-				}
-				return 1;
-		}else{
-			return 3;
-		}
-	}
 	function logout(){
 		require_action_access('logout');
 		clear_login_session();
 		header('Location: login.php', true, 303);
 	}
-	function logout2(){
-		session_destroy();
-		foreach ($_SESSION as $key => $value) {
-			unset($_SESSION[$key]);
-		}
-		header("location:../index.php");
-	}
-
 	function save_user(){
 		require_action_access('save_user');
 		$id = $_POST['id'] ?? '';
@@ -207,6 +173,7 @@ Class Action {
 			if ($id && !$this->user_record($id)) {
 				return $this->action_error(404, 'User no longer exists. Refresh the page.');
 			}
+			if ($id && (int)($this->user_record($id)['type'] ?? 0) === 3) return $this->action_error(409, 'Manage Member accounts through Member Portal Accounts.');
 			$editVersion = $id ? $this->catalog_edit_version() : null;
 			if ($id && $editVersion === false) return $this->action_error(400, 'Reopen Edit User before saving.');
 			$check = $this->db->prepare('SELECT id FROM users WHERE username = ? AND id <> ? LIMIT 1');
@@ -263,7 +230,7 @@ Class Action {
 		return preg_match('/\A.{1,200}\z/us', $name) === 1 && preg_match('/\A.{1,200}\z/us', $username) === 1;
 	}
 	private function user_record($id){
-		$statement = $this->db->prepare('SELECT id FROM users WHERE id = ?');
+		$statement = $this->db->prepare('SELECT id, type FROM users WHERE id = ?');
 		$statement->bind_param('i', $id);
 		$statement->execute();
 		$record = $statement->get_result()->fetch_assoc();
@@ -391,6 +358,7 @@ Class Action {
 			}
 			if (!$actorIsAdmin) return $this->action_error(403, 'Your account no longer has Admin access.');
 			if (!$target) return $this->action_error(404, 'User no longer exists. Refresh the page.');
+			if ((int)$target['type'] === 3) return $this->action_error(409, 'Disable Member access through Member Portal Accounts to preserve its history.');
 			if ((int)$target['type'] === 1 && $admins <= 1) return $this->action_error(409, 'Cannot delete the last Admin. Create or appoint another Admin first.');
 			if ($self) {
 				if ((int)$target['auth_version'] !== (int)$_SESSION['login_auth_version']) return $this->action_error(409, 'Your account changed. Sign in again before deleting your account.');
@@ -410,83 +378,6 @@ Class Action {
 			error_log('Unable to delete user.');
 			return $this->action_error(500, 'Unable to delete user. Please try again.');
 		} finally { if ($transaction) $this->db->rollback(); }
-	}
-	function signup(){
-		extract($_POST);
-		$data = " name = '".$firstname.' '.$lastname."' ";
-		$data .= ", username = '$email' ";
-		$data .= ", password = '".md5($password)."' ";
-		$chk = $this->db->query("SELECT * FROM users where username = '$email' ")->num_rows;
-		if($chk > 0){
-			return 2;
-			exit;
-		}
-			$save = $this->db->query("INSERT INTO users set ".$data);
-		if($save){
-			$uid = $this->db->insert_id;
-			$data = '';
-			foreach($_POST as $k => $v){
-				if($k =='password')
-					continue;
-				if(empty($data) && !is_numeric($k) )
-					$data = " $k = '$v' ";
-				else
-					$data .= ", $k = '$v' ";
-			}
-			if($_FILES['img']['tmp_name'] != ''){
-							$fname = strtotime(date('y-m-d H:i')).'_'.$_FILES['img']['name'];
-							$move = move_uploaded_file($_FILES['img']['tmp_name'],'assets/uploads/'. $fname);
-							$data .= ", avatar = '$fname' ";
-
-			}
-			$save_alumni = $this->db->query("INSERT INTO alumnus_bio set $data ");
-			if($data){
-				$aid = $this->db->insert_id;
-				$this->db->query("UPDATE users set alumnus_id = $aid where id = $uid ");
-				$login = $this->login2();
-				if($login)
-				return 1;
-			}
-		}
-	}
-	function update_account(){
-		extract($_POST);
-		$data = " name = '".$firstname.' '.$lastname."' ";
-		$data .= ", username = '$email' ";
-		if(!empty($password))
-		$data .= ", password = '".md5($password)."' ";
-		$chk = $this->db->query("SELECT * FROM users where username = '$email' and id != '{$_SESSION['login_id']}' ")->num_rows;
-		if($chk > 0){
-			return 2;
-			exit;
-		}
-			$save = $this->db->query("UPDATE users set $data where id = '{$_SESSION['login_id']}' ");
-		if($save){
-			$data = '';
-			foreach($_POST as $k => $v){
-				if($k =='password')
-					continue;
-				if(empty($data) && !is_numeric($k) )
-					$data = " $k = '$v' ";
-				else
-					$data .= ", $k = '$v' ";
-			}
-			if($_FILES['img']['tmp_name'] != ''){
-							$fname = strtotime(date('y-m-d H:i')).'_'.$_FILES['img']['name'];
-							$move = move_uploaded_file($_FILES['img']['tmp_name'],'assets/uploads/'. $fname);
-							$data .= ", avatar = '$fname' ";
-
-			}
-			$save_alumni = $this->db->query("UPDATE alumnus_bio set $data where id = '{$_SESSION['bio']['id']}' ");
-			if($data){
-				foreach ($_SESSION as $key => $value) {
-					unset($_SESSION[$key]);
-				}
-				$login = $this->login2();
-				if($login)
-				return 1;
-			}
-		}
 	}
 
 	/*
@@ -751,7 +642,7 @@ Class Action {
 			return 1;
 		} catch (mysqli_sql_exception | RuntimeException $exception) {
 			if ($kind === 'member' && (int)$exception->getCode() === 1451) {
-				return $this->action_error(409, 'Cannot delete this member because event participation history exists, including cancelled registrations.');
+				return $this->action_error(409, 'Cannot delete this member because event participation history or a linked Member Portal account exists, including cancelled registrations.');
 			}
 			error_log('Unable to delete ' . $kind . ' (error code ' . (int) $exception->getCode() . ').');
 			return $this->action_error(500, 'Unable to delete ' . $kind . '. Please try again.');

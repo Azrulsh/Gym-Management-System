@@ -31,6 +31,7 @@ if(isset($_GET['id'])){
         exit('User not found.');
     }
 }
+ if ((int)($meta['type'] ?? 0) === 3) { http_response_code(409); exit('Manage Member accounts through Member Portal Accounts.'); }
  $confirmOwnPassword = $ownAccount || (isset($meta['id']) && (int)$meta['id'] === (int)$_SESSION['login_id']);
 ?>
 <div class="container-fluid">

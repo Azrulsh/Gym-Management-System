@@ -1,6 +1,11 @@
 <?php
 require_once __DIR__ . '/auth.php';
 $action = $_GET['action'] ?? '';
+if (in_array($action, ['portal_invite','portal_access','portal_activate','portal_profile','portal_password','portal_event','portal_logout'], true)) {
+    require_once __DIR__ . '/member_portal_action.php';
+    member_portal_handle_request($action);
+    exit;
+}
 if (in_array($action, ['save_event', 'delete_event', 'save_event_participant'], true)) {
     require_once __DIR__ . '/events_action.php';
     events_handle_request($action);
@@ -37,18 +42,8 @@ if($action == 'login'){
 	if($login)
 		echo $login;
 }
-if($action == 'login2'){
-	$login = $crud->login2();
-	if($login)
-		echo $login;
-}
 if($action == 'logout'){
 	$logout = $crud->logout();
-	if($logout)
-		echo $logout;
-}
-if($action == 'logout2'){
-	$logout = $crud->logout2();
 	if($logout)
 		echo $logout;
 }
@@ -64,16 +59,6 @@ if($action == 'delete_user'){
 }
 if ($action === 'save_account') {
     echo $crud->save_account();
-}
-if($action == 'signup'){
-	$save = $crud->signup();
-	if($save)
-		echo $save;
-}
-if($action == 'update_account'){
-	$save = $crud->update_account();
-	if($save)
-		echo $save;
 }
 /* Legacy Settings route kept for reference; leave disabled until rebuilt safely.
 if($action == "save_settings"){

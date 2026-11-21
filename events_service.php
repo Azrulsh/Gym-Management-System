@@ -9,12 +9,12 @@ final class EventsService
     private EventsRepository $repository;
     public function __construct(private mysqli $db) { $this->repository = new EventsRepository($db); }
 
-    private function transaction(int $actorId, int $authVersion, bool $admin, callable $work): array
+    private function transaction(int $actorId, int $authVersion, bool $admin, callable $work, bool $member = false): array
     {
         $this->db->begin_transaction();
         try {
             $actor = $this->repository->rows('SELECT type,auth_version FROM users WHERE id=? FOR UPDATE','i',[$actorId])[0] ?? null;
-            if (!$actor || (int)$actor['auth_version'] !== $authVersion || !in_array((int)$actor['type'], $admin ? [1] : [1,2], true)) {
+            if (!$actor || (int)$actor['auth_version'] !== $authVersion || !in_array((int)$actor['type'], $admin ? [1] : ($member ? [3] : [1,2]), true)) {
                 throw new EventRequestException(403, 'Your access changed. Sign in again before continuing.');
             }
             $result = $work();
@@ -117,14 +117,20 @@ final class EventsService
         });
     }
 
-    public function participant(array $post, int $actorId, int $authVersion): array
+    public function participant(array $post, int $actorId, int $authVersion, bool $self = false): array
     {
         $id=event_positive_id($post['id'] ?? null,'event ID');
-        $memberId=event_positive_id($post['member_id'] ?? null,'member ID');
+        if ($self) {
+            $link=$this->repository->rows('SELECT member_id FROM member_portal_accounts WHERE user_id=? AND enabled=1','i',[$actorId])[0] ?? null;
+            if (!$link) throw new EventRequestException(403,'Portal access is unavailable.');
+            $memberId=(int)$link['member_id'];
+        } else $memberId=event_positive_id($post['member_id'] ?? null,'member ID');
         $version=event_positive_id($post['version'] ?? null,'event version');
         $status=$post['participant_status'] ?? null;
+        if ($self && !in_array($status,['registered','cancelled'],true)) throw new EventRequestException(403,'Members can only register or cancel their own participation.');
         if (!in_array($status,['registered','cancelled','attended','no_show'],true)) throw new EventRequestException(422,'Choose a valid participation status.');
-        return $this->transaction($actorId,$authVersion,false,function() use($id,$memberId,$version,$status,$post,$actorId) {
+        return $this->transaction($actorId,$authVersion,false,function() use($id,$memberId,$version,$status,$post,$actorId,$self) {
+            if ($self && !$this->repository->rows('SELECT user_id FROM member_portal_accounts WHERE user_id=? AND member_id=? AND enabled=1 FOR UPDATE','ii',[$actorId,$memberId])) throw new EventRequestException(403,'Portal access changed. Sign in again.');
             // Coordinate with existing membership writes and Delete Member before taking the event lock.
             if (!$this->repository->rows('SELECT id FROM members WHERE id=? FOR UPDATE','i',[$memberId])) throw new EventRequestException(404,'Member no longer exists.');
             $event=$this->repository->find($id,true); $this->checkVersion($event,$version);
@@ -154,6 +160,6 @@ final class EventsService
             }
             $this->repository->execute('UPDATE events SET version=version+1,updated_by=?,updated_at=CURRENT_TIMESTAMP WHERE id=?','ii',[$actorId,$id]);
             return ['id'=>$id,'saved'=>true];
-        });
+        },$self);
     }
 }

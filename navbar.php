@@ -1,14 +1,22 @@
 <?php
 require_once __DIR__ . '/auth.php';
-require_login();
-$navigationPages = ['home', 'members', 'registered_members', 'schedule', 'events'];
+$memberNavigation = current_role() === 3;
+if ($memberNavigation) {
+    require_once __DIR__ . '/member_portal_auth.php';
+    require_member();
+} else require_login();
+$memberMenu = ['dashboard'=>['My Dashboard','home'], 'profile'=>['My Profile','user'],
+    'memberships'=>['My Memberships','id-card'], 'payments'=>['My Payments','money-bill'],
+    'schedule'=>['My Schedule','calendar-day'], 'events'=>['Events','calendar-alt'],
+    'security'=>['Account & Security','user-lock']];
+$navigationPages = $memberNavigation ? array_keys($memberMenu) : ['home', 'members', 'registered_members', 'schedule', 'events'];
 if (is_admin()) {
-	$navigationPages = array_merge($navigationPages, ['plans', 'packages', 'trainer', 'users', 'settings']);
+	$navigationPages = array_merge($navigationPages, ['plans', 'packages', 'trainer', 'users', 'settings', 'portal_accounts']);
 }
-$requestedPage = $_GET['page'] ?? 'home';
+$requestedPage = $_GET['page'] ?? ($memberNavigation ? 'dashboard' : 'home');
 if (in_array($requestedPage, ['manage_event', 'view_event'], true)) $requestedPage = 'events';
 $activeNavigationPage = is_string($requestedPage) && in_array($requestedPage, $navigationPages, true)
-	? $requestedPage : 'home';
+	? $requestedPage : ($memberNavigation ? 'dashboard' : 'home');
 ?>
 <style>
 	.collapse a{
@@ -22,6 +30,9 @@ $activeNavigationPage = is_string($requestedPage) && in_array($requestedPage, $n
 <nav id="sidebar" class='mx-lt-5 bg-dark' >
 		
 		<div class="sidebar-list">
+                <?php if ($memberNavigation): foreach ($memberMenu as $memberPage=>[$memberLabel,$memberIcon]): ?>
+                <a href="member_portal.php?page=<?php echo $memberPage; ?>" class="nav-item nav-<?php echo $memberPage; ?>"><span class="icon-field"><i class="fa fa-<?php echo $memberIcon; ?>"></i></span> <?php echo $memberLabel; ?></a>
+                <?php endforeach; else: ?>
 				<a href="index.php?page=home" class="nav-item nav-home"><span class='icon-field'><i class="fa fa-home"></i></span> Home</a>
 				<a href="index.php?page=members" class="nav-item nav-members"><span class='icon-field'><i class="fa fa-user-friends"></i></span> Members</a>
 				<a href="index.php?page=registered_members" class="nav-item nav-registered_members"><span class='icon-field'><i class="fa fa-id-card"></i></span> Membership Validity</a>
@@ -32,8 +43,10 @@ $activeNavigationPage = is_string($requestedPage) && in_array($requestedPage, $n
 				<a href="index.php?page=packages" class="nav-item nav-packages"><span class='icon-field'><i class="fa fa-list"></i></span> Packages</a>
 				<a href="index.php?page=trainer" class="nav-item nav-trainer"><span class='icon-field'><i class="fa fa-user"></i></span> Trainers</a>
 				<a href="index.php?page=users" class="nav-item nav-users"><span class='icon-field'><i class="fa fa-users"></i></span> Users</a>
+				<a href="index.php?page=portal_accounts" class="nav-item nav-portal_accounts"><span class="icon-field"><i class="fa fa-user-lock"></i></span> Member Portal Accounts</a>
 				<a href="index.php?page=settings" class="nav-item nav-settings"><span class="icon-field"><i class="fa fa-cog"></i></span> Settings</a>
 			<?php endif; ?>
+            <?php endif; ?>
 		</div>
 
 </nav>

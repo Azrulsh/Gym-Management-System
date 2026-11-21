@@ -45,6 +45,8 @@ const database = `
       $this->pdo = new PDO('sqlite::memory:');
       $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
       $this->pdo->exec('CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, username TEXT COLLATE NOCASE, password TEXT, type INTEGER, auth_version INTEGER NOT NULL DEFAULT 1)');
+      $this->pdo->exec('CREATE TABLE member_portal_accounts (user_id INTEGER PRIMARY KEY,member_id INTEGER,enabled INTEGER)');
+      $this->pdo->exec('CREATE TABLE members (id INTEGER PRIMARY KEY)');
       $insert = $this->pdo->prepare('INSERT INTO users (id,name,username,password,type) VALUES (?, ?, ?, ?, ?)');
       $insert->execute([2, 'Admin', 'admin', md5('admin'), 1]);
       $insert->execute([3, 'Staff', 'staff', md5('staff'), 2]);

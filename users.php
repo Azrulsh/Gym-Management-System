@@ -3,7 +3,7 @@ require_once __DIR__ . '/auth.php';
 require_admin();
 try {
     include 'db_connect.php';
-    $result = $conn->query("SELECT * FROM users order by name asc");
+    $result = $conn->query("SELECT * FROM users WHERE type IN (1,2) order by name asc");
     if (!$result) throw new RuntimeException('List lookup unavailable.');
     $userRows = $result->fetch_all(MYSQLI_ASSOC);
     $result->free();
@@ -38,7 +38,7 @@ try {
 			</thead>
 			<tbody>
 				<?php
- 					$type = array("","Admin","Staff","Alumnus/Alumna");
+					$type = array("","Admin","Staff","Member");
  					$i = 1;
 					foreach ($userRows as $row):
 				 ?>

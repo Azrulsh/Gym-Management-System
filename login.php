@@ -2,7 +2,7 @@
 require_once __DIR__ . '/auth.php';
 header('Cache-Control: no-store');
 if (isset($_SESSION['login_id'])) {
-    header('Location: index.php?page=home');
+    header('Location: ' . (current_role() === 3 ? 'member_portal.php' : 'index.php?page=home'));
     exit;
 }
 include('./db_connect.php');

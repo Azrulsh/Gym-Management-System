@@ -88,7 +88,7 @@ function clear_login_session()
 function current_role()
 {
     $role = $_SESSION['login_type'] ?? null;
-    return in_array($role, [1, 2, '1', '2'], true) ? (int) $role : 0;
+    return in_array($role, [1, 2, 3, '1', '2', '3'], true) ? (int) $role : 0;
 }
 
 function is_admin()
@@ -113,7 +113,9 @@ function deny_access($api = false)
             . '</head><body class="bg-light"><main class="container py-5">'
             . '<div class="card"><div class="card-body"><h1 class="h4">Access denied</h1>'
             . '<p>You do not have permission to access this page.</p>'
-            . '<a class="btn btn-primary" href="index.php?page=home">Back to dashboard</a>'
+            . (current_role() === 3
+                ? '<a class="btn btn-primary" href="member_portal.php">Back to Member Portal</a>'
+                : '<a class="btn btn-primary" href="index.php?page=home">Back to dashboard</a>')
             . '</div></div></main></body></html>';
     }
     exit;

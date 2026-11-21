@@ -85,31 +85,6 @@ a.fc-timegrid-event.fc-v-event.fc-event.fc-event-start.fc-event-end.fc-event-pas
 	$('#new_schedule').click(function(){
 		uni_modal('New Schedule','manage_schedule.php')
 	})
-	$('.view_alumni').click(function(){
-		uni_modal("Bio","view_alumni.php?id="+$(this).attr('data-id'),'mid-large')
-		
-	})
-	$('.delete_alumni').click(function(){
-		_conf("Are you sure to delete this alumni?","delete_alumni",[$(this).attr('data-id')])
-	})
-	
-	function delete_alumni($id){
-		start_load()
-		$.ajax({
-			url:'ajax.php?action=delete_alumni',
-			method:'POST',
-			data:{id:$id},
-			success:function(resp){
-				if(resp==1){
-					alert_toast("Data successfully deleted",'success')
-					setTimeout(function(){
-						location.reload()
-					},1500)
-
-				}
-			}
-		})
-	}
     var calendarEl = document.getElementById('calendar');
     var calendar = null;
     var schedulesLoading = false;

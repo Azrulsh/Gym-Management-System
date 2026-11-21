@@ -1,6 +1,10 @@
 <?php
 require_once __DIR__ . '/auth.php';
-require_login();
+$memberTopbar = current_role() === 3;
+if ($memberTopbar) {
+    require_once __DIR__ . '/member_portal_auth.php';
+    $memberIdentity = require_member();
+} else require_login();
 require_once __DIR__ . '/settings_repository.php';
 $branding = $branding ?? system_settings_branding($conn ?? null);
 ?>
@@ -29,8 +33,12 @@ $branding = $branding ?? system_settings_branding($conn ?? null);
         <div class=" dropdown mr-4">
             <a href="#" class="text-white dropdown-toggle"  id="account_settings" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><?php echo htmlspecialchars($_SESSION['login_name'], ENT_QUOTES, 'UTF-8'); ?> </a>
               <div class="dropdown-menu" aria-labelledby="account_settings" style="left: -2.5em;">
+                <?php if ($memberTopbar): ?>
+                <a class="dropdown-item" href="member_portal.php?page=security"><i class="fa fa-cog"></i> Manage Account</a>
+                <?php else: ?>
                 <a class="dropdown-item" href="javascript:void(0)" id="manage_my_account"><i class="fa fa-cog"></i> Manage Account</a>
-                <form action="ajax.php?action=logout" method="post" class="m-0">
+                <?php endif; ?>
+                <form action="ajax.php?action=<?php echo $memberTopbar ? 'portal_logout' : 'logout'; ?>" method="post" class="m-0" <?php if ($memberTopbar) echo 'data-portal-form'; ?>>
                   <input type="hidden" name="csrf_token" value="<?php echo csrf_token(); ?>">
                   <button type="submit" class="dropdown-item"><i class="fa fa-power-off"></i> Logout</button>
                 </form>
@@ -41,8 +49,8 @@ $branding = $branding ?? system_settings_branding($conn ?? null);
   
 </nav>
 
-<script>
+<?php if (!$memberTopbar): ?><script>
   $('#manage_my_account').click(function(){
     uni_modal("Manage Account","manage_user.php?id=<?php echo $_SESSION['login_id'] ?>&mtype=own")
   })
-</script>
+</script><?php endif; ?>

@@ -1,39 +1,15 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__ . '/database_queries.php';
 
 final class EventRequestException extends RuntimeException
 {
     public function __construct(public readonly int $status, string $message) { parent::__construct($message); }
 }
 
-/** All event SQL lives here. Values always travel through prepared statements. */
-final class EventsRepository
+/** Event queries use the same prepared execution layer as Member Portal queries. */
+final class EventsRepository extends DatabaseQueries
 {
-    public function __construct(private mysqli $db) {}
-
-    public function query(string $sql, string $types = '', array $values = []): mysqli_stmt
-    {
-        $statement = $this->db->prepare($sql);
-        try {
-            if ($types !== '') $statement->bind_param($types, ...$values);
-            $statement->execute();
-            return $statement;
-        } catch (Throwable $exception) { $statement->close(); throw $exception; }
-    }
-
-    public function rows(string $sql, string $types = '', array $values = []): array
-    {
-        $statement = $this->query($sql, $types, $values);
-        try { return $statement->get_result()->fetch_all(MYSQLI_ASSOC); }
-        finally { $statement->close(); }
-    }
-
-    public function execute(string $sql, string $types = '', array $values = []): int
-    {
-        $statement = $this->query($sql, $types, $values);
-        try { return $statement->affected_rows; } finally { $statement->close(); }
-    }
-
     public function find(int $id, bool $lock = false): array
     {
         $rows = $this->rows('SELECT * FROM events WHERE id=?' . ($lock ? ' FOR UPDATE' : ''), 'i', [$id]);

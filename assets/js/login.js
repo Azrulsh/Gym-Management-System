@@ -23,9 +23,9 @@
             data: $(form).serialize(),
             success: function (response) {
                 const result = String(response).trim();
-                if (result === '1') {
+                if (result === '1' || result === '4') {
                     loggedIn = true;
-                    window.location.assign('index.php?page=home');
+                    window.location.assign(result === '4' ? 'member_portal.php' : 'index.php?page=home');
                 } else if (result === '2' || result === '3') {
                     showError('Username or password is incorrect.');
                 } else {

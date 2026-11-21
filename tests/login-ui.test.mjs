@@ -54,6 +54,11 @@ test('login submits once, disables the actual submit button and navigates on suc
   assert.equal(state.requests.length, 1);
 });
 
+test('Member login navigates only to the Member Portal',()=>{
+  const state=ui();state.submit();state.requests[0].success('4');state.requests[0].complete();
+  assert.deepEqual(state.destinations,['member_portal.php']);
+});
+
 for (const code of ['2', '3']) {
   test(`login response ${code} shows the same credentials message and permits retry`, () => {
     const state = ui();

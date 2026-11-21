@@ -2,7 +2,7 @@ Fresh installation or development reset:
 
 1. Start Apache and MySQL in XAMPP. Open phpMyAdmin.
 2. Create/select `gym`, matching `db_connect.php`.
-3. Import `database/gym.sql`. It DROPS and recreates the twelve application tables
+3. Import `database/gym.sql`. It DROPS and recreates the fifteen application tables
    in the selected database, replacing their records with consistent demo data.
    Other databases and unrelated tables are not changed.
 4. Log out of any existing browser session, then log in again:
@@ -29,6 +29,7 @@ The consolidated dump includes these fictional demo records:
 | Payments | 15 |
 | Recurring schedules | 7 |
 | Events / participation records | 4 / 5 |
+| Portal accounts / tokens / audit entries | 0 / 0 / 0 (activate by invitation) |
 
 Immediately after import, the dashboard shows **6 Active Members**, **15 profiles**
 and **0 Needs attention**. Membership Validity shows 6 Active, 3 Expired,
@@ -129,3 +130,73 @@ commented Events implementation remains in `events.php` for reference.
 Optional posters, event fees, public registration and automated notifications
 are outside the current Events scope. Back up both Events tables with the rest
 of the application database.
+
+Member Portal on an existing installation:
+
+1. Import `database/add_member_portal.sql` once into the selected application
+   database. Re-importing preserves existing accounts and data. Fresh `gym.sql`
+   already contains these three tables; no reset is needed to add portal access.
+2. Admin opens **Member Portal Accounts**, verifies the member's identity and
+   chooses **Invite Member**. Deliver the private link securely to that member.
+   Use an incognito window or log out before opening the link. Choose a username
+   and a unique password; activation does not automatically sign the member in.
+3. The same Login page accepts Admin, Staff and Member accounts. Admin/Staff reach
+   the operations dashboard; Members reach `member_portal.php`. Expired/Closed
+   membership does not disable portal login. Events still check eligibility on
+   the event start date when accepting a registration.
+4. Admin can disable/re-enable portal access or issue a recovery link after
+   verifying identity. Access changes revoke old sessions and unused links.
+   Password changes/recovery increment `auth_version`, invalidating all existing
+   sessions; the member signs in again. There is no public email-only account
+   claim or automatic email delivery in this version.
+
+Roles and boundaries:
+
+| Capability | Admin | Staff | Member |
+| --- | --- | --- | --- |
+| Existing operations pages/actions | Existing Admin rights | Existing Staff rights | Denied |
+| Invite/recover/enable/disable portal access | Yes | No | No |
+| Read member portal records | No portal impersonation | No portal impersonation | Own profile only |
+| Update portal profile | Through Members operations | Through Members operations | Own contact/address/avatar |
+| Read memberships/payments/schedules | Existing operations | Existing operations | Own records, read only |
+| Events participation | Manage participants | Manage participants | Register/cancel self only |
+| Attendance / event administration | Existing Events rights | Existing Events rights | Denied |
+
+`users.type=3` requires an enabled row in `member_portal_accounts` linked to an
+existing `members.id`. The unique profile/user relationship is never supplied
+by a Member request. Admin/Staff Users forms cannot convert/delete portal users;
+portal access is managed through its dedicated page. No duplicated alumni/profile
+table or full-profile session cache remains. Old login/signup/account handlers,
+AJAX routes and orphaned alumni Schedule controls have been removed.
+
+Code map:
+
+- `member_portal_auth.php`: fresh Member identity, role, status and auth-version checks.
+- `member_portal_repository.php`: queries scoped by the verified profile ID.
+- `member_portal_service.php`: invitation/recovery, profile and account security rules.
+- `member_portal_action.php`: explicit action dispatch, POST/CSRF and safe JSON errors.
+- `portal_accounts.php`: Admin account provisioning; `activate_member.php`: activation/recovery.
+- `member_portal.php`: Member views; `member_avatar.php`: private owner-only avatar delivery.
+- `database_queries.php`: shared prepared-query execution; repositories own their SQL.
+- `events_service.php`: the same event business rules for operations and self-registration.
+
+Tokens contain 256 random bits, expire after 24 hours, are single-use, and are stored
+as hashes. Activation links carry tokens in URL fragments; the page moves the
+token into the POST form and removes it from the address bar. Keep shared links
+private. New links revoke previous unused links. Token submissions and current
+password checks are throttled. Audit entries contain actor/member IDs and action
+names; they contain no passwords or token values.
+
+Member avatar files use `C:\xampp\gym-storage\avatars`, outside the webroot. For
+other deployments configure `GYM_MEMBER_AVATAR_STORAGE` to a private absolute
+directory writable by the application service account. Include it in backups.
+Uploads use the shared GD JPEG/PNG validation, resizing and re-encoding pipeline
+(2 MB, 4096 pixels per side, 8 megapixels). Avatars are never served by the public
+branding endpoint. GD is required for uploads; profile text changes still work
+without it. Names, member numbers and email corrections go through gym staff;
+email/username changes, online payments and self-service renewals are not enabled.
+
+Tests use disposable databases and profiles. Run `node --test tests/*.test.mjs`.
+Optional Chromium smoke: set `GYM_PORTAL_BROWSER_AUDIT=1` and run
+`node --test tests/member-portal-http.test.mjs`; `GYM_TEST_BROWSER` can specify
+a Chromium executable. The browser uses its own temporary profile.

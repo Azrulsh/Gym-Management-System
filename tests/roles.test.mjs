@@ -44,7 +44,7 @@ for (const action of adminActions) {
   });
 }
 
-for (const page of ['plans', 'packages', 'trainer', 'users', 'settings', 'manage_event']) {
+for (const page of ['plans', 'packages', 'trainer', 'users', 'settings', 'portal_accounts', 'manage_event']) {
   test(`Staff cannot open ${page} directly or through index.php`, () => {
     for (const code of [
       `include '${page}.php';`,
@@ -112,6 +112,7 @@ const recordingDatabase = `
     public function bind_param($types, &...$values) { $this->values = $values; }
     public function execute() { return true; }
     public function get_result() {
+      if (strpos($this->sql, 'SELECT p.member_id') === 0) return new class { public function fetch_assoc() { return null; } };
       if (strpos($this->sql, 'SELECT password, auth_version') === 0) {
         return new class { public function fetch_assoc() { return ['password'=>gym_password_hash('test'), 'auth_version'=>1]; } };
       }

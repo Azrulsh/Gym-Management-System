@@ -8,6 +8,8 @@ final class SettingsRequestException extends RuntimeException
 
 final class SettingsImages
 {
+    // Optional server-owned storage location lets private member avatars reuse the image pipeline.
+    public function __construct(private ?string $storageDirectory = null) {}
     public const MAX_BYTES = 2097152;
     public const MAX_PIXELS = 8000000;
 
@@ -21,7 +23,7 @@ final class SettingsImages
 
     public function directory(bool $create = false): ?string
     {
-        $configured = getenv('GYM_BRANDING_STORAGE') ?: dirname(__DIR__, 2) . '/gym-storage/branding';
+        $configured = $this->storageDirectory ?? (getenv('GYM_BRANDING_STORAGE') ?: dirname(__DIR__, 2) . '/gym-storage/branding');
         if (str_contains($configured, "\0") || !preg_match('~^(?:[A-Za-z]:[\\\\/]|/)~', $configured)) throw new RuntimeException('Invalid branding storage configuration.');
         // Resolve the existing ancestor too, so a symlink cannot redirect new storage into webroot.
         $ancestor = $configured; $suffix = [];
@@ -68,7 +70,7 @@ final class SettingsImages
 
     public function store(array $upload, string $kind): ?string
     {
-        if (!in_array($kind, ['logo','cover'], true)) throw new InvalidArgumentException('Invalid image kind.');
+        if (!in_array($kind, ['logo','cover','avatar'], true)) throw new InvalidArgumentException('Invalid image kind.');
         $error = $upload['error'] ?? null;
         if ($error === UPLOAD_ERR_NO_FILE) return null;
         if (!is_int($error)) throw new SettingsRequestException(422, 'Invalid image upload.');
@@ -91,7 +93,7 @@ final class SettingsImages
         if ($image === false) throw new SettingsRequestException(422, 'Unable to decode this image. Choose another JPEG or PNG.');
         $output = null; $stream = null; $path = null;
         try {
-            $limit = $kind === 'logo' ? 512 : 1920;
+            $limit = $kind === 'cover' ? 1920 : 512;
             $scale = min(1, $limit / max($info[0], $info[1]));
             $width = max(1, (int)round($info[0] * $scale)); $height = max(1, (int)round($info[1] * $scale));
             $output = imagecreatetruecolor($width, $height);
