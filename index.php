@@ -2,9 +2,8 @@
 require_once __DIR__ . '/auth.php';
 require_login();
 $page = $_GET['page'] ?? 'home';
-$pages = ['home', 'members', 'registered_members', 'schedule', 'plans', 'packages', 'trainer', 'users', 'settings'];
-// Preserve the Admin guard for the disabled legacy Events URL.
-if (in_array($page, ['plans', 'packages', 'trainer', 'users', 'settings', 'events'], true)) {
+$pages = ['home', 'members', 'registered_members', 'schedule', 'plans', 'packages', 'trainer', 'users', 'settings', 'events', 'manage_event', 'view_event'];
+if (in_array($page, ['plans', 'packages', 'trainer', 'users', 'settings', 'manage_event'], true)) {
     require_admin();
 }
 if (!is_string($page) || !in_array($page, $pages, true)) {

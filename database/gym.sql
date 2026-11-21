@@ -6,6 +6,8 @@
 SET NAMES utf8mb4;
 SET SESSION time_zone = '+08:00';
 
+DROP TABLE IF EXISTS event_registrations;
+DROP TABLE IF EXISTS events;
 DROP TABLE IF EXISTS system_settings;
 DROP TABLE IF EXISTS payments;
 DROP TABLE IF EXISTS schedules;
@@ -139,6 +141,45 @@ CREATE TABLE IF NOT EXISTS system_settings (
   CONSTRAINT system_settings_singleton CHECK (id = 1)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS events (
+  id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  title VARCHAR(150) NOT NULL,
+  description TEXT NOT NULL,
+  location VARCHAR(250) NOT NULL,
+  starts_at DATETIME NOT NULL,
+  ends_at DATETIME NOT NULL,
+  registration_closes_at DATETIME NULL,
+  capacity INT UNSIGNED NULL,
+  status ENUM('draft','published','cancelled','completed') NOT NULL DEFAULT 'draft',
+  version INT UNSIGNED NOT NULL DEFAULT 1,
+  request_key CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL UNIQUE,
+  created_by INT NULL,
+  updated_by INT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY events_status_start (status, starts_at),
+  CONSTRAINT events_times CHECK (ends_at > starts_at),
+  CONSTRAINT events_capacity CHECK (capacity IS NULL OR capacity > 0),
+  CONSTRAINT events_deadline CHECK (registration_closes_at IS NULL OR registration_closes_at <= starts_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS event_registrations (
+  id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  event_id INT NOT NULL,
+  member_id INT NOT NULL,
+  status ENUM('registered','cancelled','attended','no_show') NOT NULL DEFAULT 'registered',
+  version INT UNSIGNED NOT NULL DEFAULT 1,
+  created_by INT NULL,
+  updated_by INT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY event_member_unique (event_id, member_id),
+  KEY event_participant_status (event_id, status),
+  CONSTRAINT event_registration_event FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE RESTRICT,
+  CONSTRAINT event_registration_member FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
 -- All sample people, contacts and transactions below are fictional.
 -- Anchor dates to Malaysian import day so demo statuses remain useful on future imports.
 SET @demo_today = CURDATE();
@@ -242,4 +283,15 @@ INSERT INTO schedules (id, member_id, dow, date_from, date_to, time_from, time_t
 
 -- No stale sessions, artificial login blocks or incomplete/orphaned demo records.
 -- login_throttle intentionally starts empty; all edit/auth versions start at 1.
+-- Events are separate group activities; no payments or membership changes are implied.
+INSERT INTO events (id,title,description,location,starts_at,ends_at,capacity,status,request_key,created_by,updated_by) VALUES
+(1,'Community Fitness Morning','A friendly group workout. Bring water and a towel.','Main Studio',TIMESTAMP(DATE_ADD(@demo_today,INTERVAL 1 DAY),'09:00:00'),TIMESTAMP(DATE_ADD(@demo_today,INTERVAL 1 DAY),'11:00:00'),20,'published',REPEAT('a',64),1,1),
+(2,'Nutrition Workshop','Draft programme for review.','Meeting Room',TIMESTAMP(DATE_ADD(@demo_today,INTERVAL 7 DAY),'14:00:00'),TIMESTAMP(DATE_ADD(@demo_today,INTERVAL 7 DAY),'16:00:00'),15,'draft',REPEAT('b',64),1,1),
+(3,'Past Fitness Challenge','Completed demo activity with attendance history.','Main Studio',TIMESTAMP(DATE_SUB(@demo_month,INTERVAL 1 MONTH),'09:00:00'),TIMESTAMP(DATE_SUB(@demo_month,INTERVAL 1 MONTH),'11:00:00'),30,'completed',REPEAT('c',64),1,1),
+(4,'Outdoor Bootcamp','Cancelled because the venue is unavailable.','Outdoor Court',TIMESTAMP(DATE_ADD(@demo_today,INTERVAL 3 DAY),'08:00:00'),TIMESTAMP(DATE_ADD(@demo_today,INTERVAL 3 DAY),'10:00:00'),20,'cancelled',REPEAT('d',64),1,1);
+INSERT INTO event_registrations (event_id,member_id,status,created_by,updated_by)
+SELECT 1,m.id,'registered',1,1 FROM members m WHERE EXISTS
+(SELECT 1 FROM registration_info r WHERE r.member_id=m.id AND r.status=1 AND r.start_date<=DATE_ADD(@demo_today,INTERVAL 1 DAY) AND r.end_date>=DATE_ADD(@demo_today,INTERVAL 1 DAY)) ORDER BY m.id LIMIT 2;
+INSERT INTO event_registrations (event_id,member_id,status,created_by,updated_by) VALUES
+(3,9,'attended',1,1),(3,2,'no_show',1,1),(4,1,'registered',1,1);
 COMMIT;

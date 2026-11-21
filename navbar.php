@@ -1,11 +1,12 @@
 <?php
 require_once __DIR__ . '/auth.php';
 require_login();
-$navigationPages = ['home', 'members', 'registered_members', 'schedule'];
+$navigationPages = ['home', 'members', 'registered_members', 'schedule', 'events'];
 if (is_admin()) {
 	$navigationPages = array_merge($navigationPages, ['plans', 'packages', 'trainer', 'users', 'settings']);
 }
 $requestedPage = $_GET['page'] ?? 'home';
+if (in_array($requestedPage, ['manage_event', 'view_event'], true)) $requestedPage = 'events';
 $activeNavigationPage = is_string($requestedPage) && in_array($requestedPage, $navigationPages, true)
 	? $requestedPage : 'home';
 ?>
@@ -25,6 +26,7 @@ $activeNavigationPage = is_string($requestedPage) && in_array($requestedPage, $n
 				<a href="index.php?page=members" class="nav-item nav-members"><span class='icon-field'><i class="fa fa-user-friends"></i></span> Members</a>
 				<a href="index.php?page=registered_members" class="nav-item nav-registered_members"><span class='icon-field'><i class="fa fa-id-card"></i></span> Membership Validity</a>
 				<a href="index.php?page=schedule" class="nav-item nav-schedule"><span class='icon-field'><i class="fa fa-calendar-day"></i></span> Schedule</a>
+				<a href="index.php?page=events" class="nav-item nav-events"><span class="icon-field"><i class="fa fa-calendar-alt"></i></span> Events</a>
 				<?php if(is_admin()): ?>
 				<a href="index.php?page=plans" class="nav-item nav-plans"><span class='icon-field'><i class="fa fa-th-list"></i></span> Plans</a>
 				<a href="index.php?page=packages" class="nav-item nav-packages"><span class='icon-field'><i class="fa fa-list"></i></span> Packages</a>

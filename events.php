@@ -1,8 +1,6 @@
 <?php
-require_once __DIR__ . '/auth.php';
-require_admin();
-http_response_code(404);
-exit('Events module is not available.');
+require __DIR__ . '/events_list.php';
+return;
 
 /*
 Legacy Events code retained for future implementation; intentionally disabled.

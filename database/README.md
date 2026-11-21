@@ -2,7 +2,7 @@ Fresh installation or development reset:
 
 1. Start Apache and MySQL in XAMPP. Open phpMyAdmin.
 2. Create/select `gym`, matching `db_connect.php`.
-3. Import `database/gym.sql`. It DROPS and recreates the ten application tables
+3. Import `database/gym.sql`. It DROPS and recreates the twelve application tables
    in the selected database, replacing their records with consistent demo data.
    Other databases and unrelated tables are not changed.
 4. Log out of any existing browser session, then log in again:
@@ -28,6 +28,7 @@ The consolidated dump includes these fictional demo records:
 | Membership agreements | 13 |
 | Payments | 15 |
 | Recurring schedules | 7 |
+| Events / participation records | 4 / 5 |
 
 Immediately after import, the dashboard shows **6 Active Members**, **15 profiles**
 and **0 Needs attention**. Membership Validity shows 6 Active, 3 Expired,
@@ -92,3 +93,39 @@ delete an image that may already be referenced. SQL errors and filesystem paths
 are not returned to users. The old commented `save_settings()` in
 `admin_class.php` remains reference code; the active endpoint uses the separate
 Settings service and does not call that handler.
+
+Events on an existing installation:
+
+1. Import `database/add_events.sql` into the existing application database.
+   It only adds the two Events tables; repeat imports preserve their records.
+   Fresh `gym.sql` includes the schema and four fictional events already.
+2. Open **Events** as Admin or Staff. Admins create/edit/cancel/complete events;
+   both roles register members, cancel registrations and record attendance.
+   A member must have an open membership covering the event start date when
+   registering. A later membership change does not silently remove participation.
+3. Drafts accept no registrations. Published events accept registrations before
+   start/deadline and while capacity remains. Blank capacity means unlimited.
+   Cancelled events preserve participant records and disallow further changes.
+   Completion is available after the scheduled end. Attendance is allowed from
+   start; no-show is allowed after end, including corrections on Completed events.
+4. Only Drafts without participant history can be deleted. Member deletion is
+   restricted by participant history, including cancelled registrations.
+
+Times use Malaysia time. Events are independent of recurring Schedule, membership
+fees and payments; creating or joining an event changes none of those records.
+The page displays Upcoming/Ongoing/Ended from the current clock; these labels do
+not require a scheduled job. An ended Published event still needs an Admin to
+mark it Completed. Event details lock after start, cancellation or completion.
+Time/location changes with participants require explicit confirmation; moving
+the date also checks current participants' membership eligibility. Notifications
+are manual: this version does not send email or WhatsApp messages.
+
+Writes use transactions, actor revalidation and event/member locks. Every
+participant change increments both participation and event versions; stale forms
+return 409 and must be reviewed after reload. Event creation has a unique request
+key so retrying the same successful form does not create a second event. The old
+commented Events implementation remains in `events.php` for reference.
+
+Optional posters, event fees, public registration and automated notifications
+are outside the current Events scope. Back up both Events tables with the rest
+of the application database.

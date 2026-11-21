@@ -1,6 +1,11 @@
 <?php
 require_once __DIR__ . '/auth.php';
 $action = $_GET['action'] ?? '';
+if (in_array($action, ['save_event', 'delete_event', 'save_event_participant'], true)) {
+    require_once __DIR__ . '/events_action.php';
+    events_handle_request($action);
+    exit;
+}
 if ($action === 'save_settings') {
     require_once __DIR__ . '/settings_action.php';
     system_settings_handle_request();
