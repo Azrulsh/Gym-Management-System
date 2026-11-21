@@ -2,6 +2,7 @@
 -- phpMyAdmin: select `gym` (matching db_connect.php), then import this entire file.
 -- Includes migrations 001 through 016. Not an upgrade script for existing records.
 -- Local demo accounts: admin / admin, admin2 / admin2 (Admins); staff / staff (Staff).
+-- Member Portal: member / member (Arun); member_disabled / member_disabled is disabled.
 -- No CREATE DATABASE or USE: the caller chooses the target database.
 SET NAMES utf8mb4;
 SET SESSION time_zone = '+08:00';
@@ -266,7 +267,9 @@ INSERT INTO system_settings (id,gym_name,email,contact,address,about) VALUES
 INSERT INTO users (id, name, username, password, type) VALUES
 (1, 'Demo Admin', 'admin', '$argon2id$v=19$m=19456,t=2,p=1$OVV2dEpOZkFmdmVHN3NmUg$wSUtNYJnlfgG1pMRvdQswyDlBdkhUQgQDHHqxV6pR6g', 1),
 (2, 'Demo Staff', 'staff', '$argon2id$v=19$m=19456,t=2,p=1$dk5hSmN0MDR2QzRsQU9Ycw$FuQCiGXpenFZ3LZjdD/8zR6Yg5wNGe0Z9/YH8UP2Y5M', 2),
-(3, 'Demo Backup Admin', 'admin2', '$argon2id$v=19$m=19456,t=2,p=1$b1g5akU5VjgxMDMuRGs3Rw$HqOYYd6PfQSNUNGrxU0Do2++EjG6rtjleGM2U7eQwqo', 1);
+(3, 'Demo Backup Admin', 'admin2', '$argon2id$v=19$m=19456,t=2,p=1$b1g5akU5VjgxMDMuRGs3Rw$HqOYYd6PfQSNUNGrxU0Do2++EjG6rtjleGM2U7eQwqo', 1),
+(4, 'Arun Kumar', 'member', '$argon2id$v=19$m=19456,t=2,p=1$REtUTERrcTFYcXFRZHFGQQ$itUIV4covTY64FRBc+HWNaT7X9wLBhO7FwT2lWrSAeM', 3),
+(5, 'Wei Lim', 'member_disabled', '$argon2id$v=19$m=19456,t=2,p=1$dTAxZ1I0UWhmRG5jWm5kMQ$KjNAYRQ87/djVGHuvM61S+26/sPyi9paTgVNX4maFnA', 3);
 
 INSERT INTO plans (id, plan, amount) VALUES
 (1, 1, 100.00), (2, 3, 270.00), (3, 12, 960.00), (4, 6, 450.75), (5, 9, 675.00);
@@ -299,6 +302,10 @@ INSERT INTO members (id, member_id, firstname, middlename, lastname, gender, con
 (13, 100013, 'Hakim', '', 'Osman', 'Male', '0120000013', 'Kajang', 'hakim@example.test'),
 (14, 100014, 'Priya', '', 'Devi', 'Female', '0120000014', 'Klang', 'priya@example.test'),
 (15, 100015, 'Farah', '', 'Yusof', 'Female', '0120000015', 'Cyberjaya', 'farah@example.test');
+
+-- Portal access and gym membership are separate: a disabled account cannot log in.
+INSERT INTO member_portal_accounts (user_id,member_id,enabled) VALUES (4,7,1),(5,11,0);
+INSERT INTO member_portal_audit (actor_id,member_id,action) VALUES (1,7,'demo_provisioned'),(1,11,'demo_provisioned_disabled');
 
 -- 6 Active; 3 Expired/renewable; 1 Scheduled; 3 Closed history records.
 -- Fatin has a Closed agreement followed by a current agreement (renewal history).
@@ -354,7 +361,9 @@ INSERT INTO schedules (id, member_id, dow, date_from, date_to, time_from, time_t
 (4, 7, '1,3', @demo_month, LAST_DAY(DATE_ADD(@demo_month, INTERVAL 1 MONTH)), '18:00:00', '19:00:00'),
 (5, 9, '2,4', @demo_month, LAST_DAY(DATE_ADD(@demo_month, INTERVAL 1 MONTH)), '19:00:00', '20:00:00'),
 (6, 10, '6', @demo_month, LAST_DAY(@demo_month), '09:00:00', '10:00:00'),
-(7, 13, '5', @demo_month, LAST_DAY(@demo_month), '18:00:00', '19:00:00');
+(7, 13, '5', @demo_month, LAST_DAY(@demo_month), '18:00:00', '19:00:00'),
+(8, 2, '1,3', DATE_SUB(@demo_month,INTERVAL 2 MONTH), LAST_DAY(DATE_SUB(@demo_month,INTERVAL 2 MONTH)), '08:00:00', '09:00:00'),
+(9, 6, '2,4', DATE_ADD(@demo_month,INTERVAL 1 MONTH), LAST_DAY(DATE_ADD(@demo_month,INTERVAL 1 MONTH)), '17:00:00', '18:00:00');
 
 -- No stale sessions, artificial login blocks or incomplete/orphaned demo records.
 -- login_throttle intentionally starts empty; all edit/auth versions start at 1.
@@ -364,18 +373,34 @@ INSERT INTO events (id,title,description,location,starts_at,ends_at,capacity,sta
 (2,'Nutrition Workshop','Draft programme for review.','Meeting Room',TIMESTAMP(DATE_ADD(@demo_today,INTERVAL 7 DAY),'14:00:00'),TIMESTAMP(DATE_ADD(@demo_today,INTERVAL 7 DAY),'16:00:00'),15,'draft',REPEAT('b',64),1,1),
 (3,'Past Fitness Challenge','Completed demo activity with attendance history.','Main Studio',TIMESTAMP(DATE_SUB(@demo_month,INTERVAL 1 MONTH),'09:00:00'),TIMESTAMP(DATE_SUB(@demo_month,INTERVAL 1 MONTH),'11:00:00'),30,'completed',REPEAT('c',64),1,1),
 (4,'Outdoor Bootcamp','Cancelled because the venue is unavailable.','Outdoor Court',TIMESTAMP(DATE_ADD(@demo_today,INTERVAL 3 DAY),'08:00:00'),TIMESTAMP(DATE_ADD(@demo_today,INTERVAL 3 DAY),'10:00:00'),20,'cancelled',REPEAT('d',64),1,1);
+INSERT INTO events (id,title,description,location,starts_at,ends_at,registration_closes_at,capacity,status,request_key,created_by,updated_by) VALUES
+(5,'Registration Closed Workshop','Future event whose registration deadline has passed.','Meeting Room',DATE_ADD(NOW(),INTERVAL 2 DAY),DATE_ADD(NOW(),INTERVAL 49 HOUR),DATE_SUB(NOW(),INTERVAL 1 HOUR),12,'published',SHA2('demo-event-5',256),1,1),
+(6,'Fully Booked Coaching','Capacity reached; new registrations must be rejected.','Studio B',DATE_ADD(NOW(),INTERVAL 3 DAY),DATE_ADD(NOW(),INTERVAL 73 HOUR),NULL,1,'published',SHA2('demo-event-6',256),1,1),
+(7,'Live Mobility Session','Ongoing session; the demo Member is already registered.','Main Studio',GREATEST(TIMESTAMP(@demo_today),DATE_SUB(NOW(),INTERVAL 30 MINUTE)),DATE_ADD(NOW(),INTERVAL 30 MINUTE),NULL,20,'published',SHA2('demo-event-7',256),1,1),
+(8,'Awaiting Event Closure','Session ended; Admin can review attendance and complete it.','Main Studio',DATE_SUB(NOW(),INTERVAL 2 HOUR),DATE_SUB(NOW(),INTERVAL 1 HOUR),NULL,20,'published',SHA2('demo-event-8',256),1,1),
+(9,'Open Community Session','Upcoming event without a capacity limit; demo Member can cancel their registration.','Main Studio',DATE_ADD(NOW(),INTERVAL 4 DAY),DATE_ADD(NOW(),INTERVAL 97 HOUR),NULL,NULL,'published',SHA2('demo-event-9',256),1,1);
 INSERT INTO event_registrations (event_id,member_id,status,created_by,updated_by)
 SELECT 1,m.id,'registered',1,1 FROM members m WHERE EXISTS
 (SELECT 1 FROM registration_info r WHERE r.member_id=m.id AND r.status=1 AND r.start_date<=DATE_ADD(@demo_today,INTERVAL 1 DAY) AND r.end_date>=DATE_ADD(@demo_today,INTERVAL 1 DAY)) ORDER BY m.id LIMIT 2;
 INSERT INTO event_registrations (event_id,member_id,status,created_by,updated_by) VALUES
 (3,9,'attended',1,1),(3,2,'no_show',1,1),(4,1,'registered',1,1);
+INSERT INTO event_registrations (event_id,member_id,status,created_by,updated_by) VALUES
+(5,7,'cancelled',1,1),(6,9,'registered',1,1),(7,7,'registered',1,1),(8,9,'attended',1,1),(9,7,'registered',1,1);
 -- Attendance examples: one completed visit, one currently inside, one historical expired member.
 INSERT INTO attendance_visits (id,member_id,registration_id,checked_in_at,checked_out_at,checked_in_by,checked_out_by,checkin_key,checkout_key,updated_by) VALUES
 (1,9,9,DATE_SUB(NOW(),INTERVAL 2 HOUR),DATE_SUB(NOW(),INTERVAL 90 MINUTE),2,2,REPEAT('1',64),REPEAT('4',64),2),
 (2,9,9,DATE_SUB(NOW(),INTERVAL 30 MINUTE),NULL,2,NULL,REPEAT('2',64),NULL,2),
 (3,2,2,TIMESTAMP(DATE_SUB(@demo_month,INTERVAL 1 MONTH),'09:00:00'),TIMESTAMP(DATE_SUB(@demo_month,INTERVAL 1 MONTH),'10:00:00'),2,2,REPEAT('3',64),REPEAT('5',64),2);
+INSERT INTO attendance_visits (id,member_id,registration_id,checked_in_at,checked_out_at,checked_in_by,checked_out_by,checkin_key,checkout_key,updated_by,version,voided_at) VALUES
+(4,7,7,GREATEST(TIMESTAMP(@demo_today),DATE_SUB(NOW(),INTERVAL 90 MINUTE)),GREATEST(TIMESTAMP(@demo_today),DATE_SUB(NOW(),INTERVAL 60 MINUTE)),2,2,SHA2('demo-visit-4',256),SHA2('demo-checkout-4',256),2,2,NULL),
+(5,9,9,DATE_SUB(NOW(),INTERVAL 4 HOUR),DATE_SUB(NOW(),INTERVAL 3 HOUR),2,2,SHA2('demo-visit-5',256),SHA2('demo-checkout-5',256),1,3,NOW());
 INSERT INTO attendance_audit (visit_id,actor_id,action,before_state,after_state,created_at)
 SELECT id,checked_in_by,'checkin',NULL,JSON_OBJECT('id',id,'member_id',member_id,'registration_id',registration_id,'checked_in_at',checked_in_at,'checked_out_at',NULL),checked_in_at FROM attendance_visits;
 INSERT INTO attendance_audit (visit_id,actor_id,action,before_state,after_state,created_at)
 SELECT id,checked_out_by,'checkout',JSON_OBJECT('checked_out_at',NULL),JSON_OBJECT('checked_out_at',checked_out_at),checked_out_at FROM attendance_visits WHERE checked_out_at IS NOT NULL;
+INSERT INTO attendance_audit (visit_id,actor_id,action,reason,before_state,after_state,created_at)
+SELECT id,1,'void','Duplicate desk entry confirmed against the attendance register.',JSON_OBJECT('voided_at',NULL),JSON_OBJECT('voided_at',voided_at),voided_at FROM attendance_visits WHERE voided_at IS NOT NULL;
+-- Keep historical event registrations within their event timelines.
+UPDATE event_registrations p JOIN events e ON e.id=p.event_id
+SET p.created_at=LEAST(NOW(),DATE_SUB(e.starts_at,INTERVAL 1 DAY)),p.updated_at=LEAST(NOW(),e.ends_at);
 COMMIT;

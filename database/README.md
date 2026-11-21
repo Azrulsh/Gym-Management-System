@@ -7,7 +7,9 @@ Fresh installation or development reset:
    Other databases and unrelated tables are not changed.
 4. Log out of any existing browser session, then log in again:
    Admin: `admin` / `admin`; backup Admin: `admin2` / `admin2`;
-   Staff: `staff` / `staff` (local development only).
+   Staff: `staff` / `staff`; Member: `member` / `member` (Arun, member 100007).
+   `member_disabled` / `member_disabled` deliberately cannot log in until Admin
+   enables portal access (Wei, member 100011). All are local development accounts.
 
 `gym.sql` replaces the old `gym_db.sql` dump and integrates migrations 001 through 016.
 No separate migration imports are needed after this reset. Passwords use Argon2id.
@@ -21,16 +23,16 @@ The consolidated dump includes these fictional demo records:
 
 | Module | Records |
 | --- | ---: |
-| Users | 3 (2 Admins, 1 Staff) |
+| Users | 5 (2 Admins, 1 Staff, 2 Members) |
 | System Settings | 1 shared gym profile |
 | Members | 15 |
 | Plans / Packages / Trainers | 5 / 6 / 4 |
 | Membership agreements | 13 |
 | Payments | 15 |
-| Recurring schedules | 7 |
-| Events / participation records | 4 / 5 |
-| Portal accounts / tokens / audit entries | 0 / 0 / 0 (activate by invitation) |
-| Gym visits / attendance audit entries | 3 / 5 (including one member currently inside) |
+| Recurring schedules | 9 (past, current and future) |
+| Events / participation records | 9 / 10 |
+| Portal accounts / tokens / audit entries | 2 / 0 / 2 (enabled and disabled accounts) |
+| Gym visits / attendance audit entries | 5 / 10 (one inside, three valid checked out, one voided) |
 
 Immediately after import, the dashboard shows **6 Active Members**, **15 profiles**
 and **0 Needs attention**. Membership Validity shows 6 Active, 3 Expired,
@@ -44,7 +46,7 @@ Plan payments (Ali: RM169.50 remaining; Arun: RM150.75; Priya: RM60.00), no
 payments yet, Package/Trainer-only payments, zero-fee Package/Trainer choices
 and historical payments on Closed agreements. Every payment has an explicit
 Plan allocation and request key. No fabricated legacy allocation is needed.
-Fees/durations are captured on every agreement. Seven schedules fill the current
+Fees/durations are captured on every agreement. Nine schedules cover past, current
 and next month without same-member overlaps. The 9-month Plan, Weekend Access
 package and Izzat trainer are unused examples for testing deletion without
 history; the used catalogs should be protected from deletion.
@@ -231,3 +233,31 @@ retention policy before adding a scheduled cleanup.
 implemented in `attendance_form.php` and `assets/js/attendance.js`. Queries live in
 `attendance_repository.php`; admission, checkout and correction rules live in
 `attendance_service.php`. The obsolete person-tracking AJAX route is removed.
+
+Fresh demo verification guide (after importing gym.sql):
+
+| Module | Scenario / where to verify |
+| --- | --- |
+| Login and RBAC | admin/admin manages everything; staff/staff handles operations; member/member sees only Arun's own portal records. admin2/admin2 permits testing the last-Admin protection. |
+| Member profiles | Ali 100001 is Active; Siti 100002 is Expired; Kumar 100003 has Closed history; Mei 100004 has no agreement; Jason 100006 starts next month. Inactive is a business description, not an extra membership status column. |
+| Membership Validity | 6 Active, 3 Expired, 1 Scheduled, 3 Closed; Fatin has previous Closed and current Active history. Expired open agreements can be renewed; profiles without an open agreement can receive a new one. |
+| Catalogs | Positive/decimal fees, zero Package/Trainer fees, no-Trainer agreements; unused Plan 5, Package 6 and Trainer 4 allow deletion tests. Used resources retain history. |
+| Payments | Ali partial Plan payment; Arun multiple instalments; Aina no payments; Daniel Plan paid then Package/Trainer-only payments; Hakim zero Package and no Trainer. Every amount has explicit Plan allocation. |
+| Schedule | Current recurring sessions, Siti's historical sessions and Jason's future sessions. No overlapping sessions for the same member. |
+| Events | Community Fitness Morning is open/upcoming; Nutrition Workshop is Draft; Past Fitness Challenge is Completed; Outdoor Bootcamp is Cancelled; other events demonstrate a passed deadline, full capacity, Ongoing, Ended and unlimited capacity. |
+| Event participants | Registered, Cancelled, Attended and No-show examples. Arun can register for open events or cancel Open Community Session; Fully Booked Coaching cannot accept another member. |
+| Gym Attendance | Daniel 100009 is currently inside; Siti has a historical visit from when her agreement was valid; Arun has a checked-out visit; one incorrect Daniel visit is voided with a reason and audit. |
+| Member Portal | member/member is enabled; member_disabled/member_disabled is disabled; other profiles are available for invitation. Membership expiry and portal access are independent. No fake activation/recovery tokens are seeded. |
+| System Settings / media | Complete gym profile and portable bundled default images. Admin can upload logo/cover; Member can upload an avatar. No seed refers to missing private files. |
+
+All five passwords are Argon2id hashes. All agreements have captured prices and
+recorded durations, and every payment has a known allocation and request key.
+There are no migration_baseline prices, unallocated payments, orphaned membership
+references, duplicate open agreements or artificial throttle blocks in this seed.
+Defensive compatibility checks in application code remain available; importing
+this fresh data does not require those fallbacks or the historical SQL fixtures.
+
+Dates are calculated when the SQL is imported, using Malaysia time. Upcoming,
+ongoing and expired states naturally change as time passes; reimport the reset
+only when you intentionally want to restore the demo scenarios. Importing replaces
+existing application data. This file does not import itself into your live database.

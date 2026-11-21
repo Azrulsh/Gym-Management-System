@@ -21,13 +21,13 @@ function isolated(code,options={}) {
 
 test('Events create safely, escape output, record actor and replay create without duplicates',()=>{
  const d=isolated(`$a=$service->save($post,1,1);$b=$service->save($post,1,1);echo json_encode(['a'=>$a,'b'=>$b,'event'=>$repository->find($a['id']),'escaped'=>event_escape($post['title']),'total'=>count($repository->listing())]);`);
- assert.equal(d.a.id,d.b.id);assert.equal(d.total,5);assert.equal(Number(d.event.created_by),1);
+ assert.equal(d.a.id,d.b.id);assert.equal(d.total,10);assert.equal(Number(d.event.created_by),1);
  assert.equal(d.event.title,"O'Neil <script>event</script>");assert.equal(d.escaped,'O&#039;Neil &lt;script&gt;event&lt;/script&gt;');
 });
 for(const [field,value] of [['title',''],['title','x'.repeat(151)],['title',[]],['location','bad\nlocation'],['description','a'.repeat(5001)],['capacity','-1'],['capacity','0'],['capacity','1.5'],['capacity',[]],['starts_at','2026-02-30T12:00'],['starts_at','abc'],['ends_at','1000-01-01T00:00'],['registration_closes_at','9999-01-01T00:00'],['status','invalid'],['status','completed'],['request_key','bad']]) {
  test(`invalid event ${field}: ${JSON.stringify(value).slice(0,25)} cannot write`,()=>{
   const d=isolated(`$post[${literal(field)}]=json_decode(${literal(JSON.stringify(value))},true);echo json_encode(['result'=>$attempt(fn()=>$service->save($post,1,1)),'count'=>count($repository->listing())]);`);
-  assert.equal(d.result.status,422);assert.equal(d.count,4);
+  assert.equal(d.result.status,422);assert.equal(d.count,9);
  });
 }
 test('unlimited capacity, optional deadline and stale edit conflict',()=>{

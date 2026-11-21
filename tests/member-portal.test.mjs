@@ -8,6 +8,9 @@ function isolated(code,options={}) {
  with_throttle_database(function($db,$schema) {
   $db->multi_query(file_get_contents('database/gym.sql'));
   do{if($r=$db->store_result())$r->free();}while($db->more_results()&&$db->next_result());
+  // Activation tests start with unprovisioned profiles, independently of demo accounts.
+  $db->query('DELETE FROM member_portal_accounts');$db->query('DELETE FROM member_portal_audit');
+  $db->query('DELETE FROM users WHERE type=3');$db->query('ALTER TABLE users AUTO_INCREMENT=4');
   $service=new MemberPortalService($db);$sql=new EventsRepository($db);$repository=new MemberPortalRepository($db);
   $attempt=function($work){try{return ['ok'=>$work()];}catch(EventRequestException|SettingsRequestException $e){return ['status'=>$e->status,'error'=>$e->getMessage()];}};
   $invite=function($member,$purpose='activate')use($service){$link=$service->invite(['member_id'=>(string)$member,'purpose'=>$purpose],1,1);return explode('#token=',$link['activation_path'])[1];};

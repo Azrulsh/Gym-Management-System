@@ -61,7 +61,7 @@ test('corrections cannot overlap another visit and voided records stay locked',(
 });
 test('audit insert failure rolls back the new visit and its open slot',()=>{
  const d=isolated(`$db->query("CREATE TRIGGER deny_attendance BEFORE INSERT ON attendance_audit FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='fixture failure'");try{$service->checkIn($post,2,1);}catch(mysqli_sql_exception $e){}echo json_encode(['open'=>$repository->openVisit(1),'count'=>$repository->rows('SELECT COUNT(*) AS n FROM attendance_visits')[0]['n'],'transaction'=>$db->query('SELECT @@in_transaction AS n')->fetch_assoc()['n']]);`);
- assert.equal(d.open,null);assert.equal(Number(d.count),3);assert.equal(Number(d.transaction),0);
+ assert.equal(d.open,null);assert.equal(Number(d.count),5);assert.equal(Number(d.transaction),0);
 });
 test('reimport additive schema preserves visits, audit and membership records',()=>{
  const d=isolated(`$before=$repository->rows('SELECT * FROM attendance_visits ORDER BY id');$db->multi_query(file_get_contents('database/add_attendance.sql'));do{if($r=$db->store_result())$r->free();}while($db->more_results()&&$db->next_result());echo json_encode(['before'=>$before,'after'=>$repository->rows('SELECT * FROM attendance_visits ORDER BY id')]);`);assert.deepEqual(d.before,d.after);

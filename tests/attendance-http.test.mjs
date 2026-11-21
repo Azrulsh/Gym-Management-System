@@ -63,6 +63,14 @@ async function memberLogin(username,cookies,pass=password){
  const token=await csrf(cookies,'login.php');const r=await request('ajax.php?action=login',{method:'POST',body:new URLSearchParams({csrf_token:token,username,password:pass})},cookies);assert.equal(await r.text(),'4');
 }
 
+test('fresh demo member/member opens every Member Portal page with its own seeded data',async()=>{
+ const demo=new Map();await memberLogin('member',demo,'member');
+ for(const page of ['dashboard','profile','memberships','payments','schedule','attendance','events','security']){
+  const r=await request('member_portal.php?page='+page,{},demo);assert.equal(r.status,200,page);const html=await r.text();assert.doesNotMatch(html,/Warning:|Fatal error|migration_baseline|Unallocated \(legacy\)/);
+ }
+ const r=await request('member_portal.php?page=profile',{},demo);assert.match(await r.text(),/Arun/);
+});
+
 
 test('Attendance pages reuse the operations shell and legacy lookup controls',async()=>{
  for(const page of ['index.php?page=home','index.php?page=attendance']){const r=await request(page,{},staff);assert.equal(r.status,200);const html=await r.text();assert.match(html,/id="tracking_id"/);assert.match(html,/id="manage-records"/);assert.match(html,/id="sidebar"/);assert.doesNotMatch(html,/action=get_pdetails|action=save_track/);}

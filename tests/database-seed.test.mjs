@@ -100,8 +100,8 @@ test('development reset imports twice, integrates migrations and provides comple
   assert.deepEqual(data.amounts.map(row => row.amount), ['100.50','110.00','130.00','130.00','130.00','365.25','200.00','100.00','125.50','1085.25','125.25','990.00','100.00','40.00','30.00']);
   assert.deepEqual(data.before, data.after);
   assert.equal(data.column.Type, 'decimal(12,2)');
-  assert.deepEqual(data.credentials, { admin: [true, false, 1], staff: [true, false, 2], admin2: [true,false,1] });
-  assert.deepEqual(data.counts,{members:15,plans:5,packages:6,trainers:4,registration_info:13,payments:15,schedules:7,users:3,login_throttle:0,system_settings:1,events:4,event_registrations:5});
+  assert.deepEqual(data.credentials, { admin: [true, false, 1], staff: [true, false, 2], admin2: [true,false,1], member:[true,false,3], member_disabled:[true,false,3] });
+  assert.deepEqual(data.counts,{members:15,plans:5,packages:6,trainers:4,registration_info:13,payments:15,schedules:9,users:5,login_throttle:0,system_settings:1,events:9,event_registrations:10});
   assert.equal(Number(data.invalidAllocations),0);
   assert.equal(Number(data.futurePayments),0);
   assert.equal(Number(data.brokenSchedules),0);
