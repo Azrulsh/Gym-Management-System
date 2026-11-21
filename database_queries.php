@@ -6,6 +6,8 @@ class DatabaseQueries
 {
     public function __construct(private mysqli $db) {}
 
+    protected function connection(): mysqli { return $this->db; }
+
     public function query(string $sql, string $types = '', array $values = []): mysqli_stmt
     {
         $statement = $this->db->prepare($sql);

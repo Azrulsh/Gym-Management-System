@@ -2,7 +2,7 @@ Fresh installation or development reset:
 
 1. Start Apache and MySQL in XAMPP. Open phpMyAdmin.
 2. Create/select `gym`, matching `db_connect.php`.
-3. Import `database/gym.sql`. It DROPS and recreates the fifteen application tables
+3. Import `database/gym.sql`. It DROPS and recreates the seventeen application tables
    in the selected database, replacing their records with consistent demo data.
    Other databases and unrelated tables are not changed.
 4. Log out of any existing browser session, then log in again:
@@ -30,6 +30,7 @@ The consolidated dump includes these fictional demo records:
 | Recurring schedules | 7 |
 | Events / participation records | 4 / 5 |
 | Portal accounts / tokens / audit entries | 0 / 0 / 0 (activate by invitation) |
+| Gym visits / attendance audit entries | 3 / 5 (including one member currently inside) |
 
 Immediately after import, the dashboard shows **6 Active Members**, **15 profiles**
 and **0 Needs attention**. Membership Validity shows 6 Active, 3 Expired,
@@ -200,3 +201,33 @@ Tests use disposable databases and profiles. Run `node --test tests/*.test.mjs`.
 Optional Chromium smoke: set `GYM_PORTAL_BROWSER_AUDIT=1` and run
 `node --test tests/member-portal-http.test.mjs`; `GYM_TEST_BROWSER` can specify
 a Chromium executable. The browser uses its own temporary profile.
+
+Gym Attendance on an existing installation:
+
+Import `database/add_attendance.sql` once into the existing database. It only
+creates the two Attendance tables; it does not reset profiles, memberships or
+payments. Fresh imports of `gym.sql` already include these tables and demo visits.
+
+Admin and Staff use Dashboard or Attendance to search an exact member number,
+verify identity and check in. The server requires an Active membership and permits
+one open visit per member, including overnight visits. Check-out is allowed after
+membership expiry or closure. Attendance is independent of Schedule and Events.
+Lookup returns minimal identity information; avatars remain protected by login.
+
+Only Admin can correct times or void a visit, with a mandatory reason. Versions
+reject stale edits; transactions save the visit and its audit together. Voiding
+retains history, and there is no attendance-delete action. An existing visit keeps
+its original membership reference. Used members and agreements remain protected
+by foreign keys. Members see only their own latest 200 visits in My Attendance;
+they cannot check themselves in or out or read the staff audit.
+
+Attendance history is limited to 200 records per query and a maximum 366-day date
+range. The Inside filter includes all open visits regardless of date. There is no
+automatic overnight checkout: staff must confirm departures or Admin must record
+a correction. Do not automatically purge attendance/audit records; agree a data
+retention policy before adding a scheduled cleanup.
+
+`home.php` retains the legacy tracking form concept and its control IDs, now
+implemented in `attendance_form.php` and `assets/js/attendance.js`. Queries live in
+`attendance_repository.php`; admission, checkout and correction rules live in
+`attendance_service.php`. The obsolete person-tracking AJAX route is removed.

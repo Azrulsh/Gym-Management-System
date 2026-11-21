@@ -147,11 +147,11 @@ function can_access_action($action)
         'logout', 'save_member', 'delete_member', 'save_membership',
         'renew_membership', 'end_membership', 'save_schedule', 'delete_schedule',
         'get_schecdule', 'save_payment', 'save_account',
-        'save_event_participant',
+        'save_event_participant', 'attendance_lookup', 'attendance_checkin', 'attendance_checkout',
     ];
     $adminActions = [
         'save_settings',
-        'save_event', 'delete_event',
+        'save_event', 'delete_event', 'attendance_correct',
         'save_user', 'delete_user', 'save_plan', 'delete_plan',
         'save_package', 'delete_package', 'save_trainer', 'delete_trainer',
     ];
@@ -173,6 +173,10 @@ function require_action_access($action)
         }
     }
     $postActions = [
+        'attendance_lookup' => 'Use POST to find a member.',
+        'attendance_checkin' => 'Use POST to check in.',
+        'attendance_checkout' => 'Use POST to check out.',
+        'attendance_correct' => 'Use POST to correct Attendance.',
         'save_event' => 'Use POST to save an event.',
         'delete_event' => 'Use POST to delete an event.',
         'save_event_participant' => 'Use POST to change participation.',
@@ -198,7 +202,7 @@ function require_action_access($action)
     if (isset($postActions[$action])) {
         require_post_request($postActions[$action]);
     }
-    if (in_array($action, ['save_event', 'delete_event', 'save_event_participant', 'save_settings', 'logout', 'save_account', 'end_membership', 'save_member', 'save_user', 'save_plan', 'save_package', 'save_trainer', 'save_payment', 'save_membership', 'renew_membership', 'delete_plan', 'delete_package', 'delete_trainer', 'delete_member', 'delete_user', 'delete_schedule', 'save_schedule'], true)) {
+    if (in_array($action, ['attendance_lookup', 'attendance_checkin', 'attendance_checkout', 'attendance_correct', 'save_event', 'delete_event', 'save_event_participant', 'save_settings', 'logout', 'save_account', 'end_membership', 'save_member', 'save_user', 'save_plan', 'save_package', 'save_trainer', 'save_payment', 'save_membership', 'renew_membership', 'delete_plan', 'delete_package', 'delete_trainer', 'delete_member', 'delete_user', 'delete_schedule', 'save_schedule'], true)) {
         require_csrf_token();
     }
 }

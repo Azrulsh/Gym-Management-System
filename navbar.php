@@ -7,13 +7,14 @@ if ($memberNavigation) {
 } else require_login();
 $memberMenu = ['dashboard'=>['My Dashboard','home'], 'profile'=>['My Profile','user'],
     'memberships'=>['My Memberships','id-card'], 'payments'=>['My Payments','money-bill'],
-    'schedule'=>['My Schedule','calendar-day'], 'events'=>['Events','calendar-alt'],
+    'attendance'=>['My Attendance','clipboard-check'], 'schedule'=>['My Schedule','calendar-day'], 'events'=>['Events','calendar-alt'],
     'security'=>['Account & Security','user-lock']];
-$navigationPages = $memberNavigation ? array_keys($memberMenu) : ['home', 'members', 'registered_members', 'schedule', 'events'];
+$navigationPages = $memberNavigation ? array_keys($memberMenu) : ['home', 'attendance', 'members', 'registered_members', 'schedule', 'events'];
 if (is_admin()) {
 	$navigationPages = array_merge($navigationPages, ['plans', 'packages', 'trainer', 'users', 'settings', 'portal_accounts']);
 }
 $requestedPage = $_GET['page'] ?? ($memberNavigation ? 'dashboard' : 'home');
+if ($requestedPage === 'manage_attendance') $requestedPage = 'attendance';
 if (in_array($requestedPage, ['manage_event', 'view_event'], true)) $requestedPage = 'events';
 $activeNavigationPage = is_string($requestedPage) && in_array($requestedPage, $navigationPages, true)
 	? $requestedPage : ($memberNavigation ? 'dashboard' : 'home');
@@ -34,6 +35,7 @@ $activeNavigationPage = is_string($requestedPage) && in_array($requestedPage, $n
                 <a href="member_portal.php?page=<?php echo $memberPage; ?>" class="nav-item nav-<?php echo $memberPage; ?>"><span class="icon-field"><i class="fa fa-<?php echo $memberIcon; ?>"></i></span> <?php echo $memberLabel; ?></a>
                 <?php endforeach; else: ?>
 				<a href="index.php?page=home" class="nav-item nav-home"><span class='icon-field'><i class="fa fa-home"></i></span> Home</a>
+				<a href="index.php?page=attendance" class="nav-item nav-attendance"><span class="icon-field"><i class="fa fa-clipboard-check"></i></span> Attendance</a>
 				<a href="index.php?page=members" class="nav-item nav-members"><span class='icon-field'><i class="fa fa-user-friends"></i></span> Members</a>
 				<a href="index.php?page=registered_members" class="nav-item nav-registered_members"><span class='icon-field'><i class="fa fa-id-card"></i></span> Membership Validity</a>
 				<a href="index.php?page=schedule" class="nav-item nav-schedule"><span class='icon-field'><i class="fa fa-calendar-day"></i></span> Schedule</a>

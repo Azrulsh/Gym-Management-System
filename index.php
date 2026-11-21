@@ -2,8 +2,8 @@
 require_once __DIR__ . '/auth.php';
 require_login();
 $page = $_GET['page'] ?? 'home';
-$pages = ['home', 'members', 'registered_members', 'schedule', 'plans', 'packages', 'trainer', 'users', 'settings', 'portal_accounts', 'events', 'manage_event', 'view_event'];
-if (in_array($page, ['plans', 'packages', 'trainer', 'users', 'settings', 'portal_accounts', 'manage_event'], true)) {
+$pages = ['home', 'attendance', 'manage_attendance', 'members', 'registered_members', 'schedule', 'plans', 'packages', 'trainer', 'users', 'settings', 'portal_accounts', 'events', 'manage_event', 'view_event'];
+if (in_array($page, ['plans', 'packages', 'trainer', 'users', 'settings', 'portal_accounts', 'manage_attendance', 'manage_event'], true)) {
     require_admin();
 }
 if (!is_string($page) || !in_array($page, $pages, true)) {

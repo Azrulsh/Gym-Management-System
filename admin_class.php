@@ -642,7 +642,7 @@ Class Action {
 			return 1;
 		} catch (mysqli_sql_exception | RuntimeException $exception) {
 			if ($kind === 'member' && (int)$exception->getCode() === 1451) {
-				return $this->action_error(409, 'Cannot delete this member because event participation history or a linked Member Portal account exists, including cancelled registrations.');
+				return $this->action_error(409, 'Cannot delete this member because event participation history, attendance history or a linked Member Portal account exists, including cancelled registrations.');
 			}
 			error_log('Unable to delete ' . $kind . ' (error code ' . (int) $exception->getCode() . ').');
 			return $this->action_error(500, 'Unable to delete ' . $kind . '. Please try again.');

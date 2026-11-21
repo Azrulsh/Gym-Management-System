@@ -11,11 +11,11 @@ const admin = { login_id: 2, login_type: 1, login_name: 'Test Admin' };
 
 const sharedActions = [
   'logout', 'save_member', 'delete_member', 'save_membership', 'renew_membership',
-  'end_membership', 'save_schedule', 'delete_schedule', 'get_schecdule', 'save_payment', 'save_account', 'save_event_participant',
+  'end_membership', 'save_schedule', 'delete_schedule', 'get_schecdule', 'save_payment', 'save_account', 'save_event_participant', 'attendance_lookup', 'attendance_checkin', 'attendance_checkout',
 ];
 const adminActions = [
   'save_user', 'delete_user', 'save_plan', 'delete_plan', 'save_package',
-  'delete_package', 'save_trainer', 'delete_trainer', 'save_settings', 'save_event', 'delete_event',
+  'delete_package', 'save_trainer', 'delete_trainer', 'save_settings', 'save_event', 'delete_event', 'attendance_correct',
 ];
 const unsupportedActions = ['signup', 'login2', 'update_account', 'delete_forum', 'unknown'];
 
@@ -44,7 +44,7 @@ for (const action of adminActions) {
   });
 }
 
-for (const page of ['plans', 'packages', 'trainer', 'users', 'settings', 'portal_accounts', 'manage_event']) {
+for (const page of ['plans', 'packages', 'trainer', 'users', 'settings', 'portal_accounts', 'manage_attendance', 'manage_event']) {
   test(`Staff cannot open ${page} directly or through index.php`, () => {
     for (const code of [
       `include '${page}.php';`,

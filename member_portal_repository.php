@@ -40,6 +40,11 @@ final class MemberPortalRepository
             WHERE e.status<>'draft' ORDER BY e.starts_at DESC,e.id DESC",'i',[$owner]);
     }
 
+    public function attendance(int $owner): array
+    {
+        return $this->sql->rows('SELECT id,checked_in_at,checked_out_at,voided_at FROM attendance_visits WHERE member_id=? ORDER BY checked_in_at DESC,id DESC LIMIT 200','i',[$owner]);
+    }
+
     public function administration(): array
     {
         return $this->sql->rows("SELECT m.id,m.member_id,CONCAT_WS(' ',m.firstname,m.middlename,m.lastname) AS name,

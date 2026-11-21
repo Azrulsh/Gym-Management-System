@@ -6,6 +6,8 @@
 SET NAMES utf8mb4;
 SET SESSION time_zone = '+08:00';
 
+DROP TABLE IF EXISTS attendance_audit;
+DROP TABLE IF EXISTS attendance_visits;
 DROP TABLE IF EXISTS member_portal_tokens;
 DROP TABLE IF EXISTS member_portal_accounts;
 DROP TABLE IF EXISTS member_portal_audit;
@@ -216,6 +218,43 @@ CREATE TABLE IF NOT EXISTS member_portal_audit (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
+CREATE TABLE IF NOT EXISTS attendance_visits (
+  id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  member_id INT NOT NULL,
+  registration_id INT NOT NULL,
+  checked_in_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  checked_out_at DATETIME NULL,
+  checked_in_by INT NOT NULL,
+  checked_out_by INT NULL,
+  checkin_key CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL UNIQUE,
+  checkout_key CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NULL UNIQUE,
+  version INT UNSIGNED NOT NULL DEFAULT 1,
+  voided_at DATETIME NULL,
+  updated_by INT NOT NULL,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  open_member_id INT GENERATED ALWAYS AS (CASE WHEN checked_out_at IS NULL AND voided_at IS NULL THEN member_id ELSE NULL END) STORED,
+  UNIQUE KEY attendance_one_open_visit (open_member_id),
+  KEY attendance_member_time (member_id, checked_in_at),
+  KEY attendance_time (checked_in_at),
+  CONSTRAINT attendance_times CHECK (checked_out_at IS NULL OR checked_out_at >= checked_in_at),
+  CONSTRAINT attendance_member FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE RESTRICT,
+  CONSTRAINT attendance_agreement FOREIGN KEY (registration_id) REFERENCES registration_info(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS attendance_audit (
+  id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  visit_id INT NOT NULL,
+  actor_id INT NOT NULL,
+  action ENUM('checkin','checkout','correction','void') NOT NULL,
+  reason VARCHAR(1000) NOT NULL DEFAULT '',
+  before_state TEXT NULL,
+  after_state TEXT NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY attendance_audit_visit (visit_id,id),
+  CONSTRAINT attendance_audit_visit FOREIGN KEY (visit_id) REFERENCES attendance_visits(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
 -- All sample people, contacts and transactions below are fictional.
 -- Anchor dates to Malaysian import day so demo statuses remain useful on future imports.
 SET @demo_today = CURDATE();
@@ -330,4 +369,13 @@ SELECT 1,m.id,'registered',1,1 FROM members m WHERE EXISTS
 (SELECT 1 FROM registration_info r WHERE r.member_id=m.id AND r.status=1 AND r.start_date<=DATE_ADD(@demo_today,INTERVAL 1 DAY) AND r.end_date>=DATE_ADD(@demo_today,INTERVAL 1 DAY)) ORDER BY m.id LIMIT 2;
 INSERT INTO event_registrations (event_id,member_id,status,created_by,updated_by) VALUES
 (3,9,'attended',1,1),(3,2,'no_show',1,1),(4,1,'registered',1,1);
+-- Attendance examples: one completed visit, one currently inside, one historical expired member.
+INSERT INTO attendance_visits (id,member_id,registration_id,checked_in_at,checked_out_at,checked_in_by,checked_out_by,checkin_key,checkout_key,updated_by) VALUES
+(1,9,9,DATE_SUB(NOW(),INTERVAL 2 HOUR),DATE_SUB(NOW(),INTERVAL 90 MINUTE),2,2,REPEAT('1',64),REPEAT('4',64),2),
+(2,9,9,DATE_SUB(NOW(),INTERVAL 30 MINUTE),NULL,2,NULL,REPEAT('2',64),NULL,2),
+(3,2,2,TIMESTAMP(DATE_SUB(@demo_month,INTERVAL 1 MONTH),'09:00:00'),TIMESTAMP(DATE_SUB(@demo_month,INTERVAL 1 MONTH),'10:00:00'),2,2,REPEAT('3',64),REPEAT('5',64),2);
+INSERT INTO attendance_audit (visit_id,actor_id,action,before_state,after_state,created_at)
+SELECT id,checked_in_by,'checkin',NULL,JSON_OBJECT('id',id,'member_id',member_id,'registration_id',registration_id,'checked_in_at',checked_in_at,'checked_out_at',NULL),checked_in_at FROM attendance_visits;
+INSERT INTO attendance_audit (visit_id,actor_id,action,before_state,after_state,created_at)
+SELECT id,checked_out_by,'checkout',JSON_OBJECT('checked_out_at',NULL),JSON_OBJECT('checked_out_at',checked_out_at),checked_out_at FROM attendance_visits WHERE checked_out_at IS NOT NULL;
 COMMIT;

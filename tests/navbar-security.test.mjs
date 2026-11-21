@@ -15,7 +15,7 @@ function active(html){
 }
 
 for(const role of [1,2]){
- const pages=role===1?['home','members','registered_members','schedule','events','plans','packages','trainer','users','settings','portal_accounts']:['home','members','registered_members','schedule','events'];
+ const pages=role===1?['home','attendance','members','registered_members','schedule','events','plans','packages','trainer','users','settings','portal_accounts']:['home','attendance','members','registered_members','schedule','events'];
  for(const page of pages){
   test(`role ${role} highlights ${page} normally`,()=>{
    const d=render({page},role);assert.equal(d.status,200);assert.equal(active(d.body),'.nav-'+page);

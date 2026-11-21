@@ -1,6 +1,11 @@
 <?php
 require_once __DIR__ . '/auth.php';
 $action = $_GET['action'] ?? '';
+if (in_array($action, ['attendance_lookup','attendance_checkin','attendance_checkout','attendance_correct'], true)) {
+    require_once __DIR__ . '/attendance_action.php';
+    attendance_handle_request($action);
+    exit;
+}
 if (in_array($action, ['portal_invite','portal_access','portal_activate','portal_profile','portal_password','portal_event','portal_logout'], true)) {
     require_once __DIR__ . '/member_portal_action.php';
     member_portal_handle_request($action);
@@ -173,11 +178,6 @@ if($action == "delete_art_fs"){
 	$save = $crud->delete_art_fs();
 	if($save)
 		echo $save;
-}
-if($action == "get_pdetails"){
-	$get = $crud->get_pdetails();
-	if($get)
-		echo $get;
 }
 ob_end_flush();
 ?>

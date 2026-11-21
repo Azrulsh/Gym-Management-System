@@ -6,7 +6,7 @@ require_once __DIR__ . '/payment_read.php';
 require_once __DIR__ . '/settings_repository.php';
 $account=require_member();
 $page=$_GET['page'] ?? 'dashboard';
-$pages=['dashboard'=>'Dashboard','profile'=>'My Profile','memberships'=>'My Memberships','payments'=>'My Payments','schedule'=>'My Schedule','events'=>'Events','security'=>'Account & Security'];
+$pages=['dashboard'=>'Dashboard','profile'=>'My Profile','memberships'=>'My Memberships','payments'=>'My Payments','attendance'=>'My Attendance','schedule'=>'My Schedule','events'=>'Events','security'=>'Account & Security'];
 if (!is_string($page) || !isset($pages[$page])) { http_response_code(404); exit('Page not found.'); }
 try {
     include __DIR__.'/db_connect.php';
@@ -15,6 +15,7 @@ try {
     $memberships=in_array($page,['dashboard','memberships'],true)?$repository->memberships($owner):[];
     $payments=$page==='payments'?$repository->payments($owner):[];
     $schedules=in_array($page,['dashboard','schedule'],true)?$repository->schedules($owner):[];
+    $attendance=$page==='attendance'?$repository->attendance($owner):[];
     $events=in_array($page,['dashboard','events'],true)?$repository->events($owner):[];
     $balances=[]; foreach($memberships as $row) $balances[$row['id']]=$row['pamount']===null?null:payment_plan_balance($conn,(int)$row['id'],$row['pamount']);
 } catch (mysqli_sql_exception | RuntimeException $exception) {
@@ -65,6 +66,11 @@ body.member-portal-shell { background: #80808045; }
         <div class="table-responsive"><table class="table table-bordered bg-white"><thead><tr><th>Payment</th><th>Agreement</th><th>Date (Malaysia)</th><th>Paid</th><th>Plan allocation</th><th>Remarks</th></tr></thead><tbody>
             <?php foreach($payments as $payment): ?><tr><td>#<?php echo (int)$payment['id']; ?></td><td>#<?php echo (int)$payment['registration_id']; ?></td><td><?php echo event_escape($payment['date_created']); ?></td><td>RM<?php echo event_escape($payment['amount']); ?></td><td>RM<?php echo event_escape($payment['plan_amount']); ?></td><td><?php echo event_escape($payment['remarks']); ?></td></tr><?php endforeach; ?>
         </tbody></table></div><?php if(!$payments): ?><p>No payments recorded.</p><?php endif; ?>
+    <?php elseif($page==='attendance'): ?>
+        <p class="text-muted">Your latest 200 gym visits. All times are Malaysia time. Contact the gym to correct a record.</p>
+        <div class="table-responsive"><table class="table table-bordered bg-white"><thead><tr><th>Visit</th><th>Check-in</th><th>Check-out</th><th>Status</th></tr></thead><tbody>
+        <?php foreach($attendance as $visit): ?><tr><td>#<?php echo (int)$visit['id']; ?></td><td><?php echo event_escape($visit['checked_in_at']); ?></td><td><?php echo event_escape($visit['checked_out_at'] ?? '?'); ?></td><td><?php echo $visit['voided_at']!==null?'Voided':($visit['checked_out_at']===null?'Inside':'Checked out'); ?></td></tr><?php endforeach; ?>
+        </tbody></table></div><?php if(!$attendance): ?><p>No gym visits recorded yet.</p><?php endif; ?>
     <?php elseif($page==='schedule'): ?>
         <p class="text-muted">All times are Malaysia time. Contact the gym to arrange or change a session.</p>
         <div class="table-responsive"><table class="table table-bordered bg-white"><thead><tr><th>Days</th><th>Date range</th><th>Time</th></tr></thead><tbody>
