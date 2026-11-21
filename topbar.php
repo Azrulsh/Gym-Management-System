@@ -1,6 +1,8 @@
 <?php
 require_once __DIR__ . '/auth.php';
 require_login();
+require_once __DIR__ . '/settings_repository.php';
+$branding = $branding ?? system_settings_branding($conn ?? null);
 ?>
 <style>
 	.logo {
@@ -19,8 +21,9 @@ require_login();
   		<div class="col-md-1 float-left" style="display: flex;">
   		
   		</div>
-      <div class="col-md-4 float-left text-white">
-        <large><b>Gym Management System</b></large>
+      <div class="col-md-4 float-left text-white d-flex align-items-center" style="max-width:65%">
+        <img src="<?php echo settings_escape(settings_image_url($branding,'logo')); ?>" alt="Gym logo" width="32" height="32" style="object-fit:contain" class="mr-2">
+        <b class="text-truncate" title="<?php echo settings_escape($branding['gym_name']); ?>"><?php echo settings_escape($branding['gym_name']); ?></b>
       </div>
 	  	<div class="float-right">
         <div class=" dropdown mr-4">

@@ -6,6 +6,7 @@
 SET NAMES utf8mb4;
 SET SESSION time_zone = '+08:00';
 
+DROP TABLE IF EXISTS system_settings;
 DROP TABLE IF EXISTS payments;
 DROP TABLE IF EXISTS schedules;
 DROP TABLE IF EXISTS registration_info;
@@ -123,11 +124,28 @@ CREATE TABLE login_throttle (
   KEY expires_at (expires_at)
 ) ENGINE=InnoDB;
 
+CREATE TABLE IF NOT EXISTS system_settings (
+  id TINYINT UNSIGNED NOT NULL PRIMARY KEY,
+  gym_name VARCHAR(100) NOT NULL DEFAULT 'Gym Management System',
+  email VARCHAR(254) NOT NULL DEFAULT '',
+  contact VARCHAR(50) NOT NULL DEFAULT '',
+  address VARCHAR(1000) NOT NULL DEFAULT '',
+  about TEXT NOT NULL,
+  logo_filename VARCHAR(68) NULL,
+  cover_filename VARCHAR(68) NULL,
+  version INT UNSIGNED NOT NULL DEFAULT 1,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_by INT NULL,
+  CONSTRAINT system_settings_singleton CHECK (id = 1)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- All sample people, contacts and transactions below are fictional.
 -- Anchor dates to Malaysian import day so demo statuses remain useful on future imports.
 SET @demo_today = CURDATE();
 SET @demo_month = DATE_SUB(@demo_today, INTERVAL DAYOFMONTH(@demo_today) - 1 DAY);
 START TRANSACTION;
+INSERT INTO system_settings (id,gym_name,email,contact,address,about) VALUES
+(1,'Gym Management System','gym@example.test','03-0000 0000','Demo Gym, Kuala Lumpur','Welcome to our demo gym. Train at your own pace with our team.');
 
 INSERT INTO users (id, name, username, password, type) VALUES
 (1, 'Demo Admin', 'admin', '$argon2id$v=19$m=19456,t=2,p=1$OVV2dEpOZkFmdmVHN3NmUg$wSUtNYJnlfgG1pMRvdQswyDlBdkhUQgQDHHqxV6pR6g', 1),

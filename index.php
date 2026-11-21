@@ -2,9 +2,9 @@
 require_once __DIR__ . '/auth.php';
 require_login();
 $page = $_GET['page'] ?? 'home';
-$pages = ['home', 'members', 'registered_members', 'schedule', 'plans', 'packages', 'trainer', 'users'];
+$pages = ['home', 'members', 'registered_members', 'schedule', 'plans', 'packages', 'trainer', 'users', 'settings'];
 // Preserve the Admin guard for the disabled legacy Events URL.
-if (in_array($page, ['plans', 'packages', 'trainer', 'users', 'events'], true)) {
+if (in_array($page, ['plans', 'packages', 'trainer', 'users', 'settings', 'events'], true)) {
     require_admin();
 }
 if (!is_string($page) || !in_array($page, $pages, true)) {
@@ -14,6 +14,9 @@ if (!is_string($page) || !in_array($page, $pages, true)) {
 // Included pages may report a read failure after the shell starts rendering.
 // Keep headers pending so their HTTP status is sent with the final response.
 ob_start();
+require_once __DIR__ . '/settings_repository.php';
+include 'db_connect.php';
+$branding = system_settings_branding($conn);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -22,7 +25,7 @@ ob_start();
   <meta charset="utf-8">
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
 
-  <title>Gym Management System</title>
+  <title><?php echo settings_escape($branding['gym_name']); ?></title>
  	
 
 <?php

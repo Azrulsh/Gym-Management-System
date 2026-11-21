@@ -3,13 +3,11 @@ require_once __DIR__ . '/auth.php';
 require_login();
 $navigationPages = ['home', 'members', 'registered_members', 'schedule'];
 if (is_admin()) {
-	$navigationPages = array_merge($navigationPages, ['plans', 'packages', 'trainer', 'users']);
+	$navigationPages = array_merge($navigationPages, ['plans', 'packages', 'trainer', 'users', 'settings']);
 }
 $requestedPage = $_GET['page'] ?? 'home';
 $activeNavigationPage = is_string($requestedPage) && in_array($requestedPage, $navigationPages, true)
 	? $requestedPage : 'home';
-// Legacy Settings cover reference: $_SESSION['system']['cover_img'].
-// Keep disabled until Settings and validated image loading are implemented.
 ?>
 <style>
 	.collapse a{
@@ -32,6 +30,7 @@ $activeNavigationPage = is_string($requestedPage) && in_array($requestedPage, $n
 				<a href="index.php?page=packages" class="nav-item nav-packages"><span class='icon-field'><i class="fa fa-list"></i></span> Packages</a>
 				<a href="index.php?page=trainer" class="nav-item nav-trainer"><span class='icon-field'><i class="fa fa-user"></i></span> Trainers</a>
 				<a href="index.php?page=users" class="nav-item nav-users"><span class='icon-field'><i class="fa fa-users"></i></span> Users</a>
+				<a href="index.php?page=settings" class="nav-item nav-settings"><span class="icon-field"><i class="fa fa-cog"></i></span> Settings</a>
 			<?php endif; ?>
 		</div>
 

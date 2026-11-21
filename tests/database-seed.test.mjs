@@ -29,7 +29,7 @@ test('development reset imports twice, integrates migrations and provides comple
         $balances[$row['id']]=payment_plan_balance($db,$row['id'],$row['pamount']);
       }
       $counts=[];
-      foreach(['members','plans','packages','trainers','registration_info','payments','schedules','users','login_throttle'] as $table) $counts[$table]=(int)$db->query('SELECT COUNT(*) AS n FROM '.$table)->fetch_assoc()['n'];
+      foreach(['members','plans','packages','trainers','registration_info','payments','schedules','users','login_throttle','system_settings'] as $table) $counts[$table]=(int)$db->query('SELECT COUNT(*) AS n FROM '.$table)->fetch_assoc()['n'];
       $invalidAllocations=$db->query('SELECT COUNT(*) AS n FROM payments WHERE plan_amount IS NULL OR plan_amount<0 OR plan_amount>amount OR request_key IS NULL')->fetch_assoc()['n'];
       $futurePayments=$db->query('SELECT COUNT(*) AS n FROM payments WHERE date_created>CURRENT_TIMESTAMP')->fetch_assoc()['n'];
       $brokenSchedules=$db->query('SELECT COUNT(*) AS n FROM schedules s LEFT JOIN members m ON m.id=s.member_id WHERE m.id IS NULL')->fetch_assoc()['n'];
@@ -101,7 +101,7 @@ test('development reset imports twice, integrates migrations and provides comple
   assert.deepEqual(data.before, data.after);
   assert.equal(data.column.Type, 'decimal(12,2)');
   assert.deepEqual(data.credentials, { admin: [true, false, 1], staff: [true, false, 2], admin2: [true,false,1] });
-  assert.deepEqual(data.counts,{members:15,plans:5,packages:6,trainers:4,registration_info:13,payments:15,schedules:7,users:3,login_throttle:0});
+  assert.deepEqual(data.counts,{members:15,plans:5,packages:6,trainers:4,registration_info:13,payments:15,schedules:7,users:3,login_throttle:0,system_settings:1});
   assert.equal(Number(data.invalidAllocations),0);
   assert.equal(Number(data.futurePayments),0);
   assert.equal(Number(data.brokenSchedules),0);

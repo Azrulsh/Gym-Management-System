@@ -15,9 +15,9 @@ const sharedActions = [
 ];
 const adminActions = [
   'save_user', 'delete_user', 'save_plan', 'delete_plan', 'save_package',
-  'delete_package', 'save_trainer', 'delete_trainer',
+  'delete_package', 'save_trainer', 'delete_trainer', 'save_settings',
 ];
-const unsupportedActions = ['signup', 'login2', 'update_account', 'delete_forum', 'unknown', 'save_settings'];
+const unsupportedActions = ['signup', 'login2', 'update_account', 'delete_forum', 'unknown'];
 
 for (const [label, session, allowed] of [
   ['Admin', admin, [...sharedActions, ...adminActions]],
@@ -44,7 +44,7 @@ for (const action of adminActions) {
   });
 }
 
-for (const page of ['plans', 'packages', 'trainer', 'users', 'events']) {
+for (const page of ['plans', 'packages', 'trainer', 'users', 'settings', 'events']) {
   test(`Staff cannot open ${page} directly or through index.php`, () => {
     for (const code of [
       `include '${page}.php';`,

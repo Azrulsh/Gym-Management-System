@@ -147,7 +147,7 @@ function can_access_action($action)
         'get_schecdule', 'save_payment', 'save_account',
     ];
     $adminActions = [
-        // 'save_settings' stays disabled; legacy handler/route are reference comments only.
+        'save_settings',
         'save_user', 'delete_user', 'save_plan', 'delete_plan',
         'save_package', 'delete_package', 'save_trainer', 'delete_trainer',
     ];
@@ -169,6 +169,7 @@ function require_action_access($action)
         }
     }
     $postActions = [
+        'save_settings' => 'Use POST to save Settings.',
         'logout' => 'Use POST to log out.',
         'end_membership' => 'Use POST to end a membership.',
         'save_member' => 'Use POST to save a member.',
@@ -190,7 +191,7 @@ function require_action_access($action)
     if (isset($postActions[$action])) {
         require_post_request($postActions[$action]);
     }
-    if (in_array($action, ['logout', 'save_account', 'end_membership', 'save_member', 'save_user', 'save_plan', 'save_package', 'save_trainer', 'save_payment', 'save_membership', 'renew_membership', 'delete_plan', 'delete_package', 'delete_trainer', 'delete_member', 'delete_user', 'delete_schedule', 'save_schedule'], true)) {
+    if (in_array($action, ['save_settings', 'logout', 'save_account', 'end_membership', 'save_member', 'save_user', 'save_plan', 'save_package', 'save_trainer', 'save_payment', 'save_membership', 'renew_membership', 'delete_plan', 'delete_package', 'delete_trainer', 'delete_member', 'delete_user', 'delete_schedule', 'save_schedule'], true)) {
         require_csrf_token();
     }
 }

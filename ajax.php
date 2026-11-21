@@ -1,6 +1,11 @@
 <?php
 require_once __DIR__ . '/auth.php';
 $action = $_GET['action'] ?? '';
+if ($action === 'save_settings') {
+    require_once __DIR__ . '/settings_action.php';
+    system_settings_handle_request();
+    exit;
+}
 // The login form is the only public action in this application.
 if ($action !== 'login') {
     require_action_access($action);

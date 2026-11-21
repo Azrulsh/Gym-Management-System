@@ -1,21 +1,13 @@
 <?php
 require_once __DIR__ . '/auth.php';
-// Legacy Settings cover reference: $_SESSION['system']['cover_img'].
-// Keep disabled until Settings and validated image loading are implemented.
 header('Cache-Control: no-store');
 if (isset($_SESSION['login_id'])) {
     header('Location: index.php?page=home');
     exit;
 }
 include('./db_connect.php');
-ob_start();
-if(!isset($_SESSION['system'])){
-	// $system = $conn->query("SELECT * FROM system_settings limit 1")->fetch_array();
-	// foreach($system as $k => $v){
-	// 	$_SESSION['system'][$k] = $v;
-	// }
-}
-ob_end_flush();
+require_once __DIR__ . '/settings_repository.php';
+$branding = system_settings_branding($conn ?? null);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -23,7 +15,7 @@ ob_end_flush();
   <meta charset="utf-8">
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
 
-  <title>Gym Management System</title>
+  <title><?php echo settings_escape($branding['gym_name']); ?></title>
  	
 
 <?php include('./header.php'); ?>
@@ -57,7 +49,6 @@ ob_end_flush();
 		background:#59b6ec61;
 		display: flex;
 		align-items: center;
-		/* Fixed background above; no dependency on the disabled Settings cover. */
 	    background-repeat: no-repeat;
 	    background-size: cover;
 	}
@@ -85,18 +76,32 @@ div#login-right::before {
 }
 
 </style>
+<style>
+  #login-left > img { width:100%;height:100%;object-fit:cover; }
+  .login-brand-logo { max-width:80px;max-height:80px;object-fit:contain; }
+  .gym-description { white-space:pre-line; }
+  #login-right { padding:1rem 0;overflow-y:auto; }
+  #login-right .card { max-height:calc(100vh - 2rem);overflow-y:auto;overflow-wrap:anywhere; }
+  .login-brand-logo + h1 { overflow-wrap:anywhere; }
+  @media (max-width:767px) { #login-left { display:none; } #login-right { width:100%;position:relative;min-height:100vh; } }
+</style>
 
 <body>
 
 
   <main id="main" class=" bg-dark">
   		<div id="login-left">
-  			<img src="assets/img/img.jpg" alt="..." width="100%" height="90%">
+            <img src="<?php echo settings_escape(settings_image_url($branding,'cover')); ?>" alt="Gym cover">
   		</div>
-<div class="row">
+<div class="login-form-wrapper">
   		<div id="login-right">
   			<div class="card col-md-8">
   				<div class="card-body">
+                        <div class="text-center mb-3">
+                            <img class="login-brand-logo mb-2" src="<?php echo settings_escape(settings_image_url($branding,'logo')); ?>" alt="Gym logo">
+                            <h1 class="h4"><?php echo settings_escape($branding['gym_name']); ?></h1>
+                            <?php if ($branding['about'] !== ''): ?><p class="small text-muted gym-description"><?php echo settings_escape($branding['about']); ?></p><?php endif; ?>
+                        </div>
   						
 					<form id="login-form" action="ajax.php?action=login" method="post">
                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
@@ -111,6 +116,11 @@ div#login-right::before {
   						</div>
 						<center><button type="submit" class="btn-md btn-block btn-wave col-md-5 btn-primary">Login</button></center>
   					</form>
+                        <div class="small text-muted mt-3 gym-description">
+                            <?php foreach (['address','contact','email'] as $field): ?>
+                            <?php if ($branding[$field] !== ''): ?><div><?php echo settings_escape($branding[$field]); ?></div><?php endif; ?>
+                            <?php endforeach; ?>
+                        </div>
   				</div>
   			</div>
   		</div>
