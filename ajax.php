@@ -131,12 +131,6 @@ if($action == "get_schecdule"){
 	if($get)
 		echo $get;
 }
-if($action == "delete_forum"){
-	$save = $crud->delete_forum();
-	if($save)
-		echo $save;
-}
-
 if($action == "save_payment"){
 	$save = $crud->save_payment();
 	if($save)
