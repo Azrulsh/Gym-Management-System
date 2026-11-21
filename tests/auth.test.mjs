@@ -12,7 +12,7 @@ const protectedPages = [
   'plans.php', 'packages.php', 'trainer.php', 'schedule.php', 'events.php',
   'users.php', 'manage_member.php', 'manage_membership.php',
   'manage_schedule.php', 'manage_user.php', 'payment.php', 'view_member.php',
-  'view_pdetails.php', 'view_schedule.php', 'navbar.php', 'topbar.php',
+  'view_pdetails.php', 'navbar.php', 'topbar.php',
 ];
 
 async function request(path, options = {}, cookies) {
