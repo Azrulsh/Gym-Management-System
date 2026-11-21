@@ -7,7 +7,7 @@ function isolated(code){return JSON.parse(run({login_id:2,login_type:1,csrf_toke
  with_membership_read_database(function($db,$schema){
   $db->query('CREATE TABLE schedules (id INT PRIMARY KEY AUTO_INCREMENT, member_id INT NOT NULL, dow TEXT NOT NULL, date_from DATE NOT NULL, date_to DATE NOT NULL, time_from TIME NOT NULL, time_to TIME NOT NULL) ENGINE=InnoDB');
   $db->query("INSERT INTO schedules VALUES (1,11,'1','2026-11-01','2026-11-30','09:00','10:00')");
-  $db->query(file_get_contents('database/migrations/015_schedule_versions.sql'));
+  $db->query(file_get_contents('tests/fixtures/legacy-schema/015_schedule_versions.sql'));
   $post=['id'=>'1','version'=>'1','member_id'=>'11','dow'=>['1'],'date_from'=>'2026-11','date_to'=>'2026-11','time_from'=>'09:00','time_to'=>'10:00','csrf_token'=>'schedule-version'];
   ${code}
  });`).body);}
@@ -51,7 +51,7 @@ test('unchanged edit increments version; missing version is rejected; Add ignore
 test('migration is repeatable and Edit form carries current version',()=>{
  const d=isolated(`$db->query('UPDATE schedules SET version=7 WHERE id=1');
   $before=$db->query('SELECT * FROM schedules')->fetch_all(MYSQLI_ASSOC);$history=membership_snapshot($db);
-  $sql=file_get_contents('database/migrations/015_schedule_versions.sql');$db->query($sql);$db->query($sql);
+  $sql=file_get_contents('tests/fixtures/legacy-schema/015_schedule_versions.sql');$db->query($sql);$db->query($sql);
   $GLOBALS['auth_connection']=$db;$html=render_membership_read_page($db,'manage_schedule.php',['id'=>'1']);
   $after=$db->query('SELECT * FROM schedules')->fetch_all(MYSQLI_ASSOC);$historyAfter=membership_snapshot($db);
   echo json_encode(compact('before','after','history','historyAfter','html'));`);

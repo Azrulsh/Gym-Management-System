@@ -9,7 +9,7 @@ function isolated(code) {
     with_membership_database(function($db,$schema){
       $db->query('CREATE TABLE schedules (id INT PRIMARY KEY AUTO_INCREMENT, member_id INT NOT NULL, dow TEXT NOT NULL, date_from DATE NOT NULL, date_to DATE NOT NULL, time_from TIME NOT NULL, time_to TIME NOT NULL, KEY member_id(member_id)) ENGINE=InnoDB');
       $db->query("INSERT INTO schedules VALUES (1,11,'1','2026-11-01','2026-11-30','09:00','10:00'),(2,10,'2','2026-11-01','2026-11-30','11:00','12:00')");
-      $db->query(file_get_contents('database/migrations/015_schedule_versions.sql'));
+      $db->query(file_get_contents('tests/fixtures/legacy-schema/015_schedule_versions.sql'));
       ${code}
     });`).body);
 }

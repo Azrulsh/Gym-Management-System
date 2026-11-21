@@ -206,7 +206,7 @@ test('MariaDB decimal migration preserves old integer amounts and saves cents ex
       $db->query('DELETE FROM payments');
       $db->query('ALTER TABLE payments MODIFY amount INT NOT NULL');
       $db->query("INSERT INTO payments (registration_id, amount, remarks) VALUES (9, -11, 'old'), (9, 5000, 'old')");
-      $db->query(file_get_contents('database/migrations/002_payment_amount_decimal.sql'));
+      $db->query(file_get_contents('tests/fixtures/legacy-schema/002_payment_amount_decimal.sql'));
       ob_start();
       $action = (new ReflectionClass('Action'))->newInstanceWithoutConstructor();
       $property = new ReflectionProperty('Action', 'db');

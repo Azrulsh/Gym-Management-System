@@ -15,7 +15,7 @@ function isolated(code, options = {}) {
       $db->query('INSERT INTO members (id) VALUES (12), (13)');
       $db->query('CREATE TABLE schedules (id INT PRIMARY KEY AUTO_INCREMENT, member_id INT NOT NULL, dow TEXT NOT NULL, date_from DATE NOT NULL, date_to DATE NOT NULL, time_from TIME NOT NULL, time_to TIME NOT NULL) ENGINE=InnoDB');
       $db->query("INSERT INTO schedules VALUES (1, 12, '1,3', '2026-01-01', '2026-12-31', '09:00', '10:00')");
-      $db->query(file_get_contents('database/migrations/015_schedule_versions.sql'));
+      $db->query(file_get_contents('tests/fixtures/legacy-schema/015_schedule_versions.sql'));
       ${code}
     });`, options);
   return JSON.parse(response.body);

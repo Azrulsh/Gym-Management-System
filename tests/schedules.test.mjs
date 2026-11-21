@@ -10,7 +10,7 @@ function attempt(post) {
       $db->query('CREATE TABLE schedules (id INT PRIMARY KEY AUTO_INCREMENT, member_id INT NOT NULL, dow TEXT NOT NULL,
         date_from DATE NOT NULL, date_to DATE NOT NULL, time_from TIME NOT NULL, time_to TIME NOT NULL) ENGINE=InnoDB');
       $db->query("INSERT INTO schedules VALUES (1,11,'1','2026-01-01','2026-01-31','08:00','09:00')");
-      $db->query(file_get_contents('database/migrations/015_schedule_versions.sql'));
+      $db->query(file_get_contents('tests/fixtures/legacy-schema/015_schedule_versions.sql'));
       $before = $db->query('SELECT * FROM schedules ORDER BY id')->fetch_all(MYSQLI_ASSOC);
       $historyBefore = membership_snapshot($db);
       $result = new_membership_for_test($db,json_decode(${literal(JSON.stringify(post))},true),'save_schedule');

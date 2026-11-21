@@ -64,7 +64,7 @@ for(const method of ['save_user','save_account']){
 test('migration is repeatable and both forms carry the current edit version',()=>{
  const d=isolated(`$db->query('UPDATE users SET version=7 WHERE id=2');
   $before=$db->query('SELECT * FROM users ORDER BY id')->fetch_all(MYSQLI_ASSOC);$history=membership_snapshot($db);
-  $sql=file_get_contents('database/migrations/016_user_versions.sql');$db->query($sql);$db->query($sql);
+  $sql=file_get_contents('tests/fixtures/legacy-schema/016_user_versions.sql');$db->query($sql);$db->query($sql);
   $admin=render_membership_read_page($db,'manage_user.php',['id'=>'2']);
   $own=render_membership_read_page($db,'manage_user.php',['id'=>'2','mtype'=>'own']);
   $after=$db->query('SELECT * FROM users ORDER BY id')->fetch_all(MYSQLI_ASSOC);$historyAfter=membership_snapshot($db);

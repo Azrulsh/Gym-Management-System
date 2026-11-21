@@ -5,7 +5,7 @@ import { run } from './helpers/php.mjs';
 const session={login_id:2,login_type:1,csrf_token:'catalog-decimal'};
 function isolated(code){return JSON.parse(run(session,`require 'tests/helpers/membership-read-db.php';
   function apply_catalog_decimal($db){
-    $db->multi_query(file_get_contents('database/migrations/006_catalog_prices_decimal.sql'));
+    $db->multi_query(file_get_contents('tests/fixtures/legacy-schema/006_catalog_prices_decimal.sql'));
     do{if($result=$db->store_result())$result->free();}while($db->more_results()&&$db->next_result());
   }
   function catalog_prices($db){$rows=[];foreach(['plans'=>'amount','packages'=>'amount','trainers'=>'rate'] as $table=>$column){

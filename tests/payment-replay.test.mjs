@@ -50,10 +50,10 @@ for(const key of [null,'','abc','a'.repeat(63),'A'.repeat(64),['a'.repeat(64)],t
 test('migration preserves legacy rows and keys when imported again; newly opened forms have different keys',()=>{
   const data=isolated(`$db->query('ALTER TABLE payments DROP INDEX payments_request_key_unique,DROP COLUMN request_key');
     $before=$db->query('SELECT * FROM payments ORDER BY id')->fetch_all(MYSQLI_ASSOC);
-    $db->query(file_get_contents('database/migrations/009_payment_request_keys.sql'));
+    $db->query(file_get_contents('tests/fixtures/legacy-schema/009_payment_request_keys.sql'));
     $legacy=$db->query('SELECT * FROM payments ORDER BY id')->fetch_all(MYSQLI_ASSOC);
     new_membership_for_test($db,$post,'save_payment');$first=membership_snapshot($db);
-    $db->query(file_get_contents('database/migrations/009_payment_request_keys.sql'));$after=membership_snapshot($db);
+    $db->query(file_get_contents('tests/fixtures/legacy-schema/009_payment_request_keys.sql'));$after=membership_snapshot($db);
     $one=render_membership_read_page($db,'payment.php',['rid'=>9]);$two=render_membership_read_page($db,'payment.php',['rid'=>9]);
     preg_match('/name="request_key" value="([a-f0-9]{64})"/',$one,$key1);
     preg_match('/name="request_key" value="([a-f0-9]{64})"/',$two,$key2);

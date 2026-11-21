@@ -23,9 +23,9 @@ function isolated(code,options={}) {
 test('migration 003 can be applied twice without changing existing accounts or hashes',()=>{
   const data=isolated(`$db->query('ALTER TABLE users DROP COLUMN auth_version');
     $before=$db->query('SELECT * FROM users ORDER BY id')->fetch_all(MYSQLI_ASSOC);
-    $db->query(file_get_contents('database/migrations/003_user_auth_version.sql'));
+    $db->query(file_get_contents('tests/fixtures/legacy-schema/003_user_auth_version.sql'));
     $db->query('UPDATE users SET auth_version=7 WHERE id=2');
-    $db->query(file_get_contents('database/migrations/003_user_auth_version.sql'));
+    $db->query(file_get_contents('tests/fixtures/legacy-schema/003_user_auth_version.sql'));
     $after=$db->query('SELECT id,name,username,password,type,version FROM users ORDER BY id')->fetch_all(MYSQLI_ASSOC);
     $versions=$db->query('SELECT auth_version FROM users')->fetch_all(MYSQLI_ASSOC);
     echo json_encode(compact('before','after','versions'));`);

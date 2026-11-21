@@ -18,7 +18,7 @@ function with_throttle_database($test)
     try {
         $server->query('CREATE DATABASE `' . $schema . '` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci');
         $db = throttle_test_connection($schema);
-        $db->query(file_get_contents('database/migrations/001_login_throttle.sql'));
+        $db->query(file_get_contents('tests/fixtures/legacy-schema/001_login_throttle.sql'));
         $db->query('CREATE TABLE users (id INT PRIMARY KEY, name TEXT, username VARCHAR(200), password TEXT, type INT, auth_version INT UNSIGNED NOT NULL DEFAULT 1, version INT UNSIGNED NOT NULL DEFAULT 1, UNIQUE KEY users_username_unique(username)) ENGINE=InnoDB');
         $insert = $db->prepare('INSERT INTO users (id,name,username,password,type) VALUES (?, ?, ?, ?, ?)');
         foreach ([[2, 'Admin', 'admin', md5('admin'), 1], [3, 'Staff', 'staff', gym_password_hash('staff'), 2]] as $row) {

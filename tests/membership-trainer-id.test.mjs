@@ -43,7 +43,7 @@ test('migration can be repeated without changing references or history', () => {
   const data=isolated(`
     $db->query('ALTER TABLE registration_info MODIFY trainer_id TINYINT NOT NULL DEFAULT 0');
     $before=membership_snapshot($db);
-    $sql=file_get_contents('database/migrations/013_membership_trainer_id.sql');
+    $sql=file_get_contents('tests/fixtures/legacy-schema/013_membership_trainer_id.sql');
     $db->query($sql);$db->query($sql);
     $after=membership_snapshot($db);
     $column=$db->query("SHOW COLUMNS FROM registration_info LIKE 'trainer_id'")->fetch_assoc();

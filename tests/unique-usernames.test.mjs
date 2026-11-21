@@ -28,8 +28,8 @@ function assertSingleUsernameWinner(data){
 test('migration 004 is repeatable and preserves accounts, hashes and session versions',()=>{
   const data=isolated(`$db->query('ALTER TABLE users DROP INDEX users_username_unique');
     $before=$db->query('SELECT * FROM users ORDER BY id')->fetch_all(MYSQLI_ASSOC);
-    $db->query(file_get_contents('database/migrations/004_unique_usernames.sql'));
-    $db->query(file_get_contents('database/migrations/004_unique_usernames.sql'));
+    $db->query(file_get_contents('tests/fixtures/legacy-schema/004_unique_usernames.sql'));
+    $db->query(file_get_contents('tests/fixtures/legacy-schema/004_unique_usernames.sql'));
     $after=$db->query('SELECT * FROM users ORDER BY id')->fetch_all(MYSQLI_ASSOC);
     $indexes=$db->query("SHOW INDEX FROM users WHERE Key_name='users_username_unique'")->fetch_all(MYSQLI_ASSOC);
     echo json_encode(compact('before','after','indexes'));`);
@@ -40,7 +40,7 @@ test('migration rejects existing duplicates without deleting or renaming account
   const data=isolated(`$db->query('ALTER TABLE users DROP INDEX users_username_unique');
     $db->query("UPDATE users SET username='same_username'");
     $before=$db->query('SELECT * FROM users ORDER BY id')->fetch_all(MYSQLI_ASSOC);$code=0;
-    try{$db->query(file_get_contents('database/migrations/004_unique_usernames.sql'));}catch(mysqli_sql_exception $e){$code=$e->getCode();}
+    try{$db->query(file_get_contents('tests/fixtures/legacy-schema/004_unique_usernames.sql'));}catch(mysqli_sql_exception $e){$code=$e->getCode();}
     $after=$db->query('SELECT * FROM users ORDER BY id')->fetch_all(MYSQLI_ASSOC);echo json_encode(compact('before','after','code'));`);
   assert.equal(data.code,1062);assert.deepEqual(data.before,data.after);assert.equal(data.after.length,2);
 });

@@ -38,7 +38,7 @@ for(const version of [null,'','0','-1','1.5',true,['1'],'2147483648']){
 
 test('member version migration is repeatable and preserves profiles and history',()=>{
  const d=isolated(`$before=$db->query('SELECT * FROM members ORDER BY id')->fetch_all(MYSQLI_ASSOC);$history=membership_snapshot($db);
- $sql=file_get_contents('database/migrations/014_member_versions.sql');$db->query($sql);$db->query($sql);
+ $sql=file_get_contents('tests/fixtures/legacy-schema/014_member_versions.sql');$db->query($sql);$db->query($sql);
  $after=$db->query('SELECT * FROM members ORDER BY id')->fetch_all(MYSQLI_ASSOC);$historyAfter=membership_snapshot($db);
  echo json_encode(compact('before','after','history','historyAfter'));`);
  assert.deepEqual(d.after,d.before);assert.deepEqual(d.historyAfter,d.history);

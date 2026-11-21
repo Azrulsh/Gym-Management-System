@@ -1,7 +1,7 @@
 -- DEVELOPMENT RESET: replaces application tables and data in the SELECTED database.
 -- phpMyAdmin: select `gym` (matching db_connect.php), then import this entire file.
 -- Includes migrations 001 through 016. Not an upgrade script for existing records.
--- Local demo accounts: admin / admin (Admin), staff / staff (Staff).
+-- Local demo accounts: admin / admin, admin2 / admin2 (Admins); staff / staff (Staff).
 -- No CREATE DATABASE or USE: the caller chooses the target database.
 SET NAMES utf8mb4;
 SET SESSION time_zone = '+08:00';
@@ -123,37 +123,105 @@ CREATE TABLE login_throttle (
   KEY expires_at (expires_at)
 ) ENGINE=InnoDB;
 
+-- All sample people, contacts and transactions below are fictional.
+-- Anchor dates to Malaysian import day so demo statuses remain useful on future imports.
+SET @demo_today = CURDATE();
+SET @demo_month = DATE_SUB(@demo_today, INTERVAL DAYOFMONTH(@demo_today) - 1 DAY);
+START TRANSACTION;
+
 INSERT INTO users (id, name, username, password, type) VALUES
 (1, 'Demo Admin', 'admin', '$argon2id$v=19$m=19456,t=2,p=1$OVV2dEpOZkFmdmVHN3NmUg$wSUtNYJnlfgG1pMRvdQswyDlBdkhUQgQDHHqxV6pR6g', 1),
-(2, 'Demo Staff', 'staff', '$argon2id$v=19$m=19456,t=2,p=1$dk5hSmN0MDR2QzRsQU9Ycw$FuQCiGXpenFZ3LZjdD/8zR6Yg5wNGe0Z9/YH8UP2Y5M', 2);
+(2, 'Demo Staff', 'staff', '$argon2id$v=19$m=19456,t=2,p=1$dk5hSmN0MDR2QzRsQU9Ycw$FuQCiGXpenFZ3LZjdD/8zR6Yg5wNGe0Z9/YH8UP2Y5M', 2),
+(3, 'Demo Backup Admin', 'admin2', '$argon2id$v=19$m=19456,t=2,p=1$b1g5akU5VjgxMDMuRGs3Rw$HqOYYd6PfQSNUNGrxU0Do2++EjG6rtjleGM2U7eQwqo', 1);
 
-INSERT INTO plans (id, plan, amount) VALUES (1, 1, 100), (2, 3, 270), (3, 12, 960);
+INSERT INTO plans (id, plan, amount) VALUES
+(1, 1, 100.00), (2, 3, 270.00), (3, 12, 960.00), (4, 6, 450.75), (5, 9, 675.00);
 INSERT INTO packages (id, package, description, amount) VALUES
-(1, 'Basic', 'Gym equipment access', 30),
-(2, 'Premium', 'Gym equipment and group classes', 60);
+(1, 'Basic', 'Gym equipment access per month.', 30.00),
+(2, 'Premium', 'Gym equipment and group classes per month.', 60.00),
+(3, 'Strength', 'Gym equipment and strength programme per month.', 75.50),
+(4, 'Studio', 'Studio and mobility classes per month.', 45.25),
+(5, 'Complimentary Access', 'Complimentary monthly access; membership Plan fee still applies.', 0.00),
+(6, 'Weekend Access', 'Unused demo package for testing edit and delete.', 25.00);
 INSERT INTO trainers (id, name, contact, email, rate) VALUES
-(1, 'Demo Trainer', '0123456789', 'trainer@example.test', 50);
+(1, 'Hafiz Rahman', '0120000101', 'hafiz.trainer@example.test', 50.00),
+(2, 'Nadia Ismail', '0120000102', 'nadia.trainer@example.test', 65.25),
+(3, 'Marcus O''Neil', '0120000103', 'marcus.trainer@example.test', 0.00),
+(4, 'Izzat Hamdan', '0120000104', 'izzat.trainer@example.test', 80.00);
 
 INSERT INTO members (id, member_id, firstname, middlename, lastname, gender, contact, address, email) VALUES
 (1, 100001, 'Ali', '', 'Ahmad', 'Male', '0120000001', 'Kuala Lumpur', 'ali@example.test'),
 (2, 100002, 'Siti', '', 'Aminah', 'Female', '0120000002', 'Kuantan', 'siti@example.test'),
 (3, 100003, 'Kumar', '', 'Ravi', 'Male', '0120000003', 'Ipoh', 'kumar@example.test'),
-(4, 100004, 'Mei', '', 'Tan', 'Female', '0120000004', 'Melaka', 'mei@example.test');
+(4, 100004, 'Mei', '', 'Tan', 'Female', '0120000004', 'Melaka', 'mei@example.test'),
+(5, 100005, 'Fatin', '', 'Hassan', 'Female', '0120000005', 'Shah Alam', 'fatin@example.test'),
+(6, 100006, 'Jason', '', 'Lee', 'Male', '0120000006', 'Petaling Jaya', 'jason@example.test'),
+(7, 100007, 'Arun', '', 'Kumar', 'Male', '0120000007', 'Seremban', 'arun@example.test'),
+(8, 100008, 'Nur', 'Aisyah', 'Abdullah', 'Female', '0120000008', 'Kuantan', 'nur.aisyah@example.test'),
+(9, 100009, 'Daniel', '', 'Wong', 'Male', '0120000009', 'Kuala Lumpur', 'daniel@example.test'),
+(10, 100010, 'Aina', '', 'Zulkifli', 'Female', '0120000010', 'Putrajaya', 'aina@example.test'),
+(11, 100011, 'Wei', '', 'Lim', 'Male', '0120000011', 'Ipoh', 'wei.lim@example.test'),
+(12, 100012, 'Zara', '', 'Aziz', 'Female', '0120000012', 'Bangi', 'zara@example.test'),
+(13, 100013, 'Hakim', '', 'Osman', 'Male', '0120000013', 'Kajang', 'hakim@example.test'),
+(14, 100014, 'Priya', '', 'Devi', 'Female', '0120000014', 'Klang', 'priya@example.test'),
+(15, 100015, 'Farah', '', 'Yusof', 'Female', '0120000015', 'Cyberjaya', 'farah@example.test');
 
--- Dates relative to import day: Ali Active; Siti Expired/renewable;
--- Kumar Closed/eligible for a new plan; Mei has no membership yet.
+-- 6 Active; 3 Expired/renewable; 1 Scheduled; 3 Closed history records.
+-- Fatin has a Closed agreement followed by a current agreement (renewal history).
+-- Kumar/Wei have only Closed history; Mei/Zara/Farah have no membership yet.
 INSERT INTO registration_info (id, member_id, plan_id, package_id, trainer_id, start_date, end_date, status) VALUES
-(1, 1, 2, 2, 1, CURDATE(), DATE_ADD(CURDATE(), INTERVAL 3 MONTH), 1),
-(2, 2, 1, 1, 0, DATE_SUB(CURDATE(), INTERVAL 2 MONTH), DATE_SUB(CURDATE(), INTERVAL 1 MONTH), 1),
-(3, 3, 1, 1, 0, DATE_SUB(CURDATE(), INTERVAL 3 MONTH), DATE_SUB(CURDATE(), INTERVAL 2 MONTH), 0);
+(1, 1, 2, 2, 1, @demo_month, DATE_ADD(@demo_month, INTERVAL 3 MONTH), 1),
+(2, 2, 1, 1, 0, DATE_SUB(@demo_month, INTERVAL 2 MONTH), DATE_SUB(@demo_month, INTERVAL 1 MONTH), 1),
+(3, 3, 1, 1, 0, DATE_SUB(@demo_month, INTERVAL 3 MONTH), DATE_SUB(@demo_month, INTERVAL 2 MONTH), 0),
+(4, 5, 1, 1, 0, DATE_SUB(@demo_month, INTERVAL 2 MONTH), DATE_SUB(@demo_month, INTERVAL 1 MONTH), 0),
+(5, 5, 2, 1, 2, @demo_month, DATE_ADD(@demo_month, INTERVAL 3 MONTH), 1),
+(6, 6, 2, 2, 0, DATE_ADD(@demo_month, INTERVAL 1 MONTH), DATE_ADD(@demo_month, INTERVAL 4 MONTH), 1),
+(7, 7, 4, 3, 1, @demo_month, DATE_ADD(@demo_month, INTERVAL 6 MONTH), 1),
+(8, 8, 1, 1, 0, DATE_SUB(@demo_month, INTERVAL 2 MONTH), DATE_SUB(@demo_month, INTERVAL 1 MONTH), 1),
+(9, 9, 3, 2, 2, DATE_SUB(@demo_month, INTERVAL 1 MONTH), DATE_ADD(@demo_month, INTERVAL 11 MONTH), 1),
+(10, 10, 1, 4, 3, @demo_month, DATE_ADD(@demo_month, INTERVAL 1 MONTH), 1),
+(11, 11, 3, 1, 0, DATE_SUB(@demo_month, INTERVAL 14 MONTH), DATE_SUB(@demo_month, INTERVAL 2 MONTH), 0),
+(12, 13, 1, 5, 0, @demo_month, DATE_ADD(@demo_month, INTERVAL 1 MONTH), 1),
+(13, 14, 1, 1, 0, DATE_SUB(@demo_month, INTERVAL 2 MONTH), DATE_SUB(@demo_month, INTERVAL 1 MONTH), 1);
 
-INSERT INTO payments (registration_id, amount, remarks, type) VALUES
-(1, 100.50, 'Demo partial payment', 2),
-(2, 130.00, 'Demo payment for previous membership', 2);
-
--- Demo memberships were created above using these known fees.
+-- These agreements were created using known catalog fees. No guessed legacy prices.
 UPDATE registration_info r JOIN plans p ON p.id=r.plan_id
 JOIN packages pp ON pp.id=r.package_id LEFT JOIN trainers t ON t.id=r.trainer_id
 SET r.plan_fee=p.amount, r.package_fee=pp.amount, r.plan_months=p.plan,
     r.trainer_fee_snapshot=CASE WHEN r.trainer_id=0 THEN 0 ELSE t.rate END,
-    r.price_source='captured', r.prices_recorded_at=CURRENT_TIMESTAMP;
+    r.price_source='captured', r.prices_recorded_at=LEAST(r.start_date, @demo_today),
+    r.date_created=LEAST(r.start_date, @demo_today);
+
+-- plan_amount is part of amount, not an additional charge.
+-- Every payment has an explicit allocation and unique request key; no legacy warning.
+INSERT INTO payments (id, registration_id, amount, plan_amount, request_key, remarks, type, date_created) VALUES
+(1, 1, 100.50, 100.50, SHA2('gym-demo-payment-01',256), 'Partial Plan fee; remaining RM169.50.', 2, @demo_month),
+(2, 1, 110.00, 0.00, SHA2('gym-demo-payment-02',256), 'Package RM60 and Trainer RM50; no Plan allocation.', 2, LEAST(@demo_today, DATE_ADD(@demo_month, INTERVAL 7 DAY))),
+(3, 2, 130.00, 100.00, SHA2('gym-demo-payment-03',256), 'Plan RM100 and Package RM30; previous expired agreement.', 2, DATE_SUB(@demo_month, INTERVAL 2 MONTH)),
+(4, 3, 130.00, 100.00, SHA2('gym-demo-payment-04',256), 'Plan and Package paid; agreement later closed.', 2, DATE_SUB(@demo_month, INTERVAL 3 MONTH)),
+(5, 4, 130.00, 100.00, SHA2('gym-demo-payment-05',256), 'Previous agreement settled before renewal.', 2, DATE_SUB(@demo_month, INTERVAL 2 MONTH)),
+(6, 5, 365.25, 270.00, SHA2('gym-demo-payment-06',256), 'Renewed Plan RM270, Package RM30 and Trainer RM65.25.', 2, @demo_month),
+(7, 7, 200.00, 200.00, SHA2('gym-demo-payment-07',256), 'First Plan instalment.', 2, @demo_month),
+(8, 7, 100.00, 100.00, SHA2('gym-demo-payment-08',256), 'Second Plan instalment; remaining RM150.75.', 2, LEAST(@demo_today, DATE_ADD(@demo_month, INTERVAL 7 DAY))),
+(9, 7, 125.50, 0.00, SHA2('gym-demo-payment-09',256), 'Package RM75.50 and Trainer RM50.', 2, LEAST(@demo_today, DATE_ADD(@demo_month, INTERVAL 14 DAY))),
+(10, 9, 1085.25, 960.00, SHA2('gym-demo-payment-10',256), 'Plan RM960, Package RM60 and Trainer RM65.25.', 2, DATE_SUB(@demo_month, INTERVAL 1 MONTH)),
+(11, 9, 125.25, 0.00, SHA2('gym-demo-payment-11',256), 'Package and Trainer only; Plan already paid.', 2, @demo_month),
+(12, 11, 990.00, 960.00, SHA2('gym-demo-payment-12',256), 'Historical annual Plan and first Package payment.', 2, DATE_SUB(@demo_month, INTERVAL 14 MONTH)),
+(13, 12, 100.00, 100.00, SHA2('gym-demo-payment-13',256), 'Plan paid; complimentary Package and no Trainer.', 2, @demo_month),
+(14, 13, 40.00, 40.00, SHA2('gym-demo-payment-14',256), 'Partial Plan fee; remaining RM60 on expired agreement.', 2, DATE_SUB(@demo_month, INTERVAL 2 MONTH)),
+(15, 13, 30.00, 0.00, SHA2('gym-demo-payment-15',256), 'Package only; does not settle the remaining Plan fee.', 2, DATE_ADD(DATE_SUB(@demo_month, INTERVAL 2 MONTH), INTERVAL 7 DAY));
+
+-- Recurring sessions cover this month and next month. Same-member sessions do not overlap.
+-- dow: Sunday=0, Monday=1, ... Saturday=6. End date is inclusive.
+INSERT INTO schedules (id, member_id, dow, date_from, date_to, time_from, time_to) VALUES
+(1, 1, '1,3', @demo_month, LAST_DAY(DATE_ADD(@demo_month, INTERVAL 1 MONTH)), '08:00:00', '09:00:00'),
+(2, 1, '5', @demo_month, LAST_DAY(DATE_ADD(@demo_month, INTERVAL 1 MONTH)), '09:00:00', '10:00:00'),
+(3, 5, '2,4', @demo_month, LAST_DAY(DATE_ADD(@demo_month, INTERVAL 1 MONTH)), '10:00:00', '11:00:00'),
+(4, 7, '1,3', @demo_month, LAST_DAY(DATE_ADD(@demo_month, INTERVAL 1 MONTH)), '18:00:00', '19:00:00'),
+(5, 9, '2,4', @demo_month, LAST_DAY(DATE_ADD(@demo_month, INTERVAL 1 MONTH)), '19:00:00', '20:00:00'),
+(6, 10, '6', @demo_month, LAST_DAY(@demo_month), '09:00:00', '10:00:00'),
+(7, 13, '5', @demo_month, LAST_DAY(@demo_month), '18:00:00', '19:00:00');
+
+-- No stale sessions, artificial login blocks or incomplete/orphaned demo records.
+-- login_throttle intentionally starts empty; all edit/auth versions start at 1.
+COMMIT;

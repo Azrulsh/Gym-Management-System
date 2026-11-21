@@ -52,10 +52,10 @@ test('allocation cannot exceed payment total or remaining Plan fee, including a 
 test('allocation migration preserves legacy payments and remains safe to re-import after new payments',()=>{
   const data=isolated(`$db->query('ALTER TABLE payments DROP COLUMN plan_amount');
     $before=$db->query('SELECT * FROM payments ORDER BY id')->fetch_all(MYSQLI_ASSOC);
-    $db->query(file_get_contents('database/migrations/008_payment_plan_allocation.sql'));
+    $db->query(file_get_contents('tests/fixtures/legacy-schema/008_payment_plan_allocation.sql'));
     $legacy=$db->query('SELECT * FROM payments ORDER BY id')->fetch_all(MYSQLI_ASSOC);
     allocate($db,'10.25','0.25');$first=$db->query('SELECT * FROM payments ORDER BY id')->fetch_all(MYSQLI_ASSOC);
-    $db->query(file_get_contents('database/migrations/008_payment_plan_allocation.sql'));
+    $db->query(file_get_contents('tests/fixtures/legacy-schema/008_payment_plan_allocation.sql'));
     $after=$db->query('SELECT * FROM payments ORDER BY id')->fetch_all(MYSQLI_ASSOC);
     echo json_encode(compact('before','legacy','first','after'));`);
   assert.deepEqual(data.legacy.map(({plan_amount,...old})=>old),data.before);

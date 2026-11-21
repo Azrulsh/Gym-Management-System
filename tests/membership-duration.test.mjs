@@ -39,12 +39,12 @@ test('Renew captures current months and preserves the old duration, dates, fees 
 
 test('migration leaves original duration unknown and preserves existing fields on repeat import',()=>{
   const data=isolated(`$db->query('ALTER TABLE registration_info DROP COLUMN plan_months');$before=membership_snapshot($db);
-    $db->query(file_get_contents('database/migrations/010_membership_duration_snapshots.sql'));$legacy=membership_snapshot($db);
+    $db->query(file_get_contents('tests/fixtures/legacy-schema/010_membership_duration_snapshots.sql'));$legacy=membership_snapshot($db);
     $db->query('UPDATE plans SET plan=12 WHERE id=1');
     $row=membership_read_records($db,null,9)[0];$state=membership_read_state($row);
     $view=render_membership_read_page($db,'view_pdetails.php',['id'=>9]);
     [$saved,$id]=subscribe($db,9);$first=membership_snapshot($db);
-    $db->query(file_get_contents('database/migrations/010_membership_duration_snapshots.sql'));$after=membership_snapshot($db);
+    $db->query(file_get_contents('tests/fixtures/legacy-schema/010_membership_duration_snapshots.sql'));$after=membership_snapshot($db);
     echo json_encode(compact('before','legacy','row','state','view','saved','first','after'));`);
   assert.ok(data.legacy.memberships.every(row=>row.plan_months===null));
   assert.deepEqual(data.legacy.memberships.map(({plan_months,...row})=>row),data.before.memberships);

@@ -72,7 +72,7 @@ for(const kind of ['package','trainer']){
 test('migration preserves catalog details and advanced versions when re-imported',()=>{
   const data=isolated('package',`$db->query('ALTER TABLE packages DROP COLUMN version');$db->query('ALTER TABLE trainers DROP COLUMN version');
     $before=catalog_snapshot($db);$history=membership_snapshot($db);
-    $migrate=function()use($db){$db->multi_query(file_get_contents('database/migrations/012_package_trainer_versions.sql'));
+    $migrate=function()use($db){$db->multi_query(file_get_contents('tests/fixtures/legacy-schema/012_package_trainer_versions.sql'));
       do{if($result=$db->store_result())$result->free();}while($db->more_results()&&$db->next_result());};
     $migrate();$legacy=catalog_snapshot($db);new_membership_for_test($db,$post,'save_package');$first=catalog_snapshot($db);
     $migrate();$after=catalog_snapshot($db);$afterHistory=membership_snapshot($db);echo json_encode(compact('before','legacy','history','first','after','afterHistory'));`);

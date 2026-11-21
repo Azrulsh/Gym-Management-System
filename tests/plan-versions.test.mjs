@@ -46,10 +46,10 @@ test('creation ignores a supplied version and a missing edit version is rejected
 test('migration re-import preserves existing prices and already advanced versions',()=>{
   const data=isolated(`$before=$db->query('SELECT id,plan,amount FROM plans ORDER BY id')->fetch_all(MYSQLI_ASSOC);
     $db->query('ALTER TABLE plans DROP COLUMN version');
-    $db->query(file_get_contents('database/migrations/011_plan_versions.sql'));
+    $db->query(file_get_contents('tests/fixtures/legacy-schema/011_plan_versions.sql'));
     $prices=$db->query('SELECT id,plan,amount FROM plans ORDER BY id')->fetch_all(MYSQLI_ASSOC);
     new_membership_for_test($db,$post,'save_plan');$first=$db->query('SELECT * FROM plans ORDER BY id')->fetch_all(MYSQLI_ASSOC);
-    $db->query(file_get_contents('database/migrations/011_plan_versions.sql'));$after=$db->query('SELECT * FROM plans ORDER BY id')->fetch_all(MYSQLI_ASSOC);
+    $db->query(file_get_contents('tests/fixtures/legacy-schema/011_plan_versions.sql'));$after=$db->query('SELECT * FROM plans ORDER BY id')->fetch_all(MYSQLI_ASSOC);
     echo json_encode(compact('before','prices','first','after'));`);
   assert.deepEqual(data.prices,data.before);assert.deepEqual(data.after,data.first);assert.equal(Number(data.after[0].version),2);
 });

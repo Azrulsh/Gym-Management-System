@@ -9,8 +9,8 @@ function with_membership_read_database($test)
         $db->query("ALTER TABLE packages ADD package VARCHAR(200) NOT NULL DEFAULT 'Test Package'");
         $db->query("ALTER TABLE trainers ADD name VARCHAR(200) NOT NULL DEFAULT 'Test Trainer'");
         $db->query("ALTER TABLE payments MODIFY id INT NOT NULL AUTO_INCREMENT, ADD remarks TEXT NOT NULL DEFAULT '', ADD type TINYINT NOT NULL DEFAULT 2, ADD date_created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP");
-        $db->query(file_get_contents('database/migrations/008_payment_plan_allocation.sql'));
-        $db->query(file_get_contents('database/migrations/009_payment_request_keys.sql'));
+        $db->query(file_get_contents('tests/fixtures/legacy-schema/008_payment_plan_allocation.sql'));
+        $db->query(file_get_contents('tests/fixtures/legacy-schema/009_payment_request_keys.sql'));
         $test($db, $schema);
     });
 }

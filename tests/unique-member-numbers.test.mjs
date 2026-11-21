@@ -7,12 +7,12 @@ const profile={id:'',version:'1',member_id:'',firstname:'Test',lastname:'Member'
 function isolated(code){return JSON.parse(run(session,`require 'tests/helpers/membership-read-db.php';
   with_membership_read_database(function($db,$schema){
     $db->query('ALTER TABLE members MODIFY id INT NOT NULL AUTO_INCREMENT');
-    $db->query(file_get_contents('database/migrations/005_unique_member_numbers.sql'));
+    $db->query(file_get_contents('tests/fixtures/legacy-schema/005_unique_member_numbers.sql'));
     ${code}
   });`).body);}
 test('migration 005 is repeatable and preserves profiles, internal IDs and membership/payment history',()=>{
   const data=isolated(`$before=$db->query('SELECT * FROM members ORDER BY id')->fetch_all(MYSQLI_ASSOC);$historyBefore=membership_snapshot($db);
-    $db->query(file_get_contents('database/migrations/005_unique_member_numbers.sql'));
+    $db->query(file_get_contents('tests/fixtures/legacy-schema/005_unique_member_numbers.sql'));
     $after=$db->query('SELECT * FROM members ORDER BY id')->fetch_all(MYSQLI_ASSOC);$historyAfter=membership_snapshot($db);
     $indexes=$db->query("SHOW INDEX FROM members WHERE Key_name='members_number_unique'")->fetch_all(MYSQLI_ASSOC);
     echo json_encode(compact('before','after','historyBefore','historyAfter','indexes'));`);
@@ -22,7 +22,7 @@ test('migration 005 is repeatable and preserves profiles, internal IDs and membe
 test('existing duplicate numbers block the migration without renumbering or deleting profiles',()=>{
   const data=isolated(`$db->query('ALTER TABLE members DROP INDEX members_number_unique');$db->query('UPDATE members SET member_id=77889901');
     $before=$db->query('SELECT * FROM members ORDER BY id')->fetch_all(MYSQLI_ASSOC);$code=0;
-    try{$db->query(file_get_contents('database/migrations/005_unique_member_numbers.sql'));}catch(mysqli_sql_exception $e){$code=$e->getCode();}
+    try{$db->query(file_get_contents('tests/fixtures/legacy-schema/005_unique_member_numbers.sql'));}catch(mysqli_sql_exception $e){$code=$e->getCode();}
     $after=$db->query('SELECT * FROM members ORDER BY id')->fetch_all(MYSQLI_ASSOC);echo json_encode(compact('before','after','code'));`);
   assert.equal(data.code,1062);assert.deepEqual(data.before,data.after);
 });

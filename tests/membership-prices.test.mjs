@@ -4,7 +4,7 @@ import { run } from './helpers/php.mjs';
 
 const session={login_id:2,login_type:1,csrf_token:'price-test'};
 function isolated(code){return JSON.parse(run(session,`require 'tests/helpers/membership-read-db.php';require 'membership_read.php';
-  function price_migration($db){$db->multi_query(file_get_contents('database/migrations/007_membership_price_snapshots.sql'));
+  function price_migration($db){$db->multi_query(file_get_contents('tests/fixtures/legacy-schema/007_membership_price_snapshots.sql'));
     do{if($result=$db->store_result())$result->free();}while($db->more_results()&&$db->next_result());}
   function price_create($db,$member,$trainer='2'){
     $result=new_membership_for_test($db,['member_id'=>(string)$member,'plan_id'=>'1','package_id'=>'1','trainer_id'=>$trainer,
