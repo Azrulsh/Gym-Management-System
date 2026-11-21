@@ -135,3 +135,31 @@ if(process.env.GYM_ATTENDANCE_BROWSER_AUDIT==='1')test('real browser lookup, che
  assert.equal(sql("echo $db->query('SELECT COUNT(*) FROM attendance_visits WHERE member_id=5 AND checked_out_at IS NOT NULL')->fetch_row()[0];"),'1');
  });
 },{timeout:60000});
+
+if(process.env.GYM_MEDIA_BROWSER_AUDIT==='1')test('real browser shared image viewer works in Attendance, Settings and Member Profile',async()=>{
+ const {eventsBrowserSmoke}=await import('./helpers/events-browser.mjs');
+ const token=await invite(1);assert.equal((await activate(token,'media_member')).status,200);
+ await eventsBrowserSmoke(base,folder,async({command,login,navigate,evaluate,until})=>{
+  async function open(selector){
+   await evaluate(`document.querySelector(${JSON.stringify(selector)}).focus();document.querySelector(${JSON.stringify(selector)}).click()`);
+   await until('document.querySelector("#viewer_modal").classList.contains("show") && document.querySelector("[data-media-content] img")?.hidden===false');
+   assert.equal(await evaluate('document.querySelectorAll("#viewer_modal").length'),1);
+  }
+  async function close(){await until('document.querySelector("#viewer_modal").classList.contains("show")');await new Promise(r=>setTimeout(r,350));await evaluate('document.querySelector("#viewer_modal [data-dismiss]").click()');await until('!document.querySelector("#viewer_modal").classList.contains("show") && document.querySelectorAll(".modal-backdrop").length===0');assert.equal(await evaluate('document.querySelector("[data-media-content]").children.length'),0);}
+  await login('staff');await navigate('index.php?page=attendance');
+  await evaluate('document.querySelector("#tracking_id").value="100001";document.querySelector("#attendance-lookup").requestSubmit()');await until('!document.querySelector("#details").classList.contains("d-none")');
+  await open('#details [data-media-viewer]');await close();assert.equal(await evaluate('document.activeElement.matches("#details [data-media-viewer]")'),true);
+  await command('Network.clearBrowserCookies');await login('admin');await navigate('index.php?page=settings');
+  await open('[data-branding-kind="logo"] [data-media-viewer]');await close();
+  await open('[data-branding-kind="cover"] [data-media-viewer]');await close();
+  await evaluate(`const input=document.querySelector('#settings-logo');const transfer=new DataTransfer();transfer.items.add(new File([Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII='),c=>c.charCodeAt(0))],'preview.png',{type:'image/png'}));input.files=transfer.files;input.dispatchEvent(new Event('change',{bubbles:true}));`);
+  await open('[data-branding-kind="logo"] [data-media-viewer]');assert.match(await evaluate('document.querySelector("[data-media-content] img").src'),/^blob:/);await close();
+  await evaluate("document.querySelector('#settings-form').reset()");
+  await command('Network.clearBrowserCookies');await navigate('login.php');
+  await evaluate(`document.querySelector('#username').value='media_member';document.querySelector('#password').value=${JSON.stringify(password)};document.querySelector('#login-form').requestSubmit()`);
+  await until('location.pathname.endsWith("member_portal.php")');await navigate('member_portal.php?page=profile');
+  await open('[data-media-viewer]');await close();
+  await command('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});await open('[data-media-viewer]');
+  assert.equal(await evaluate('document.querySelector("#viewer_modal img").getBoundingClientRect().right <= innerWidth'),true);await close();
+ });
+},{timeout:60000});

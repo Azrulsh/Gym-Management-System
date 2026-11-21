@@ -4,7 +4,7 @@ import test from 'node:test';
 import vm from 'node:vm';
 
 const page=readFileSync(new URL('../index.php',import.meta.url),'utf8');
-const source=page.slice(page.indexOf('  (function () {'),page.indexOf(' window.viewer_modal'));
+const source=page.slice(page.indexOf('  (function () {'),page.indexOf('  window.uni_modal'));
 function ui(){
  const state={overlays:[],animations:[]};
  function wrap(elements){return {

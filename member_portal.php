@@ -47,7 +47,7 @@ body.member-portal-shell { background: #80808045; }
             <div class="col-md-6 mb-3"><div class="card h-100"><div class="card-body"><h3 class="h6">Your activities</h3><p><?php echo count(array_filter($schedules,fn($s)=>$s['date_to']>=date('Y-m-d'))); ?> current/future schedule records.</p><p><?php echo count(array_filter($events,fn($e)=>$e['participation']==='registered' && $e['status']==='published' && $e['ends_at']>date('Y-m-d H:i:s'))); ?> upcoming/ongoing event registrations.</p><a href="member_portal.php?page=schedule">My Schedule</a> · <a href="member_portal.php?page=events">Events</a></div></div></div></div>
         <p class="text-muted">An expired membership does not remove portal access. Contact the gym for renewal or payment assistance.</p>
     <?php elseif($page==='profile'): ?>
-        <div class="card"><div class="card-body"><img src="member_avatar.php" width="96" height="96" alt="Your avatar" class="rounded mb-3">
+        <div class="card"><div class="card-body"><button type="button" class="media-viewer-trigger" data-media-viewer aria-label="View your avatar"><img src="member_avatar.php" width="96" height="96" alt="Your avatar" class="rounded"><span class="d-block small">View image</span></button>
             <p><strong><?php echo event_escape(trim($account['firstname'].' '.$account['middlename'].' '.$account['lastname'])); ?></strong><br><?php echo event_escape($account['email']); ?></p><p class="text-muted">Contact the gym to correct your name, member number or email. Portal access cannot be transferred to another profile.</p>
             <form method="post" action="ajax.php?action=portal_profile" enctype="multipart/form-data" data-portal-form>
                 <?php portal_csrf(); portal_hidden('version',$account['version']); ?>
@@ -87,4 +87,4 @@ body.member-portal-shell { background: #80808045; }
     <?php elseif($page==='security'): ?>
         <div class="card"><div class="card-body"><p>Username: <strong><?php echo event_escape($account['username']); ?></strong></p><p>Changing your password signs out all existing sessions. For account recovery, contact the gym to verify your identity and obtain a private recovery link.</p><form method="post" action="ajax.php?action=portal_password" data-portal-form><?php portal_csrf(); portal_password_fields(true); ?><button class="btn btn-primary" type="submit">Change Password</button></form></div></div>
     <?php endif; ?>
-</div></main><?php portal_script(); ?></body></html>
+</div></main><?php portal_script(); ?><?php include __DIR__ . '/media_viewer.php'; ?></body></html>

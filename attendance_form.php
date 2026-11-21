@@ -15,7 +15,7 @@ require_once __DIR__.'/membership_read.php';
             <button id="check" type="submit" class="btn btn-primary mb-2">Find Member</button>
         </form>
         <div id="details" class="d-none mt-3" aria-live="polite">
-            <img data-attendance-avatar width="80" height="80" alt="Member avatar" class="rounded mb-2">
+            <button type="button" class="media-viewer-trigger mb-2" data-media-viewer aria-label="View member avatar"><img data-attendance-avatar width="80" height="80" alt="Member avatar" class="rounded"><span class="d-block small">View image</span></button>
             <p><strong id="name"></strong><br><span data-attendance-number></span></p>
             <p data-attendance-state></p>
             <p data-attendance-explanation></p>

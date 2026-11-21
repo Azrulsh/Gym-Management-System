@@ -11,7 +11,10 @@
         message.textContent = text;
     }
     function release(kind) {
-        if (previews.has(kind)) URL.revokeObjectURL(previews.get(kind));
+        if (previews.has(kind)) {
+            if (window.mediaViewerPreviews) window.mediaViewerPreviews.release(previews.get(kind));
+            URL.revokeObjectURL(previews.get(kind));
+        }
         previews.delete(kind);
     }
     function resetPreviews() {
@@ -40,6 +43,7 @@
             }
             remove.checked = false;
             const url = URL.createObjectURL(file);
+            if (window.mediaViewerPreviews) window.mediaViewerPreviews.register(url);
             previews.set(kind, url);
             image.src = url;
         });

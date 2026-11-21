@@ -44,34 +44,6 @@ $branding = system_settings_branding($conn);
     width: 50% !important;
     max-width: unset;
   }
-  #viewer_modal .btn-close {
-    position: absolute;
-    z-index: 999999;
-    /*right: -4.5em;*/
-    background: unset;
-    color: white;
-    border: unset;
-    font-size: 27px;
-    top: 0;
-}
-#viewer_modal .modal-dialog {
-        width: 80%;
-    max-width: unset;
-    height: calc(90%);
-    max-height: unset;
-}
-  #viewer_modal .modal-content {
-       background: black;
-    border: unset;
-    height: calc(100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  #viewer_modal img,#viewer_modal video{
-    max-height: calc(100%);
-    max-width: calc(100%);
-  }
 
 </style>
 
@@ -123,14 +95,7 @@ $branding = system_settings_branding($conn);
       </div>
     </div>
   </div>
-  <div class="modal fade" id="viewer_modal" role='dialog'>
-    <div class="modal-dialog modal-md" role="document">
-      <div class="modal-content">
-              <button type="button" class="btn-close" data-dismiss="modal"><span class="fa fa-times"></span></button>
-              <img src="" alt="">
-      </div>
-    </div>
-  </div>
+  <?php include __DIR__ . '/media_viewer.php'; ?>
 </body>
 <script>
   (function () {
@@ -154,26 +119,6 @@ $branding = system_settings_branding($conn);
       });
     };
   })();
- window.viewer_modal = function($src = ''){
-    start_load()
-    var t = $src.split('.')
-    t = t[1]
-    if(t =='mp4'){
-      var view = $("<video src='"+$src+"' controls autoplay></video>")
-    }else{
-      var view = $("<img src='"+$src+"' />")
-    }
-    $('#viewer_modal .modal-content video,#viewer_modal .modal-content img').remove()
-    $('#viewer_modal .modal-content').append(view)
-    $('#viewer_modal').modal({
-            show:true,
-            backdrop:'static',
-            keyboard:false,
-            focus:true
-          })
-          end_load()  
-
-}
   window.uni_modal = (function(){
     let latestRequest = 0;
     let activeRequest = null;
