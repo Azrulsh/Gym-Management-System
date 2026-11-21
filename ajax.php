@@ -153,11 +153,6 @@ if($action == "save_membership"){
 	if($save)
 		echo $save;
 }	
-if($action == "participate"){
-	$save = $crud->participate();
-	if($save)
-		echo $save;
-}
 if($action == "get_venue_report"){
 	$get = $crud->get_venue_report();
 	if($get)
